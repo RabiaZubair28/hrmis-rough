@@ -16,7 +16,15 @@ from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_mana
 
 def _is_section_officer() -> bool:
     user = request.env.user
-    return bool(user and user.has_group("custom_section_officers.group_section_officer"))
+    if not user:
+        return False
+    # Prefer a "business" flag so we don't rely on group assignment being perfect.
+    emp = (
+        request.env["hr.employee"]
+        .sudo()
+        .search([("user_id", "=", user.id)], limit=1)
+    )
+    return bool(emp and getattr(emp, "is_section_officer", False))
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):

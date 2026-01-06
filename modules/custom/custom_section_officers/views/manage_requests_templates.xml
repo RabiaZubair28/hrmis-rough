@@ -5,7 +5,7 @@
         <xpath expr="//nav[contains(@class,'hrmis-nav')]" position="inside">
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                href="/hrmis/manage/requests?tab=leave"
-               groups="custom_section_officers.group_section_officer">
+               t-if="current_employee and getattr(current_employee, 'is_section_officer', False)">
                 Manage Requests
             </a>
         </xpath>
