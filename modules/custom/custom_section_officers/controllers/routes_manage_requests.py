@@ -55,13 +55,29 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         type="http",
         auth="user",
         website=True,
-        methods=["POST"],
+        methods=["GET", "POST"],
         csrf=True,
     )
     def hrmis_leave_dismiss(self, leave_id: int, **post):
         lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not lv:
             return request.not_found()
+
+        # Some deployments/templates may trigger a GET navigation to this URL.
+        # Avoid showing a 404 by presenting an explicit confirmation page that
+        # performs the CSRF-protected POST.
+        if request.httprequest.method == "GET":
+            return request.render(
+                "custom_section_officers.hrmis_confirm_dismiss",
+                base_ctx(
+                    "Confirm dismiss",
+                    "manage_requests",
+                    kind="leave",
+                    record=lv,
+                    post_url=f"/hrmis/leave/{lv.id}/dismiss",
+                    back_url="/hrmis/manage/requests?tab=leave",
+                ),
+            )
 
         try:
             lv.sudo().write({"state": "dismissed"})
@@ -168,13 +184,27 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         type="http",
         auth="user",
         website=True,
-        methods=["POST"],
+        methods=["GET", "POST"],
         csrf=True,
     )
     def hrmis_allocation_dismiss(self, allocation_id: int, **post):
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()
+
+        # See note in hrmis_leave_dismiss(): show confirmation on GET to avoid 404.
+        if request.httprequest.method == "GET":
+            return request.render(
+                "custom_section_officers.hrmis_confirm_dismiss",
+                base_ctx(
+                    "Confirm dismiss",
+                    "manage_requests",
+                    kind="allocation",
+                    record=alloc,
+                    post_url=f"/hrmis/allocation/{alloc.id}/dismiss",
+                    back_url="/hrmis/manage/requests?tab=allocation",
+                ),
+            )
 
         try:
             alloc.sudo().write({"state": "dismissed"})

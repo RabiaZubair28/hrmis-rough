@@ -122,5 +122,55 @@
             </div>
         </t>
     </template>
+
+    <template id="hrmis_confirm_dismiss" name="HRMIS Confirm Dismiss (Section Officer)">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">Confirm dismiss</div>
+                </div>
+                <div class="hrmis-panel__body">
+                    <div class="hrmis-kv">
+                        <t t-if="kind == 'leave'">
+                            <div class="hrmis-kv__row">
+                                <div class="hrmis-kv__k">Type</div>
+                                <div class="hrmis-kv__v">Leave request</div>
+                            </div>
+                            <div class="hrmis-kv__row">
+                                <div class="hrmis-kv__k">Staff</div>
+                                <div class="hrmis-kv__v"><t t-esc="record.employee_id.name"/></div>
+                            </div>
+                            <div class="hrmis-kv__row">
+                                <div class="hrmis-kv__k">Dates</div>
+                                <div class="hrmis-kv__v"><t t-esc="record.request_date_from"/> to <t t-esc="record.request_date_to"/></div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="hrmis-kv__row">
+                                <div class="hrmis-kv__k">Type</div>
+                                <div class="hrmis-kv__v">Allocation request</div>
+                            </div>
+                            <div class="hrmis-kv__row">
+                                <div class="hrmis-kv__k">Staff</div>
+                                <div class="hrmis-kv__v"><t t-esc="record.employee_id.name"/></div>
+                            </div>
+                            <div class="hrmis-kv__row">
+                                <div class="hrmis-kv__k">Days</div>
+                                <div class="hrmis-kv__v"><t t-esc="record.number_of_days"/> day(s)</div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="hrmis-form__actions" style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">
+                        <a class="hrmis-btn hrmis-btn--outline" t-att-href="back_url">Back</a>
+                        <form t-att-action="post_url" method="post" style="margin:0;">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <button class="hrmis-btn hrmis-btn--primary" type="submit">Dismiss</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
 </odoo>
 
