@@ -616,7 +616,7 @@
                                         <div><t t-esc="lv.request_date_from"/></div>
                                         <div><t t-esc="lv.request_date_to"/></div>
                                         <div>
-                                            <t t-if="lv.state in ('confirm','validate1')">Pending request</t>
+                                            <t t-if="lv.state in ('confirm','validate1')">Awaiting</t>
                                             <t t-elif="lv.state in ('validate','validate2')">Approved</t>
                                             <t t-elif="lv.state == 'refuse'">Rejected</t>
                                             <t t-elif="lv.state == 'cancel'">Cancelled</t>
@@ -692,7 +692,17 @@
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Leave type</div><div class="hrmis-kv__v"><t t-esc="leave.holiday_status_id.name"/></div></div>
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Dates</div><div class="hrmis-kv__v"><t t-esc="leave.request_date_from"/> to <t t-esc="leave.request_date_to"/></div></div>
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Remarks</div><div class="hrmis-kv__v"><t t-esc="leave.name"/></div></div>
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">State</div><div class="hrmis-kv__v"><t t-esc="leave.state"/></div></div>
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">State</div>
+                            <div class="hrmis-kv__v">
+                                <t t-if="leave.state in ('confirm','validate1')">Awaiting</t>
+                                <t t-elif="leave.state in ('validate','validate2')">Approved</t>
+                                <t t-elif="leave.state == 'refuse'">Rejected</t>
+                                <t t-elif="leave.state == 'cancel'">Cancelled</t>
+                                <t t-elif="leave.state == 'draft'">Draft</t>
+                                <t t-else=""><t t-esc="leave.state"/></t>
+                            </div>
+                        </div>
                     </div>
                     <div class="hrmis-form__actions">
                         <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/leave/requests">Back</a>
