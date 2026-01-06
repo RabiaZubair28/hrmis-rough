@@ -3,7 +3,7 @@ from __future__ import annotations
 from odoo import http
 from odoo.http import request
 
-from .leave_data import leave_pending_for_current_user, pending_leave_requests_for_user
+from .leave_data import pending_leave_requests_for_user
 from .utils import base_ctx
 
 
@@ -21,9 +21,11 @@ class HrmisLeaveRequestsController(http.Controller):
         leave = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not leave:
             return request.not_found()
+        back = (kw.get("back") or "").strip().lower()
+        back_url = "/hrmis/manage/requests?tab=leave" if back == "manage" else "/hrmis/leave/requests"
         return request.render(
             "hr_holidays_updates.hrmis_leave_view",
-            base_ctx("Leave request", "leave_requests", leave=leave),
+            base_ctx("Leave request", "leave_requests", leave=leave, back_url=back_url),
         )
 
     @http.route(
@@ -49,9 +51,6 @@ class HrmisLeaveRequestsController(http.Controller):
         leave = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not leave:
             return request.not_found()
-
-        if not leave_pending_for_current_user(leave):
-            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
             # Prefer custom approval flow if present for this leave.
@@ -85,9 +84,6 @@ class HrmisLeaveRequestsController(http.Controller):
         leave = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not leave:
             return request.not_found()
-
-        if not leave_pending_for_current_user(leave):
-            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
             leave.with_user(request.env.user).action_refuse()

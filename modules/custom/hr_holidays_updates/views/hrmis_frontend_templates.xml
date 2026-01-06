@@ -671,7 +671,7 @@
                                 <t t-esc="lv.request_date_from"/> to <t t-esc="lv.request_date_to"/>
                             </div>
                             <div class="hrmis-leave-row__cell hrmis-leave-row__actions">
-                                <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/leave/%s' % lv.id">View</a>
+                                <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/leave/%s?back=manage' % lv.id">View</a>
                                 <form t-att-action="'/hrmis/leave/%s/forward' % lv.id" method="post">
                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                     <button class="hrmis-btn hrmis-btn--primary" type="submit">Forward</button>
@@ -699,7 +699,7 @@
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">State</div><div class="hrmis-kv__v"><t t-esc="leave.state"/></div></div>
                     </div>
                     <div class="hrmis-form__actions">
-                        <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/leave/requests">Back</a>
+                        <a class="hrmis-btn hrmis-btn--outline" t-att-href="back_url or '/hrmis/leave/requests'">Back</a>
                     </div>
                 </div>
             </div>
@@ -743,7 +743,7 @@
                                     <t t-esc="lv.request_date_from"/> to <t t-esc="lv.request_date_to"/>
                                 </div>
                                 <div class="hrmis-leave-row__cell hrmis-leave-row__actions">
-                                    <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/leave/%s' % lv.id">View</a>
+                                    <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/leave/%s?back=manage' % lv.id">View</a>
                                     <form t-att-action="'/hrmis/leave/%s/approve' % lv.id" method="post">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <button class="hrmis-btn hrmis-btn--primary" type="submit">Approve</button>
