@@ -78,10 +78,10 @@
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests
                             </a>
-                             <!-- <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
+                             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                                href="/hrmis/manage/requests?tab=leave">
                                 Manage Requests
-                            </a> -->
+                            </a>
                            
                           
                         </nav>

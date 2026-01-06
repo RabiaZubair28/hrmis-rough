@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- The Section Officer Panel -->
+    <template id="hrmis_section_officer_panel">
+        <div class="hrmis-panel hrmis-panel--section-officer">
+            <div class="hrmis-panel__header">
+                <div class="hrmis-panel__title">Section Officer Controls</div>
+            </div>
+            <div class="hrmis-panel__body">
+                <ul>
+                    <li>Extended approval authority</li>
+                    <li>Department-level oversight</li>
+                    <li>Escalation handling</li>
+                </ul>
+            </div>
+        </div>
+    </template>
+    
+
+    <!-- Call it on the main HRMIS page -->
+    <template id="hrmis_services_section_officer" inherit_id="hr_holidays_updates.hrmis_staff_profile">
+        <xpath expr="//div[contains(@class,'hrmis-panel')][1]" position="before">
+            <t t-if="request.env.user.has_group('custom_section_officers.group_section_officer')">
+                <t t-call="custom_section_officers.hrmis_section_officer_panel"/>
+            </t>
+        </xpath>
+    </template>
+</odoo>

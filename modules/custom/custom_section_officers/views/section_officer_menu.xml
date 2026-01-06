@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- <menuitem
+        id="menu_hrmis_extra_feature"
+        name="Extra Feature"
+        parent="hr_holidays_updates.menu_hrmis_services"
+        action="hr_holidays_updates.action_hrmis_services"
+        sequence="10"
+    /> -->
+
+</odoo>

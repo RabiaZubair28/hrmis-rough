@@ -1,0 +1,6 @@
+<odoo>
+    <record id="group_section_officer" model="res.groups">
+        <field name="name">Section Officer</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+    </record>
+</odoo>
