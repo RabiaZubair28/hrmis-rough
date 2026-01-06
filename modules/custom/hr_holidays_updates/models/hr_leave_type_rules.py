@@ -43,6 +43,8 @@ class HrLeaveTypeRules(models.Model):
         rules = {
             "Casual Leave (CL)": {"max_days_per_month": 2.0, "max_days_per_year": 24.0, "auto_allocate": True},
             "Casual Leave": {"max_days_per_month": 2.0, "max_days_per_year": 24.0, "auto_allocate": True},
+            # Accumulated Casual Leave: 24 days/year (allocated, not auto-allocated)
+            "Accumulated Casual Leave": {"max_days_per_year": 24.0, "max_days_per_month": 0.0, "auto_allocate": False},
             "Earned Leave (Full Pay)": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
             "Earned Leave With Pay": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
             "Earned Leave": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},

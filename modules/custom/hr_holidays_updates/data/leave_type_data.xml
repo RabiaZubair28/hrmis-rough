@@ -47,10 +47,6 @@
     <record id="leave_type_accumulated_casual" model="hr.leave.type">
         <field name="name">Accumulated Casual Leave</field>
         <field name="allowed_gender">all</field>
-        <field name="requires_allocation">yes</field>
-        <field name="max_days_per_year">24.0</field>
-        <field name="auto_allocate">True</field>
-        <field name="max_days_per_month">2.0</field>
     </record>
 
     <!-- Special Leave (Accident/Injury) -->

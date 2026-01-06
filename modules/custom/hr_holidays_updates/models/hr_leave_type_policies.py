@@ -120,6 +120,10 @@ class HrLeaveTypePolicies(models.Model):
                 ],
             },
             {"canonical": "Ex-Pakistan Leave", "aliases": ["Ex-Pakistan Leave", "Ex Pakistan Leave", "Ex–Pakistan Leave"]},
+            {
+                "canonical": "Accumulated Casual Leave",
+                "aliases": ["Accumulated Casual Leave"],
+            },
         ]
         for g in groups:
             self._hrmis_dedupe_by_aliases(
