@@ -9,6 +9,20 @@ class HrLeave(models.Model):
         ondelete={"dismissed": "set default"},
     )
 
+    @api.model
+    def fields_get(self, allfields=None, attributes=None):
+        """
+        UI label tweak: show pending requests as "Awaiting" instead of "Confirm".
+        """
+        res = super().fields_get(allfields=allfields, attributes=attributes)
+        state = res.get("state") or {}
+        selection = state.get("selection")
+        if selection:
+            state["selection"] = [
+                (key, "Awaiting" if key in ("confirm", "validate1") else label) for key, label in selection
+            ]
+        return res
+
 
 class HrLeaveAllocation(models.Model):
     _inherit = "hr.leave.allocation"

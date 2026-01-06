@@ -14,7 +14,6 @@
         'security/ir.model.access.csv',
         'views/section_officer_menu.xml',
         'views/section_officer_template.xml',
-        'views/hr_leave_allocation_action.xml',
         'views/manage_requests_templates.xml',
     ],
     'installable': True,
