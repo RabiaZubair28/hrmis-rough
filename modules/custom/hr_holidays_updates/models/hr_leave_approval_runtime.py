@@ -36,8 +36,11 @@ class HrLeaveApprovalRuntime(models.Model):
             if not leave.holiday_status_id:
                 continue
 
-            leave.approval_status_ids.unlink()
-            flows = self.env["hr.leave.approval.flow"].search(
+            # Approval flows are configuration records typically restricted to HR.
+            # Website/employee submissions should still work, so we use sudo() for
+            # flow lookup and status row creation after the leave itself is confirmed.
+            leave.approval_status_ids.sudo().unlink()
+            flows = self.env["hr.leave.approval.flow"].sudo().search(
                 [("leave_type_id", "=", leave.holiday_status_id.id)],
                 order="sequence",
             )
@@ -47,7 +50,7 @@ class HrLeaveApprovalRuntime(models.Model):
             leave.approval_step = flows[0].sequence
             for flow in flows:
                 for user in flow.approver_ids:
-                    self.env["hr.leave.approval.status"].create(
+                    self.env["hr.leave.approval.status"].sudo().create(
                         {
                             "leave_id": leave.id,
                             "flow_id": flow.id,
@@ -64,7 +67,7 @@ class HrLeaveApprovalRuntime(models.Model):
         if not user:
             return False
 
-        current_flows = self.env["hr.leave.approval.flow"].search(
+        current_flows = self.env["hr.leave.approval.flow"].sudo().search(
             [
                 ("leave_type_id", "=", self.holiday_status_id.id),
                 ("sequence", "=", self.approval_step),
@@ -88,7 +91,7 @@ class HrLeaveApprovalRuntime(models.Model):
         if self.state == "validate":
             return
 
-        current_flows = self.env["hr.leave.approval.flow"].search(
+        current_flows = self.env["hr.leave.approval.flow"].sudo().search(
             [
                 ("leave_type_id", "=", self.holiday_status_id.id),
                 ("sequence", "=", self.approval_step),
@@ -110,7 +113,7 @@ class HrLeaveApprovalRuntime(models.Model):
             if not all(flow_statuses.mapped("approved")):
                 return
 
-        next_flow = self.env["hr.leave.approval.flow"].search(
+        next_flow = self.env["hr.leave.approval.flow"].sudo().search(
             [
                 ("leave_type_id", "=", self.holiday_status_id.id),
                 ("sequence", ">", self.approval_step),
