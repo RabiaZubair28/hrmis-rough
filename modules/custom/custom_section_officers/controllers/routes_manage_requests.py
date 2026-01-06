@@ -25,6 +25,44 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         Emp = request.env["hr.employee"].sudo()
         return Emp.search([("user_id", "=", request.env.user.id)]).ids
 
+    def _canonical_employee(self, employee):
+        """Try to resolve duplicate employee rows to a single 'canonical' record.
+
+        In some databases, the same real-world person can exist as multiple
+        hr.employee rows (often with the same name / HRMIS service number),
+        and leave/allocation requests may be linked to different rows. We
+        canonicalize using user_id first, then HRMIS service number, to make
+        manager matching consistent and avoid showing the "same employee"
+        under multiple section officers.
+        """
+        if not employee:
+            return None
+
+        Emp = request.env["hr.employee"].sudo()
+        candidates = Emp.browse([])
+
+        if getattr(employee, "user_id", False):
+            candidates = Emp.search([("user_id", "=", employee.user_id.id)], order="id desc")
+        elif "hrmis_employee_id" in employee._fields and employee.hrmis_employee_id:
+            candidates = Emp.search([("hrmis_employee_id", "=", employee.hrmis_employee_id)], order="id desc")
+        else:
+            return employee
+
+        if not candidates:
+            return employee
+
+        # Prefer active record if available.
+        if "active" in candidates._fields:
+            active = candidates.filtered(lambda e: e.active)
+            if active:
+                candidates = active
+
+        # Prefer the row that actually has a manager set.
+        with_parent = candidates.filtered(lambda e: getattr(e, "parent_id", False))
+        if with_parent:
+            return with_parent[0]
+        return candidates[0]
+
     def _managed_employee_domain(self):
         """Conservative domain to fetch 'maybe relevant' records.
 
@@ -49,6 +87,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
     def _responsible_manager_emp(self, employee):
         """Pick exactly one manager employee record for matching."""
+        employee = self._canonical_employee(employee)
         if not employee:
             return None
         # 1) Standard Odoo HR manager field.
