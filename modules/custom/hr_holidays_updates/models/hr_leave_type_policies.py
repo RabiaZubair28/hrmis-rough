@@ -120,17 +120,25 @@ class HrLeaveTypePolicies(models.Model):
                 ],
             },
             {"canonical": "Ex-Pakistan Leave", "aliases": ["Ex-Pakistan Leave", "Ex Pakistan Leave", "Ex–Pakistan Leave"]},
+            {
+                "canonical": "Accumulated Casual Leave",
+                "aliases": ["Accumulated Casual Leave"],
+                # Should behave like Ex-Pakistan Leave (requires allocation),
+                # but with a yearly cap of 24 days.
+                "vals": {"max_days_per_year": 24.0},
+            },
         ]
         for g in groups:
             self._hrmis_dedupe_by_aliases(
                 canonical_name=g["canonical"],
                 aliases=g["aliases"],
-                base_vals=base_vals,
+                base_vals={**base_vals, **(g.get("vals") or {})},
             )
 
     @api.model
     def ensure_casual_leave_policy(self):
-        lt = self.search(["|", ("name", "ilike", "Casual Leave"), ("name", "ilike", "Casual Leave (CL)")], limit=1)
+        # NOTE: use exact matches to avoid catching "Accumulated Casual Leave".
+        lt = self.search(["|", ("name", "=ilike", "Casual Leave"), ("name", "=ilike", "Casual Leave (CL)")], limit=1)
         vals = {
             "name": lt.name if lt else "Casual Leave",
             "allowed_gender": "all",

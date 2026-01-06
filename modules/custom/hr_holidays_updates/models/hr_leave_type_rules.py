@@ -41,8 +41,10 @@ class HrLeaveTypeRules(models.Model):
     @api.model
     def apply_max_duration_rules(self):
         rules = {
-            "Casual Leave (CL)": {"max_days_per_month": 2.0, "max_days_per_year": 24.0, "auto_allocate": True},
-            "Casual Leave": {"max_days_per_month": 2.0, "max_days_per_year": 24.0, "auto_allocate": True},
+            # Do not touch "Casual Leave" policy here (handled manually per deployment).
+            # Accumulated Casual Leave behaves like "Ex-Pakistan Leave" (requires allocation)
+            # but has a yearly cap.
+            "Accumulated Casual Leave": {"max_days_per_year": 24.0, "max_days_per_month": 0.0, "auto_allocate": False},
             "Earned Leave (Full Pay)": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
             "Earned Leave With Pay": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
             "Earned Leave": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
@@ -59,6 +61,7 @@ class HrLeaveTypeRules(models.Model):
             "Leave Preparatory to Retirement": {"max_days_per_request": 365.0, "auto_allocate": True},
         }
         for leave_type_name, vals in rules.items():
-            leave_types = self.search([("name", "ilike", leave_type_name)])
+            op = "=ilike" if leave_type_name == "Accumulated Casual Leave" else "ilike"
+            leave_types = self.search([("name", op, leave_type_name)])
             if leave_types:
                 leave_types.write(vals)
