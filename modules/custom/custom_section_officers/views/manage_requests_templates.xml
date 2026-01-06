@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Sidebar entry: show only to Section Officers -->
+    <!-- Sidebar entry (in Section Officer module) -->
     <template id="hrmis_ui_layout_section_officer_manage_requests" inherit_id="hr_holidays_updates.hrmis_ui_layout">
         <xpath expr="//nav[contains(@class,'hrmis-nav')]" position="inside">
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
-               href="/hrmis/manage/requests?tab=leave"
-               t-if="current_employee and getattr(current_employee, 'is_section_officer', False)">
+               href="/hrmis/manage/requests?tab=leave">
                 Manage Requests
             </a>
         </xpath>
