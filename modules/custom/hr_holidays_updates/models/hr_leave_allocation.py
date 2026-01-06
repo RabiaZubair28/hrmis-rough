@@ -98,18 +98,30 @@ class HrLeaveAllocation(models.Model):
         Accumulated Casual Leave:
         - Requires allocation (handled via leave type config)
         - Max 24 days per year (enforced here to prevent over-allocation)
+        - A single allocation request must not exceed 24 days
         """
         for alloc in self:
             if not alloc.employee_id or not alloc.holiday_status_id:
                 continue
 
-            # Match strictly by name (canonicalized by hr_leave_type_policies.ensure_approval_allocated_leave_types()).
-            if (alloc.holiday_status_id.name or "").strip().lower() != "accumulated casual leave":
+            # Prefer matching by XML id (stable), fallback to normalized name.
+            try:
+                acl = self.env.ref("hr_holidays_updates.leave_type_accumulated_casual")
+            except Exception:
+                acl = False
+
+            if acl and alloc.holiday_status_id.id != acl.id:
+                continue
+
+            if not acl and (alloc.holiday_status_id.name or "").strip().lower() != "accumulated casual leave":
                 continue
 
             # Only enforce for meaningful allocation states.
             if alloc.state not in ("confirm", "validate1", "validate"):
                 continue
+
+            if float(alloc.number_of_days or 0.0) > 24.0 + 1e-6:
+                raise ValidationError("Accumulated Casual Leave allocation request cannot be more than 24 days.")
 
             date_from = fields.Date.to_date(alloc.date_from) or fields.Date.today()
             year_start = fields.Date.to_date(f"{date_from.year}-01-01")
