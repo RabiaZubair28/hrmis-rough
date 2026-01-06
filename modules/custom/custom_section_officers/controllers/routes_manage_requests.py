@@ -26,17 +26,51 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         return Emp.search([("user_id", "=", request.env.user.id)]).ids
 
     def _managed_employee_domain(self):
-        """Restrict records to employees managed by current user.
+        """Conservative domain to fetch 'maybe relevant' records.
 
-        We prefer filtering by manager employee record (parent_id) rather than
-        manager user (parent_id.user_id) because user↔employee linkage can be
-        non-unique in some deployments.
+        We do *final* manager matching in Python with a priority order:
+        parent_id -> department manager -> coach_id. This avoids a common data
+        issue where multiple "manager-like" fields are filled with different
+        people and the same employee would match multiple SOs.
         """
         so_emp_ids = self._section_officer_employee_ids()
         if not so_emp_ids:
-            # No employee linked to this user => nothing to manage.
             return [("employee_id", "=", False)]
-        return [("employee_id.parent_id", "in", so_emp_ids)]
+
+        # Broad-enough filter to keep queries efficient.
+        domain = [
+            "|",
+            ("employee_id.parent_id", "in", so_emp_ids),
+            "|",
+            ("employee_id.department_id.manager_id", "in", so_emp_ids),
+            ("employee_id.coach_id", "in", so_emp_ids),
+        ]
+        return domain
+
+    def _responsible_manager_emp(self, employee):
+        """Pick exactly one manager employee record for matching."""
+        if not employee:
+            return None
+        # 1) Standard Odoo HR manager field.
+        if getattr(employee, "parent_id", False):
+            return employee.parent_id
+        # 2) Department manager (common alternative setup).
+        if (
+            "department_id" in employee._fields
+            and employee.department_id
+            and getattr(employee.department_id, "manager_id", False)
+        ):
+            return employee.department_id.manager_id
+        # 3) Coach fallback (some DBs use coach as manager).
+        if "coach_id" in employee._fields and getattr(employee, "coach_id", False):
+            return employee.coach_id
+        return None
+
+    def _is_managed_by_current_user(self, employee) -> bool:
+        mgr = self._responsible_manager_emp(employee)
+        if not mgr:
+            return False
+        return mgr.id in set(self._section_officer_employee_ids())
 
     @http.route(["/hrmis/leave/<int:leave_id>"], type="http", auth="user", website=True)
     def hrmis_leave_view(self, leave_id: int, **kw):
@@ -50,8 +84,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             request.env.user.has_group("hr_holidays.group_hr_holidays_user")
             or request.env.user.has_group("hr_holidays.group_hr_holidays_manager")
         ):
-            so_emp_ids = self._section_officer_employee_ids()
-            if not (lv.employee_id and lv.employee_id.parent_id and lv.employee_id.parent_id.id in so_emp_ids):
+            if not self._is_managed_by_current_user(lv.employee_id):
                 return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         return request.render(
@@ -73,8 +106,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.not_found()
 
         # Allow only if pending for current user OR employee is managed by current user.
-        so_emp_ids = self._section_officer_employee_ids()
-        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.id in so_emp_ids)):
+        if not (leave_pending_for_current_user(lv) or self._is_managed_by_current_user(lv.employee_id)):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
@@ -103,8 +135,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.not_found()
 
         # Allow only if pending for current user OR employee is managed by current user.
-        so_emp_ids = self._section_officer_employee_ids()
-        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.id in so_emp_ids)):
+        if not (leave_pending_for_current_user(lv) or self._is_managed_by_current_user(lv.employee_id)):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         # Some deployments/templates may trigger a GET navigation to this URL.
@@ -145,16 +176,19 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         Allocation = request.env["hr.leave.allocation"].sudo()
 
         managed_domain = self._managed_employee_domain()
-        leaves = Leave.search(
+        # Fetch a bit more then apply strict manager matching in Python.
+        leaves_raw = Leave.search(
             [("state", "in", ("confirm", "validate1"))] + managed_domain,
             order="create_date desc, id desc",
-            limit=200,
+            limit=400,
         )
-        allocations = Allocation.search(
+        allocations_raw = Allocation.search(
             [("state", "in", ("confirm", "validate1"))] + managed_domain,
             order="create_date desc, id desc",
-            limit=200,
+            limit=400,
         )
+        leaves = leaves_raw.filtered(lambda lv: self._is_managed_by_current_user(lv.employee_id))[:200]
+        allocations = allocations_raw.filtered(lambda al: self._is_managed_by_current_user(al.employee_id))[:200]
         tab = tab if tab in ("leave", "allocation") else "leave"
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -168,8 +202,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.not_found()
 
         if not can_manage_allocations():
-            so_emp_ids = self._section_officer_employee_ids()
-            if not (alloc.employee_id and alloc.employee_id.parent_id and alloc.employee_id.parent_id.id in so_emp_ids):
+            if not self._is_managed_by_current_user(alloc.employee_id):
                 return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         return request.render(
