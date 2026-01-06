@@ -2,10 +2,10 @@
 <odoo>
 
     <!-- Casual Leave (all genders) -->
-    <!-- <record id="leave_type_casual" model="hr.leave.type">
+    <record id="leave_type_casual" model="hr.leave.type">
         <field name="name">Casual Leave</field>
         <field name="allowed_gender">all</field>
-    </record> -->
+    </record>
 
     <!-- Earned Leave With Pay -->
     <!-- <record id="leave_type_earned_pay" model="hr.leave.type">
