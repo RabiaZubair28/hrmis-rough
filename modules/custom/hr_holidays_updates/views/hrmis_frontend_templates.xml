@@ -705,7 +705,10 @@
                         </div>
                     </div>
                     <div class="hrmis-form__actions">
-                        <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/leave/requests">Back</a>
+                        <a
+                            class="hrmis-btn hrmis-btn--outline"
+                            t-att-href="'/hrmis/manage/requests?tab=leave' if active_menu == 'manage_requests' else '/hrmis/leave/requests'"
+                        >Back</a>
                     </div>
                 </div>
             </div>
