@@ -9,6 +9,7 @@ registers the routes without keeping a single giant file.
 from . import allocation_data  # noqa: F401
 from . import leave_data  # noqa: F401
 from . import routes_leave_form  # noqa: F401
+from . import routes_leave_requests  # noqa: F401
 from . import routes_leave_submit  # noqa: F401
 from . import routes_services  # noqa: F401
 from . import routes_staff  # noqa: F401
