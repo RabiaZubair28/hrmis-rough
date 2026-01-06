@@ -78,10 +78,6 @@
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests
                             </a>
-                             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
-                               href="/hrmis/manage/requests?tab=leave">
-                                Manage Requests
-                            </a>
                            
                           
                         </nav>
@@ -700,112 +696,6 @@
                     </div>
                     <div class="hrmis-form__actions">
                         <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/leave/requests">Back</a>
-                    </div>
-                </div>
-            </div>
-        </t>
-    </template>
-
-    <template id="hrmis_manage_requests" name="HRMIS Manage Requests">
-        <t t-call="hr_holidays_updates.hrmis_ui_layout">
-            <div class="hrmis-panel">
-                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'allocation' else ''}"
-                       t-att-href="'/hrmis/manage/requests?tab=allocation'">
-                        Manage Allocation Requests
-                    </a>
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'leave' else ''}"
-                       t-att-href="'/hrmis/manage/requests?tab=leave'">
-                        Manage Leave Requests
-                    </a>
-                </div>
-
-                <div class="hrmis-panel__body">
-                    <t t-if="tab == 'leave'">
-                        <t t-if="not leaves">
-                            <div class="hrmis-empty">No leave requests pending your action.</div>
-                        </t>
-                        <t t-foreach="range(len(leaves))" t-as="idx0">
-                            <t t-set="lv" t-value="leaves[idx0]"/>
-                            <div class="hrmis-leave-row">
-                                <div class="hrmis-leave-row__cell hrmis-leave-row__sno"><t t-esc="idx0 + 1"/></div>
-                                <div class="hrmis-leave-row__cell">
-                                    <div class="strong">
-                                        <t t-esc="lv.employee_id.name"/>,
-                                        <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
-                                    </div>
-                                    <div class="sub">
-                                        <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
-                                    </div>
-                                </div>
-                                <div class="hrmis-leave-row__cell"><t t-esc="lv.holiday_status_id.name"/></div>
-                                <div class="hrmis-leave-row__cell">
-                                    <t t-esc="lv.request_date_from"/> to <t t-esc="lv.request_date_to"/>
-                                </div>
-                                <div class="hrmis-leave-row__cell hrmis-leave-row__actions">
-                                    <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/leave/%s' % lv.id">View</a>
-                                    <form t-att-action="'/hrmis/leave/%s/approve' % lv.id" method="post">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                        <button class="hrmis-btn hrmis-btn--primary" type="submit">Approve</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </t>
-                    </t>
-
-                    <t t-if="tab == 'allocation'">
-                        <t t-if="not allocations">
-                            <div class="hrmis-empty">No allocation requests pending your action.</div>
-                        </t>
-                        <t t-foreach="range(len(allocations))" t-as="idx0">
-                            <t t-set="al" t-value="allocations[idx0]"/>
-                            <div class="hrmis-leave-row">
-                                <div class="hrmis-leave-row__cell hrmis-leave-row__sno"><t t-esc="idx0 + 1"/></div>
-                                <div class="hrmis-leave-row__cell">
-                                    <div class="strong">
-                                        <t t-esc="al.employee_id.name"/>,
-                                        <t t-esc="(('facility_id' in al.employee_id._fields and al.employee_id.facility_id and al.employee_id.facility_id.name) or ('hrmis_facility_id' in al.employee_id._fields and al.employee_id.hrmis_facility_id and al.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
-                                    </div>
-                                    <div class="sub">
-                                        <t t-esc="(('district_id' in al.employee_id._fields and al.employee_id.district_id and al.employee_id.district_id.name) or ('hrmis_district_id' in al.employee_id._fields and al.employee_id.hrmis_district_id and al.employee_id.hrmis_district_id.name) or 'District name')"/>
-                                    </div>
-                                </div>
-                                <div class="hrmis-leave-row__cell"><t t-esc="al.holiday_status_id.name"/></div>
-                                <div class="hrmis-leave-row__cell">
-                                    <t t-esc="al.number_of_days"/> day(s)
-                                </div>
-                                <div class="hrmis-leave-row__cell hrmis-leave-row__actions">
-                                    <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/allocation/%s' % al.id">View</a>
-                                    <form t-att-action="'/hrmis/allocation/%s/approve' % al.id" method="post">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                        <button class="hrmis-btn hrmis-btn--primary" type="submit">Approve</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </t>
-                    </t>
-                </div>
-            </div>
-        </t>
-    </template>
- 
-
-    <template id="hrmis_allocation_view" name="HRMIS Allocation View">
-        <t t-call="hr_holidays_updates.hrmis_ui_layout">
-            <div class="hrmis-panel">
-                <div class="hrmis-panel__header">
-                    <div class="hrmis-panel__title">Allocation request</div>
-                </div>
-                <div class="hrmis-panel__body">
-                    <div class="hrmis-kv">
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">Staff</div><div class="hrmis-kv__v"><t t-esc="allocation.employee_id.name"/></div></div>
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">Leave type</div><div class="hrmis-kv__v"><t t-esc="allocation.holiday_status_id.name"/></div></div>
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">Days</div><div class="hrmis-kv__v"><t t-esc="allocation.number_of_days"/></div></div>
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">Description</div><div class="hrmis-kv__v"><t t-esc="allocation.name"/></div></div>
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">State</div><div class="hrmis-kv__v"><t t-esc="allocation.state"/></div></div>
-                    </div>
-                    <div class="hrmis-form__actions">
-                        <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/manage/requests?tab=allocation">Back</a>
                     </div>
                 </div>
             </div>

@@ -3,25 +3,39 @@ from __future__ import annotations
 from odoo import http
 from odoo.http import request
 
-from .allocation_data import allocation_pending_for_current_user, pending_allocation_requests_for_user
-from .leave_data import pending_leave_requests_for_user
-from .utils import base_ctx, can_manage_allocations
+from odoo.addons.hr_holidays_updates.controllers.allocation_data import (
+    allocation_pending_for_current_user,
+    pending_allocation_requests_for_user,
+)
+from odoo.addons.hr_holidays_updates.controllers.leave_data import pending_leave_requests_for_user
+from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_manage_allocations
 
 
-class HrmisManageRequestsController(http.Controller):
+def _is_section_officer() -> bool:
+    user = request.env.user
+    return bool(user and user.has_group("custom_section_officers.group_section_officer"))
+
+
+class HrmisSectionOfficerManageRequestsController(http.Controller):
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
+        if not _is_section_officer():
+            return request.not_found()
+
         uid = request.env.user.id
         leaves = pending_leave_requests_for_user(uid)
         allocations = pending_allocation_requests_for_user(uid)
         tab = tab if tab in ("leave", "allocation") else "leave"
         return request.render(
-            "hr_holidays_updates.hrmis_manage_requests",
+            "custom_section_officers.hrmis_manage_requests",
             base_ctx("Manage Requests", "manage_requests", tab=tab, leaves=leaves, allocations=allocations),
         )
 
     @http.route(["/hrmis/allocation/<int:allocation_id>"], type="http", auth="user", website=True)
     def hrmis_allocation_view(self, allocation_id: int, **kw):
+        if not _is_section_officer():
+            return request.not_found()
+
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()
@@ -35,7 +49,7 @@ class HrmisManageRequestsController(http.Controller):
                 return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         return request.render(
-            "hr_holidays_updates.hrmis_allocation_view",
+            "custom_section_officers.hrmis_allocation_view",
             base_ctx("Allocation request", "manage_requests", allocation=alloc),
         )
 
@@ -48,6 +62,9 @@ class HrmisManageRequestsController(http.Controller):
         csrf=True,
     )
     def hrmis_allocation_approve(self, allocation_id: int, **post):
+        if not _is_section_officer():
+            return request.not_found()
+
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()
@@ -76,6 +93,9 @@ class HrmisManageRequestsController(http.Controller):
         csrf=True,
     )
     def hrmis_allocation_refuse(self, allocation_id: int, **post):
+        if not _is_section_officer():
+            return request.not_found()
+
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()
@@ -94,3 +114,4 @@ class HrmisManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=refuse_failed")
 
         return request.redirect("/hrmis/manage/requests?tab=allocation&success=refused")
+
