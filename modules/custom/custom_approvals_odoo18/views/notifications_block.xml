@@ -1,0 +1,31 @@
+<odoo>
+    <template id="notifications_block">
+
+        <h5 class="mb-3">Notifications</h5>
+
+        <t t-if="notifications">
+            <ul class="list-group">
+                <t t-foreach="notifications" t-as="note">
+                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong><t t-esc="note.title"/></strong>
+                            <div class="small text-muted">
+                                <t t-esc="note.message"/>
+                            </div>
+                        </div>
+                        <span class="badge bg-secondary">
+                            <t t-esc="note.date"/>
+                        </span>
+                    </li>
+                </t>
+            </ul>
+        </t>
+
+        <t t-else="">
+            <div class="alert alert-light text-muted">
+                No notifications available.
+            </div>
+        </t>
+
+    </template>
+</odoo>

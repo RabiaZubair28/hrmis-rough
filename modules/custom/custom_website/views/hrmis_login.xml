@@ -1,0 +1,47 @@
+<!-- <odoo>
+    <template id="hrmis_login_page" name="HRMIS Custom Login Page">
+        
+            <div class="container mt-5 text-center">
+           
+                <p class="mb-4">Enter your credentials to login</p>
+
+     
+                <form t-att-action="'/hrmis/custom_login'" method="post">
+                    <div class="mb-3">
+                        <input type="text" name="login" class="form-control" placeholder="Username" required="required"/>
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" name="password" class="form-control" placeholder="Password" required="required"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+            </div>
+     
+    </template>
+</odoo> -->
+<odoo>
+    <template id="hrmis_login_page" name="HRMIS Custom Login Page">
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 70vh; background: #f0f2f5;">
+            <div class="card shadow-lg p-5" style="max-width: 420px; width: 100%; border-radius: 20px; background: #ffffff;">
+                
+                
+                <!-- Error Message -->
+                <t t-if="error">
+                    <div class="alert alert-danger mb-3" style="font-size: 0.95rem;"><t t-esc="error"/></div>
+                </t>
+
+                <!-- Custom Form -->
+                <form t-att-action="'/hrmis/custom_login'" method="post">
+                    <div class="mb-3">
+                        <input type="text" name="login" class="form-control form-control-lg" placeholder="Username" required="required" style="border-radius: 10px; padding: 12px;"/>
+                    </div>
+                    <div class="mb-4">
+                        <input type="password" name="password" class="form-control form-control-lg" placeholder="Password" required="required" style="border-radius: 10px; padding: 12px;"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100" style="border-radius: 12px; font-weight: 600;">Login</button>
+                </form>
+
+            </div>
+        </div>
+    </template>
+</odoo>

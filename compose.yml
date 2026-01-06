@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:18
+    restart: always
+    env_file:
+      - .env
+    environment:
+          - POSTGRES_DB=${POSTGRES_DB}
+          - POSTGRES_USER=${POSTGRES_USER}
+          - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./volumes/db:/var/lib/postgresql/
+
+  odoo:
+    env_file:
+      - .env
+    depends_on:
+      - db
+    command: >
+      /app/entrypoint.sh --dev=reload
+    volumes:
+      - ./volumes/odoo-data:/app/data
+      - ./modules:/app/modules
+      - ./config:/app/config
+    environment:
+      - HOST=${POSTGRES_HOST}
+      - USER=${POSTGRES_USER}
+      - PASSWORD=${POSTGRES_PASSWORD}

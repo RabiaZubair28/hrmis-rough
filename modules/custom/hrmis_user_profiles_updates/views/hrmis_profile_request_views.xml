@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_profile_request_tree" model="ir.ui.view">
+        <field name="name">profile.request.tree</field>
+        <field name="model">hrmis.employee.profile.request</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="employee_id"/>
+                <field name="state"/>
+                <field name="hrmis_designation"/>
+                <field name="district_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_profile_request_form" model="ir.ui.view">
+        <field name="name">profile.request.form</field>
+        <field name="model">hrmis.employee.profile.request</field>
+        <field name="arch" type="xml">
+            <form string="Profile Update Request">
+
+                <header>
+                    <button name="action_submit"
+                            type="object"
+                            string="Submit"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_approve"
+                            type="object"
+                            string="Approve"
+                            groups="hr.group_hr_manager"
+                            invisible="state != 'submitted'"/>
+
+                    <button name="action_reject"
+                            type="object"
+                            string="Reject"
+                            groups="hr.group_hr_manager"
+                            invisible="state != 'submitted'"/>
+
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,submitted,approved,rejected"/>
+                </header>
+
+                <sheet>
+                    <group col="4">
+
+                        <field name="employee_id" readonly="1"/>
+                        <field name="hrmis_employee_id" readonly="1"/>
+                        <field name="hrmis_cnic" readonly="1"/>
+                        <field name="hrmis_father_name" readonly="1"/>
+                        <field name="gender" readonly="1"/>
+                        <field name="hrmis_joining_date" readonly="1"/>
+                        <field name="hrmis_cadre" readonly="1"/>
+                        <field name="hrmis_designation" readonly="1"/>
+                        <field name="hrmis_bps" readonly="1"/>
+                        <field name="district_id" readonly="1"/>
+                        <field name="facility_id" readonly="1"/>
+                        <field name="hrmis_contact_info" readonly="1"/>
+
+                    </group>
+                </sheet>
+
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_profile_request_employee" model="ir.actions.act_window">
+        <field name="name">My Profile Update Requests</field>
+        <field name="res_model">hrmis.employee.profile.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('user_id','=',uid)]</field>
+    </record>
+
+    <record id="action_profile_request_hr" model="ir.actions.act_window">
+        <field name="name">Profile Update Approval Requests</field>
+        <field name="res_model">hrmis.employee.profile.request</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,8 @@
+<odoo>
+
+    <record id="group_hrmis_employee_self" model="res.groups">
+        <field name="name">HRMIS Employee (Self)</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+    </record>
+
+</odoo>

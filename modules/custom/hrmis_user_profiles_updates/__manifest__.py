@@ -1,0 +1,22 @@
+{
+    'name': "HRMIS User Profiles Updates",
+    'version': "1.0",
+    'summary': "Staff Personal Information Profile - Read Only for Employees",
+    'category': 'Human Resources',
+    'author': "Humza Aqeel Shaikh",
+    'depends': ['hr'],
+    'data': [
+        'security/ir.model.access.csv',
+        'security/security.xml',
+        'views/hr_employee_inherit.xml',
+        'views/hrmis_user_services_views.xml',
+        'views/hrmis_training_views.xml',
+        'views/hrmis_district_views.xml',
+        'views/hrmis_facility_type_views.xml',
+        'views/hrmis_profile_request_views.xml',
+        'views/hrmis_menu.xml',
+        'data/res_user_data.xml',
+    ],
+    'installable': True,
+    'application': False,
+}

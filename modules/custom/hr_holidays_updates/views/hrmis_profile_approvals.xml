@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="hrmis_profile_approvals" name="HRMIS Profile Approvals">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">
+                        Profile Update Requests
+                    </div>
+                </div>
+
+                <div class="hrmis-panel__body">
+
+                    <t t-if="not requests">
+                        <div class="hrmis-empty">
+                            No profile update requests pending.
+                        </div>
+                    </t>
+
+                    <t t-foreach="requests" t-as="req">
+                        <div class="hrmis-leave-row">
+
+                            <div class="hrmis-leave-row__cell">
+                                <strong>
+                                    <t t-esc="req.employee_id.name"/>
+                                </strong>
+                            </div>
+
+                            <div class="hrmis-leave-row__cell">
+                                <t t-esc="req.hrmis_designation"/>
+                            </div>
+
+                            <div class="hrmis-leave-row__cell">
+                                <a class="hrmis-btn hrmis-btn--outline"
+                                    t-attf-href="/web#id={{ req.id }}&amp;model=hrmis.employee.profile.request&amp;view_type=form">
+                                        Review
+                                </a>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

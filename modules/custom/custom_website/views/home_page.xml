@@ -1,0 +1,49 @@
+<odoo>
+    <template id="hrmis_template" name="HRMIS Landing with Login">
+        <t t-call="custom_website.home_page_layout">
+
+            <div class="d-flex flex-column" style="min-height: 100vh; background: #f7f9fc;">
+
+                <!-- ================= HEADER ================= -->
+                <header class="d-flex justify-content-between align-items-center px-5 py-3"
+                        style="background: #ffffff; border-bottom: 1px solid #e5e7eb;">
+
+                    <!-- Logo -->
+                    <div class="d-flex align-items-center">
+                        <img src="/custom_website/static/src/img/logo-of-Sindh-Health-Department (1).webp"
+                             alt="HRMIS Logo"
+                             style="height: 45px;"/>
+                    </div>
+
+                    <!-- Logout (only shows if logged in) -->
+                    <t t-if="request.session.uid">
+                        <a href="/web/session/logout"
+                           class="btn btn-outline-danger btn-sm"
+                           style="font-weight: 600; border-radius: 8px;">
+                            Logout
+                        </a>
+                    </t>
+
+                </header>
+
+                <!-- ================= MAIN CONTENT ================= -->
+                <main class="flex-grow-1 d-flex justify-content-center align-items-center">
+                    <div class="container">
+                        <!-- Custom Login Form -->
+                        <t t-call="custom_login.custom_login_template"/>
+                    </div>
+                </main>
+
+                <!-- ================= FOOTER ================= -->
+                <footer class="text-center py-3"
+                        style="background: #ffffff; border-top: 1px solid #e5e7eb;">
+                    <small style="color: #6b7280;">
+                        © 2025 Sindh Health Department — HRMIS. All rights reserved.
+                    </small>
+                </footer>
+
+            </div>
+
+        </t>
+    </template>
+</odoo>

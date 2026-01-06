@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_employee_form_inherit_hrmis_v1" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.hrmis.profile</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- ================= HEADER BUTTON ================= -->
+            <xpath expr="//header" position="inside">
+                <button name="action_request_profile_update"
+                        type="object"
+                        string="Request Profile Update"
+                        class="oe_highlight"
+                        invisible="user_id != uid"/>
+            </xpath>
+
+            <!-- ================= PERSONAL INFO PAGE ================= -->
+            <xpath expr="//page[@name='public']" position="before">
+                <page name="hrmis_personal_info" string="Personal Info">
+
+                    <separator string="Staff Personal Information" class="mb-3"/>
+
+                    <group col="4" readonly="user_id == uid">
+
+                        <group string="Personal Details" col="2">
+                            <field name="hrmis_cnic"/>
+                            <field name="hrmis_father_name"/>
+                            <field name="birthday"/>
+                            <field name="gender"/>
+                            <field name="work_phone"/>
+                            <field name="hrmis_contact_info"/>
+                        </group>
+
+                        <group string="Job Information" col="2">
+                            <field name="hrmis_cadre"/>
+                            <field name="hrmis_designation"/>
+                            <field name="hrmis_bps"/>
+                            <field name="hrmis_joining_date"/>
+                            <field name="district_id"/>
+                            <field name="facility_id"/>
+                        </group>
+
+                    </group>
+                </page>
+            </xpath>
+
+            <!-- ================= SERVICE HISTORY ================= -->
+            <xpath expr="//page[@name='hrmis_personal_info']" position="after">
+                <page name="hrmis_service_history" string="Service History">
+
+                    <separator string="Employee Service History" class="mb-3"/>
+
+                    <field name="hrmis_service_history_ids"
+                           mode="list,form"
+                           readonly="user_id == uid">
+
+                        <list>
+                            <field name="from_date"/>
+                            <field name="end_date"/>
+                            <field name="commission_date"/>
+                            <field name="district_id"/>
+                            <field name="facility_id"/>
+                        </list>
+
+                    </field>
+                </page>
+            </xpath>
+
+            <!-- ================= TRAININGS ================= -->
+            <xpath expr="//page[@name='hrmis_service_history']" position="after">
+                <page name="hrmis_certifications_trainings"
+                      string="Qualifications &amp; Trainings">
+
+                    <separator string="Qualifications &amp; Trainings" class="mb-3"/>
+
+                    <field name="hrmis_training_ids"
+                           mode="list,form"
+                           readonly="user_id == uid">
+
+                        <list>
+                            <field name="record_type"/>
+                            <field name="name"/>
+                            <field name="venue"/>
+                            <field name="completion_date"/>
+                            <field name="certificate_uploaded"/>
+                        </list>
+
+                    </field>
+                </page>
+            </xpath>
+
+            <!-- ================= REMOVE UNUSED DEFAULT TABS ================= -->
+            <xpath expr="//page[@name='skills_resume']" position="replace"/>
+            <xpath expr="//page[@name='personal_information']" position="replace"/>
+            <xpath expr="//page[@name='public']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

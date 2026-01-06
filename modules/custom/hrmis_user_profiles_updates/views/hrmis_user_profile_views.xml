@@ -1,0 +1,67 @@
+<odoo>
+    <record id="view_hrmis_user_profile_form" model="ir.ui.view">
+        <field name="name">hrmis.user.profile.form</field>
+        <field name="model">hrmis.user.profile</field>
+        <field name="arch" type="xml">
+            <form string="Staff Profile">
+                <sheet>
+                    <group col="2">
+                        
+                        <group string="Personal Information" col="2">
+                            <field name="employee_id" />
+                            <field name="cnic" />
+                            <field name="father_name" />
+                            <field name="date_of_birth" />
+                            <field name="gender" />
+                            <field name="contact_info" />
+                            <field name="description" />
+                            <field name="active" />
+                        </group>
+
+                        <group string="Job Details" col="2">
+                            <field name="cadre" />
+                            <field name="designation" />
+                            <field name="bps" />
+                            <field name="joining_date" />
+                            <field name="district_id" />
+                            <field name="facility_id" />
+                        </group>
+
+                    </group>
+                </sheet>
+                <chatter>
+                    <field name="message_ids"/>
+                    <field name="activity_ids"/>
+                </chatter>
+            </form>
+
+        </field>
+    </record>
+
+    <record id="view_hrmis_user_profile_tree" model="ir.ui.view">
+        <field name="name">hrmis.user.profile.tree</field>
+        <field name="model">hrmis.user.profile</field>
+        <field name="arch" type="xml">
+            <list string="User Profiles">
+                <field name="employee_id"/>
+                <field name="cnic"/>
+                <field name="district_id"/>
+                <field name="facility_id"/>
+                <field name="contact_info"/>
+                <field name="description"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+
+    <record id="action_hrmis_user_profiles" model="ir.actions.act_window">
+        <field name="name">Staff Profiles</field>
+        <field name="res_model">hrmis.user.profile</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_hrmis_user_profiles_root" name="HRMIS Profiles" parent="hr.menu_hr_root"/>
+    <menuitem id="menu_hrmis_user_profiles" name="Staff Profiles" parent="menu_hrmis_user_profiles_root"
+              action="action_hrmis_user_profiles"/>
+</odoo>

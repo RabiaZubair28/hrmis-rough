@@ -1,0 +1,49 @@
+<odoo>
+    <record id="view_hrmis_training_list" model="ir.ui.view">
+        <field name="name">hrmis.training.record.list</field>
+        <field name="model">hrmis.training.record</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="record_type"/>
+                <field name="name"/>
+                <field name="venue"/>
+                <field name="completion_date"/>
+                <field name="certificate_uploaded"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hrmis_training_form" model="ir.ui.view">
+        <field name="name">hrmis.training.record.form</field>
+        <field name="model">hrmis.training.record</field>
+        <field name="arch" type="xml">
+            <form string="Qualification / Training">
+                <group>
+                    <field name="employee_id" readonly="1"/>
+                    <field name="record_type"/>
+                    <field name="name"/>
+                    <field name="venue"/>
+                    <field name="completion_date"/>
+                    
+
+                    <separator string="Certificate Upload"/>
+
+                    <field name="certificate_file"
+                           filename="certificate_filename"
+                           widget="binary"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_hrmis_training_certifications" model="ir.actions.act_window">
+        <field name="name">Trainings &amp; Certifications</field>
+        <field name="res_model">hrmis.training.record</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_hrmis_training_certifications" 
+            name="Trainings &amp; Certifications" 
+            parent="menu_hrmis_employee_records"
+            action="action_hrmis_training_certifications"/>
+</odoo>

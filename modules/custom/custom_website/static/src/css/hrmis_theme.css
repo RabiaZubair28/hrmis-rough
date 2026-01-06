@@ -1,0 +1,40 @@
+/* Override primary color globally */
+
+:root {
+    --o-primary-color: #064526;  /* replaces Odoo purple */
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #ffffff !important;
+    border-color: #064526 !important;
+}
+
+.btn-primary:hover {
+    background-color: #ffffff !important;  /* slightly darker hover */
+    border-color: #043a1a !important;
+}
+
+/* Links */
+a, a:hover, a:focus {
+    color: #064526 !important;
+}
+
+/* Alerts */
+.alert-primary {
+    background-color: #ffffff !important;
+    border-color: #064526 !important;
+    color: #064526 !important;
+}
+
+/* Header/Footer accents (optional) */
+header, footer {
+    background-color: #ffffff !important;
+    color: #064526 !important;
+}
+
+/* Any other Odoo elements using purple */
+.o_notification, .o_tag, .o_badge {
+    background-color: #ffffff !important;
+    color: #064526 !important;
+}

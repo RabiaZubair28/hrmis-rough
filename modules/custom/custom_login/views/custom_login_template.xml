@@ -1,0 +1,65 @@
+<odoo>
+
+  <template id="custom_login_template">
+    <t t-call="custom_login.custom_login_layout">
+
+            <div class="d-flex justify-content-center align-items-center  bg-light">
+
+                <div class="card border-0 shadow-lg p-4"
+                     style="max-width: 420px; width: 100%; border-radius: 18px;">
+
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold mb-1">Welcome Back</h3>
+                        <p class="text-muted mb-0" style="font-size: 14px;">
+                            Sign in to continue
+                        </p>
+                    </div>
+
+                    <!-- Error -->
+                    <t t-if="error">
+                        <div class="alert alert-danger py-2 text-center">
+                            <t t-esc="error"/>
+                        </div>
+                    </t>
+
+                    <!-- Form -->
+                    <form t-att-action="'/web/login'" method="post">
+                        <input type="hidden" name="csrf_token"
+                               t-att-value="request.csrf_token()"/>
+                        <input type="hidden" name="redirect"
+                               t-att-value="redirect"/>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Username</label>
+                            <input type="text"
+                                   name="login"
+                                   class="form-control form-control-lg"
+                                   placeholder="username"
+                                   t-att-value="login or ''"
+                                   required="required"/>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Password</label>
+                            <input type="password"
+                                   name="password"
+                                   class="form-control form-control-lg"
+                                   placeholder="••••••••"
+                                   required="required"/>
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-primary btn-lg w-100 fw-semibold"
+                                style="border-radius: 12px;  background-color:#064526; ">
+                            Login
+                        </button>
+                    </form>
+
+
+                </div>
+            </div>
+
+        </t>
+    </template>
+</odoo>

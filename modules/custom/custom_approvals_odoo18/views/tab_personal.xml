@@ -1,0 +1,7 @@
+<odoo>
+<template id="tab_personal">
+    <div class="tab-pane fade show active" id="personal">
+        <t t-call="custom_approvals_odoo18.personal_info_block"/>
+    </div>
+</template>
+</odoo>

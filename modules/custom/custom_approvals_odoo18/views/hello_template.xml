@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="hello_template" name="Hello Template">
+        <t t-call="website.layout">
+            <div class="container mt-4">
+                <h1><t t-esc="message"/></h1>
+                <h2>Hi, this is HRMIS</h2>
+            </div>
+        </t>
+    </template>
+</odoo>

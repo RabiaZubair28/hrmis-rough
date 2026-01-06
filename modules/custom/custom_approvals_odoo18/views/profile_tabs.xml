@@ -1,0 +1,9 @@
+<odoo>
+<template id="profile_tabs">
+
+    <t t-call="custom_approvals_odoo18.tab_personal"/>
+    <t t-call="custom_approvals_odoo18.tab_services"/>
+    <t t-call="custom_approvals_odoo18.tab_notifications"/>
+
+</template>
+</odoo>

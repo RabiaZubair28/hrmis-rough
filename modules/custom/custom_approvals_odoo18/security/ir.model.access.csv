@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_approval_request,Approval Request Access,model_approval_request,base.group_user,1,1,1,1
+access_approval_type_user,Approval Type Access,model_approval_type,base.group_user,1,1,1,0
+access_approval_action,Approval Action Access,model_approval_action,base.group_user,1,1,1,1
+

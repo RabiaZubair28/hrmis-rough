@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hrmis_user_profile_employee,hrmis.user.profile employee,model_hrmis_user_profile,hr.group_hr_user,1,1,1,0
+access_hrmis_user_profile_admin,hrmis.user.profile admin,model_hrmis_user_profile,hr.group_hr_manager,1,1,1,1
+
+access_leave_approval_flow,leave.approval.flow,model_hr_leave_approval_flow,hr.group_hr_manager,1,1,1,1
+access_leave_approval_status,leave.approval.status,model_hr_leave_approval_status,hr.group_hr_manager,1,0,0,0
+
+access_hr_leave_validator,Leave Validator,model_hr_leave_validator,base.group_user,1,1,1,0

@@ -1,0 +1,30 @@
+
+<odoo>
+<template id="profile_shell" name="User Profile Shell">
+
+    <t t-call="custom_approvals_odoo18.profile_shell_layout">
+    <!-- <t t-call="website.layout"> -->
+        <div class="container mt-5">
+            <div class="row">
+
+                <!-- Sidebar (constant) -->
+                <div class="col-md-3">
+                    <t t-call="custom_approvals_odoo18.profile_sidebar"/>
+                </div>
+
+                <!-- Dynamic Content -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="tab-content" id="profileTabContent">
+                                <t t-call="custom_approvals_odoo18.profile_tabs"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </t>
+</template>
+</odoo>

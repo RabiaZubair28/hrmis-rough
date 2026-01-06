@@ -1,0 +1,12 @@
+<odoo>
+    <record id="default_smtp_server" model="ir.mail_server">
+        <field name="name">Default SMTP Server</field>
+        <field name="smtp_host">smtp.gmail.com</field>
+        <field name="smtp_port">465</field>
+        <field name="smtp_user">hamza.aqshaikh@gmail.com</field>
+        <field name="smtp_pass">uwsr bfkj xiuz bubg</field>
+        <field name="smtp_encryption">ssl</field>
+        <field name="sequence">10</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

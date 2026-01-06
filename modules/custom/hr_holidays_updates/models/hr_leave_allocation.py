@@ -1,0 +1,93 @@
+
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+from dateutil.relativedelta import relativedelta
+
+
+class HrLeaveAllocation(models.Model):
+    _inherit = 'hr.leave.allocation'
+
+    employee_gender = fields.Selection(
+        selection=[('male', 'Male'), ('female', 'Female'), ('other', 'Other')],
+        string="Employee Gender",
+        compute="_compute_employee_gender",
+        readonly=True,
+    )
+
+    employee_service_months = fields.Integer(
+        string="Service (Months)",
+        compute="_compute_employee_service_months",
+        readonly=True,
+    )
+
+    @api.depends('employee_id', 'employee_id.gender')
+    def _compute_employee_gender(self):
+        for alloc in self:
+            alloc.employee_gender = alloc.employee_id.gender or False
+
+    @api.depends('employee_id', 'employee_id.hrmis_joining_date', 'date_from')
+    def _compute_employee_service_months(self):
+        for alloc in self:
+            # Use HRMIS joining date (available via hrmis_user_profiles_updates)
+            joining_date = alloc.employee_id.hrmis_joining_date
+            ref_date = alloc.date_from or fields.Date.today()
+            if not joining_date or not ref_date:
+                alloc.employee_service_months = 0
+                continue
+            if ref_date < joining_date:
+                alloc.employee_service_months = 0
+                continue
+            delta = relativedelta(ref_date, joining_date)
+            alloc.employee_service_months = delta.years * 12 + delta.months
+
+    @api.onchange('employee_id')
+    def _onchange_employee_filter_leave_type(self):
+        """
+        Filter Time Off Types by employee gender on allocations as well
+        (e.g. maternity for female only, paternity for male only).
+        """
+        if not self.employee_id:
+            return {'domain': {'holiday_status_id': []}}
+
+        gender = self.employee_gender
+        if gender in ('male', 'female'):
+            # Treat empty (False) as "All" for legacy leave types.
+            domain = [('allowed_gender', 'in', [False, 'all', gender])]
+        else:
+            domain = [('allowed_gender', 'in', [False, 'all'])]
+
+        months = self.employee_service_months
+        domain += ['|', ('min_service_months', '=', 0), ('min_service_months', '<=', months)]
+
+        return {'domain': {'holiday_status_id': domain}}
+
+    @api.constrains('employee_id', 'holiday_status_id')
+    def _check_leave_type_gender(self):
+        for alloc in self:
+            if not alloc.employee_id or not alloc.holiday_status_id:
+                continue
+
+            allowed = alloc.holiday_status_id.allowed_gender or 'all'
+            if allowed == 'all':
+                continue
+
+            gender = alloc.employee_gender
+            if not gender or gender != allowed:
+                raise ValidationError(
+                    "This time off type is restricted by gender. "
+                    "Please select a type allowed for this employee."
+                )
+
+    @api.constrains('employee_id', 'holiday_status_id', 'date_from')
+    def _check_leave_type_service_eligibility(self):
+        for alloc in self:
+            if not alloc.employee_id or not alloc.holiday_status_id:
+                continue
+            required = alloc.holiday_status_id.min_service_months or 0
+            if required <= 0:
+                continue
+            if alloc.employee_service_months < required:
+                raise ValidationError(
+                    f"This Time Off Type requires at least {required} months of service. "
+                    "This employee is not eligible yet."
+                )

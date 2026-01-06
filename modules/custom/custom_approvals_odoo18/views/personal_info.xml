@@ -1,0 +1,160 @@
+<odoo>
+<template id="personal_info_block">
+    <div class="card-body">
+
+        <!-- TAB HEADERS -->
+        <ul class="nav nav-tabs mb-3" id="profileTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link"
+                        data-bs-toggle="tab"
+                        data-bs-target="#personal_data"
+                        type="button">
+                    User Profile
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link "
+                        data-bs-toggle="tab"
+                        data-bs-target="#posting"
+                        type="button">
+                    Posting and Service History
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link"
+                        data-bs-toggle="tab"
+                        data-bs-target="#disciplinary"
+                        type="button">
+                    Disciplinary Actions
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link"
+                        data-bs-toggle="tab"
+                        data-bs-target="#qualifications"
+                        type="button">
+                    Trainings and Qualifications
+                </button>
+            </li>
+        </ul>
+
+        <!-- TAB CONTENT -->
+        <div class="tab-content pt-3">
+
+            <!-- PERSONAL INFO -->
+            <div class="tab-pane fade show active" id="personal_data">
+                <h6 class="mb-3">Personal Information</h6>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p><strong>CNIC:</strong> <t t-esc="employee.hrmis_cnic or 'N/A'"/></p>
+                        <p><strong>Father's Name:</strong> <t t-esc="employee.hrmis_father_name or 'N/A'"/></p>
+                        <p><strong>Date of Birth:</strong> <t t-esc="employee.birthday or 'N/A'"/></p>
+                        <p><strong>Gender:</strong> <t t-esc="employee.gender or 'N/A'"/></p>
+                        <p><strong>Cadre:</strong> <t t-esc="employee.hrmis_cadre or 'N/A'"/></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Designation:</strong> <t t-esc="employee.hrmis_designation or 'N/A'"/></p>
+                        <p><strong>BPS:</strong> <t t-esc="employee.hrmis_bps or 'N/A'"/></p>
+                        <p><strong>Joining Date:</strong> <t t-esc="employee.hrmis_joining_date or 'N/A'"/></p>
+                        <p><strong>Current District:</strong> <t t-esc="employee.district_id.name or 'N/A'"/></p>
+                        <p><strong>Current Facility:</strong> <t t-esc="employee.facility_id.name or 'N/A'"/></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- POSTING -->
+            <div class="tab-pane fade" id="posting">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>From Date</th>
+                            <th>To Date</th>
+                            <th>Commission Date</th>
+                            <th>District</th>
+                            <th>Facility</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-if="service_history">
+                            <t t-foreach="service_history" t-as="history">
+                                <tr>
+                                    <td><t t-esc="history.from_date or ''"/></td>
+                                    <td><t t-esc="history.to_date or ''"/></td>
+                                    <td><t t-esc="history.commission_date or ''"/></td>
+                                    <td><t t-esc="history.district_id.name or 'N/A'"/></td>
+                                    <td><t t-esc="history.facility_id.name or 'N/A'"/></td>
+                                </tr>
+                            </t>
+                        </t>
+                        <t t-if="not service_history">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No service history available.</td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- DISCIPLINARY -->
+            <div class="tab-pane fade" id="disciplinary">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Case Type</th>
+                            <th>Reference No</th>
+                            <th>Initiation Date</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">No disciplinary records found.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- QUALIFICATIONS -->
+            <div class="tab-pane fade" id="qualifications">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Venue</th>
+                            <th>Completion Date</th>
+                            <th>Certificate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-if="training_records">
+                            <t t-foreach="training_records" t-as="record">
+                                <tr>
+                                    <td><t t-esc="dict(record._fields['record_type'].selection).get(record.record_type)"/></td>
+                                    <td><t t-esc="record.name"/></td>
+                                    <td><t t-esc="record.venue or 'N/A'"/></td>
+                                    <td><t t-esc="record.completion_date or ''"/></td>
+                                    <td>
+                                        <t t-if="record.certificate_uploaded">
+                                            <a t-att-href="'/web/content/hrmis.training.record/%s/certificate_file?download=true' % record.id"
+                                               class="btn btn-sm btn-outline-primary">Download</a>
+                                        </t>
+                                        <t t-else=""><span class="text-muted">Not Uploaded</span></t>
+                                    </td>
+                                </tr>
+                            </t>
+                        </t>
+                        <t t-if="not training_records">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No trainings or qualifications recorded.</td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</template>
+</odoo>

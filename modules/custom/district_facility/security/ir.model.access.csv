@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_district_hr_employee_user,District: Employee User,model_x_district_master,hr.group_hr_user,1,1,1,0
+access_district_hr_employee_system_user,District: System User,model_x_district_master,hr.group_hr_manager,1,1,1,1
+
+access_facility_type_hr_employee_user,Facility Type: Employee User,model_x_facility_type,hr.group_hr_user,1,1,1,0
+access_facility_type_hr_employee_system_user,Facility Type: System User,model_x_facility_type,hr.group_hr_manager,1,1,1,1
+
+access_tehsil_hr_employee_user,Tehsil: Employee User,model_x_tehsil_master,hr.group_hr_user,1,1,1,0
+access_tehsil_hr_employee_system_user,Tehsil: System User,model_x_tehsil_master,hr.group_hr_manager,1,1,1,1

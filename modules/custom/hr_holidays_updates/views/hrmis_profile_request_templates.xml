@@ -1,0 +1,23 @@
+<odoo>
+
+    <template id="hrmis_success">
+        <t t-call="website.layout">
+            <div class="container mt-5">
+                <h3 class="text-success">
+                    <t t-esc="message"/>
+                </h3>
+            </div>
+        </t>
+    </template>
+
+    <template id="hrmis_error">
+        <t t-call="website.layout">
+            <div class="container mt-5">
+                <h3 class="text-danger">
+                    <t t-esc="error"/>
+                </h3>
+            </div>
+        </t>
+    </template>
+
+</odoo>

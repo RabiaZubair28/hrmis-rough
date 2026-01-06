@@ -1,0 +1,68 @@
+<odoo>
+    <template id="new_request_form">
+
+        <form action="/approvals/submit" method="post" class="mt-3">
+
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+            
+<!-- Dynamic Forms -->
+<div id="approval_forms">
+
+    <!-- Profile Completion form -->
+    <div class="approval-form d-none" data-type="1"> <!-- 1 = Profile Completion ID -->
+        <!-- <div class="mb-3">
+            <label class="form-label">Work Email</label>
+            <input type="email" name="work_email" class="form-control" t-att-value="employee.work_email"/>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" class="form-control" t-att-value="employee.phone"/>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Work Location</label>
+            <input type="text" name="work_location" class="form-control" t-att-value="employee.work_location"/>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Reason</label>
+            <textarea name="reason" class="form-control"></textarea>
+        </div> -->
+    </div>
+
+</div>
+
+            <!-- Approval Type -->
+            <div class="mb-3">
+                <label class="form-label">Approval Type</label>
+                <select name="approval_type" id="approval_type" class="form-select" required="required">
+                    <option value="">Select Approval Type</option>
+                    <t t-foreach="approval_types" t-as="type">
+                        <option t-att-value="type.id">
+                            <t t-esc="type.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
+            <!-- Dynamic Forms -->
+            <div id="approval_forms">
+
+                <!-- Generic fallback -->
+                <div class="approval-form d-none" data-type="default">
+                    <div class="mb-3">
+                        <label class="form-label">Reason</label>
+                        <textarea name="reason" class="form-control" rows="3"/>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    Submit Request
+                </button>
+            </div>
+
+        </form>
+
+    </template>
+</odoo>

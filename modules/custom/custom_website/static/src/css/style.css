@@ -1,0 +1,12 @@
+header#top {
+    background-color: #1e3a8a;
+}
+
+footer {
+    color: #fff;
+    background-color: #111827;
+}
+
+.container h1, .container h2 {
+    color: #1f2937;
+}

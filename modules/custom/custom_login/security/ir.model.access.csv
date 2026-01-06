@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_profile_user,HR Profile User Access,model_hr_profile,base.group_user,1,1,1,0
+access_hr_profile_admin,HR Profile Admin Access,model_hr_profile,base.group_system,1,1,1,1
+access_hr_cadre,Cadre Access,model_hr_cadre,base.group_user,1,1,1,1

@@ -1,0 +1,43 @@
+<odoo>
+    <record id="view_facility_type_list" model="ir.ui.view">
+    <field name="name">facility.type.list</field>
+    <field name="model">x_facility.type</field>
+    <field name="arch" type="xml">
+        <list>
+            <field name="name"/>
+            <field name="district_id"/>
+            <field name="category"/>
+            <field name="capacity"/>
+            <field name="active"/>
+        </list>
+    </field>
+</record>
+
+<record id="view_facility_type_form" model="ir.ui.view">
+    <field name="name">facility.type.form</field>
+    <field name="model">x_facility.type</field>
+    <field name="arch" type="xml">
+        <form>
+            <sheet>
+                <group>
+                    <field name="name"/>
+                    <field name="district_id"/>
+                    <field name="category"/>
+                    <field name="capacity"/>
+                    <field name="active"/>
+                    <field name="description"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+<record id="action_facility_types" model="ir.actions.act_window">
+    <field name="name">Facility Types</field>
+    <field name="res_model">x_facility.type</field>
+    <field name="view_mode">list,form</field>
+    <field name="view_id" ref="view_facility_type_list"/>
+</record>
+
+
+    <menuitem id="menu_facility_type" name="Facility Types" parent="menu_district_root" action="action_facility_types" />
+</odoo>

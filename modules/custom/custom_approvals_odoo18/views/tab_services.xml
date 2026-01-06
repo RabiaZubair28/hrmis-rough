@@ -1,0 +1,7 @@
+<odoo>
+<template id="tab_services">
+    <div class="tab-pane fade" id="services">
+        <t t-call="custom_approvals_odoo18.services_block"/>
+    </div>
+</template>
+</odoo>

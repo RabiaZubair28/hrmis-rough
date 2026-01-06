@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="hrmis_profile_request_form" name="HRMIS Profile Update Request">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+
+            <div class="hrmis-panel">
+
+                <!-- Breadcrumb -->
+                <div class="hrmis-breadcrumb">
+                    <a t-att-href="'/hrmis/staff/%s' % employee.id">&lt; Back to Profile</a>
+                </div>
+
+                <!-- Header -->
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">Profile Update Request</div>
+                </div>
+
+                <!-- Body -->
+                <div class="hrmis-panel__body">
+                    <t t-if="info">
+                        <div class="hrmis-alert hrmis-alert--info">
+                            <t t-esc="info"/>
+                        </div>
+                    </t>
+                    <!-- Display success / error messages -->
+                    <t t-if="error">
+                        <div class="hrmis-alert hrmis-alert--danger">
+                            <t t-esc="error"/>
+                        </div>
+                    </t>
+
+                    <t t-if="success">
+                        <div class="hrmis-alert hrmis-alert--success">
+                            <t t-esc="success"/>
+                        </div>
+                    </t>
+
+                    <form class="hrmis-form"
+                          method="post"
+                          action="/hrmis/profile/request/submit">
+
+                        <input type="hidden" name="csrf_token"
+                               t-att-value="request.csrf_token()"/>
+                        <input type="hidden" name="request_id"
+                               t-att-value="req.id"/>
+
+                        <div class="hrmis-form__grid">
+
+                            <!-- Employee / Service Info -->
+                            <div class="hrmis-field">
+                                <label>Employee ID / Service No<span class="req">*</span></label>
+                                <input class="hrmis-input"
+                                       type="text"
+                                       name="hrmis_employee_id"
+                                       t-att-value="req.hrmis_employee_id or current_employee.hrmis_employee_id or ''"
+                                       required="required"/>
+                            </div>
+
+                            <div class="hrmis-field">
+                                <label>CNIC<span class="req">*</span></label>
+                                <input class="hrmis-input"
+                                       type="text"
+                                       name="hrmis_cnic"
+                                       t-att-value="req.hrmis_cnic or current_employee.hrmis_cnic or ''"
+                                       required="required"/>
+                            </div>
+
+                            <!-- Personal -->
+                            <div class="hrmis-field">
+                                <label>Father Name<span class="req">*</span></label>
+                                <input class="hrmis-input"
+                                       type="text"
+                                       name="hrmis_father_name"
+                                       t-att-value="req.hrmis_father_name or current_employee.hrmis_father_name or ''"
+                                       required="required"/>
+                            </div>
+
+                            <div class="hrmis-field">
+                                <label>Gender<span class="req">*</span></label>
+                                <select class="hrmis-input" name="gender" required="required">
+                                    <option value="">Select</option>
+                                    <option value="male"   t-att-selected="req.gender == 'male' or current_employee.gender == 'male'">Male</option>
+                                    <option value="female" t-att-selected="req.gender == 'female' or current_employee.gender == 'female'">Female</option>
+                                    <option value="other"  t-att-selected="req.gender == 'other' or current_employee.gender == 'other'">Other</option>
+                                </select>
+                            </div>
+
+                            <!-- Service -->
+                            <div class="hrmis-field">
+                                <label>Joining Date<span class="req">*</span></label>
+                                <input class="hrmis-input"
+                                       type="date"
+                                       name="hrmis_joining_date"
+                                       t-att-value="req.hrmis_joining_date or current_employee.hrmis_joining_date or ''"
+                                       required="required"/>
+                            </div>
+
+                            <div class="hrmis-field">
+                                <label>BPS<span class="req">*</span></label>
+                                <input class="hrmis-input"
+                                       type="number"
+                                       min="6"
+                                       max="22"
+                                       name="hrmis_bps"
+                                       t-att-value="req.hrmis_bps or current_employee.hrmis_bps or ''"
+                                       required="required"/>
+                            </div>
+
+                            <!-- Cadre / Designation -->
+                            <div class="hrmis-field">
+                                <label>Cadre<span class="req">*</span></label>
+                                <select class="hrmis-input" name="hrmis_cadre" required="required">
+                                    <option value="">Select</option>
+                                    <option value="anesthesia" t-att-selected="req.hrmis_cadre == 'anesthesia' or current_employee.hrmis_cadre == 'anesthesia'">Anesthesia</option>
+                                    <option value="public_health" t-att-selected="req.hrmis_cadre == 'public_health' or current_employee.hrmis_cadre == 'public_health'">Public Health</option>
+                                    <option value="medical" t-att-selected="req.hrmis_cadre == 'medical' or current_employee.hrmis_cadre == 'medical'">Medical</option>
+                                </select>
+                            </div>
+
+                            <div class="hrmis-field">
+                                <label>Designation<span class="req">*</span></label>
+                                <input class="hrmis-input"
+                                       type="text"
+                                       name="hrmis_designation"
+                                       t-att-value="req.hrmis_designation or current_employee.hrmis_designation or ''"
+                                       required="required"/>
+                            </div>
+
+                            <!-- Posting -->
+                            <div class="hrmis-field">
+                                <label>District<span class="req">*</span></label>
+                                <select class="hrmis-input" name="district_id" required="required">
+                                    <option value="">Select</option>
+                                    <t t-foreach="districts" t-as="d">
+                                        <option t-att-value="d.id"
+                                                t-att-selected="(req.district_id and req.district_id.id == d.id) or (current_employee.district_id and current_employee.district_id.id == d.id)">
+                                            <t t-esc="d.name"/>
+                                        </option>
+                                    </t>
+                                </select>
+                            </div>
+
+                            <div class="hrmis-field">
+                                <label>Facility<span class="req">*</span></label>
+                                <select class="hrmis-input" name="facility_id" required="required">
+                                    <option value="">Select</option>
+                                    <t t-foreach="facilities" t-as="f">
+                                        <option t-att-value="f.id"
+                                                t-att-selected="(req.facility_id and req.facility_id.id == f.id) or (current_employee.facility_id and current_employee.facility_id.id == f.id)">
+                                            <t t-esc="f.name"/>
+                                        </option>
+                                    </t>
+                                </select>
+                            </div>
+
+                            <!-- Contact -->
+                            <div class="hrmis-field hrmis-field--wide">
+                                <label>Contact Information</label>
+                                <input class="hrmis-input hrmis-input--wide"
+                                       type="text"
+                                       name="hrmis_contact_info"
+                                       t-att-value="req.hrmis_contact_info or current_employee.hrmis_contact_info or ''"/>
+                            </div>
+
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="hrmis-form__actions">
+                            <button class="hrmis-btn hrmis-btn--primary hrmis-btn--lg"
+                                    type="submit"
+                                    t-att-disabled="req.state != 'draft'">
+                                Submit Request
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </t>
+    </template>
+
+</odoo>

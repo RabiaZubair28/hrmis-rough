@@ -1,0 +1,37 @@
+<odoo>
+    <template id="request_history">
+        <t t-set="requests" t-value="requests"/>
+
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>Request</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Submitted On</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="requests" t-as="req">
+                    <tr>
+                        <td><t t-esc="req.name"/></td>
+                        <td><t t-esc="req.approval_type_id.name"/></td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                <t t-esc="req.request_status"/>
+                            </span>
+                        </td>
+                        <td><t t-esc="req.create_date"/></td>
+                    </tr>
+                </t>
+                <t t-if="not requests">
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            No requests found
+                        </td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+    </template>
+</odoo>

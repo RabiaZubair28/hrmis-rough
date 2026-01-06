@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="compliants_template" name="Complaints Management">
+        <t t-call="website.layout">
+            <div class="container mt-5">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h2 class="mb-4">Complaint Management System</h2>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Submit a Complaint</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" action="/complaints/submit">
+                                    <div class="mb-3">
+                                        <label for="complaint_title" class="form-label">Complaint Title</label>
+                                        <input type="text" class="form-control" id="complaint_title" name="title" required="required"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="complaint_description" class="form-label">Description</label>
+                                        <textarea class="form-control" id="complaint_description" name="description" rows="5" required="required"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="complaint_category" class="form-label">Category</label>
+                                        <select class="form-control" id="complaint_category" name="category" required="required">
+                                            <option value="">Select Category</option>
+                                            <option value="harassment">Harassment</option>
+                                            <option value="unfair_treatment">Unfair Treatment</option>
+                                            <option value="discrimination">Discrimination</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Submit Complaint</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">My Complaints</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Status</th>
+                                            <th>Date Submitted</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">No complaints submitted yet</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

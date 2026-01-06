@@ -1,0 +1,10 @@
+services:
+  odoo:
+    build:
+      context: .
+      target: dev
+    env_file:
+      - .env
+    ports:
+      - "8069:8069"
+      - "5678:5678" # Debugger

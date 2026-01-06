@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Approval Request Views -->
+    <!-- List View -->
+    <record id="view_approval_request_tree" model="ir.ui.view">
+        <field name="name">approval.request.tree</field>
+        <field name="model">approval.request</field>
+        <field name="arch" type="xml">
+            <list string="Approval Requests">
+                <field name="name"/>
+                <field name="approval_type_id"/>
+                <field name="requester_id"/>
+                <field name="state"/>
+                <field name="request_date"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_approval_request_form" model="ir.ui.view">
+        <field name="name">approval.request.form</field>
+        <field name="model">approval.request</field>
+        <field name="arch" type="xml">
+            <form string="Approval Request">
+
+                <header>
+                    <button name="set_pending" string="Submit" type="object"  modifiers="{'invisible': ['|', ('state', '!=', 'draft'), ('id', '=', False)]}" class="btn-primary"/>
+                    <button name="action_approve" string="Approve" type="object" modifiers="{'invisible': ['|', ('state', '!=', 'pending'), ('id', '=', False)]}" class="btn-success"/>
+                    <button name="action_reject" string="Reject" type="object" modifiers="{'invisible': ['|', ('state', '!=', 'pending'), ('id', '=', False)]}" class="btn-danger"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,approved,rejected"/>
+                </header>
+
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="approval_type_id"/>
+                        <field name="requester_id" readonly="1"/>
+                        <field name="request_date" readonly="1"/>
+                        <field name="state" readonly="1"/>
+                    </group>
+
+                    <group>
+                        <field name="description"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Actions">
+                            <field name="action_ids">
+                                <list editable="bottom">
+                                    <field name="action"/>
+                                    <field name="user_id" readonly="1"/>
+                                    <field name="date" readonly="1"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+
+                </sheet>
+                <footer>
+                    <button name="redirect_dummy"
+                        type="button"
+                        class="btn-primary redirect_approval_btn">
+                    Go to Webpage
+                </button>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+<!-- Approval type Views -->
+<record id="view_approval_type_tree" model="ir.ui.view">
+    <field name="name">approval.type.tree</field>
+    <field name="model">approval.type</field>
+    <field name="arch" type="xml">
+        <list string="Approval Types">
+            <field name="name"/>
+            <field name="code"/>
+            <field name="category"/>
+            <field name="sequence"/>
+            <field name="active"/>
+        </list>
+    </field>
+</record>
+
+<!-- Form View -->
+<record id="view_approval_type_form" model="ir.ui.view">
+    <field name="name">approval.type.form</field>
+    <field name="model">approval.type</field>
+    <field name="arch" type="xml">
+        <form string="Approval Type">
+            <sheet>
+                <group>
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="category"/>
+                    <field name="sequence"/>
+                    <field name="active"/>
+                    <field name="approver_ids" widget="many2many_tags"/>
+                </group>
+                <group>
+                    <field name="description"/>
+                </group>
+            </sheet>
+        </form>
+    </field>
+</record>
+
+    <!-- Approval Action Views -->
+     <record id="view_approval_action_tree" model="ir.ui.view">
+        <field name="name">approval.action.tree</field>
+        <field name="model">approval.action</field>
+        <field name="arch" type="xml">
+            <list string="Approval Actions">
+                <field name="request_id"/>
+                <field name="action"/>
+                <field name="user_id"/>
+                <field name="date"/>
+                <field name="note"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_approval_action_form" model="ir.ui.view">
+        <field name="name">approval.action.form</field>
+        <field name="model">approval.action</field>
+        <field name="arch" type="xml">
+            <form string="Approval Action">
+                <sheet>
+                    <group>
+                        <field name="request_id"/>
+                        <field name="action"/>
+                        <field name="user_id"/>
+                        <field name="date"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <!-- ========================= -->
+    <!--       MAIN ACTION         -->
+    <!-- ========================= -->
+
+    <record id="action_approval_type" model="ir.actions.act_window">
+        <field name="name">Approval Types</field>
+        <field name="res_model">approval.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_approval_request" model="ir.actions.act_window">
+        <field name="name">Approval Requests</field>
+        <field name="res_model">approval.request</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_approval_action" model="ir.actions.act_window">
+        <field name="name">Approval Actions</field>
+        <field name="res_model">approval.action</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    
+    
+    <!-- ========================= -->
+    <!--          MENUS            -->
+    <!-- ========================= -->
+
+    <!-- Main Approvals Menu -->
+    <menuitem id="menu_approvals_root"
+              name="Approvals"
+              sequence="10" />
+
+    <!-- Approval Types -->
+    <menuitem id="menu_approval_types"
+              name="Approval Types"
+              parent="menu_approvals_root"
+              action="action_approval_type"
+              sequence="20"/>
+
+    <!-- Approval Requests -->
+    <menuitem id="menu_approval_requests"
+              name="Approval Requests"
+              parent="menu_approvals_root"
+              action="action_approval_request"
+              sequence="30"/>
+
+    <!-- Approval Actions -->
+    <menuitem id="menu_approval_actions"
+              name="Approval Actions"
+              parent="menu_approvals_root"
+              action="action_approval_action"
+              sequence="40"/>
+
+</odoo>

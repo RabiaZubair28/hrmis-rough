@@ -1,0 +1,48 @@
+<odoo>
+
+    <record id="view_hrmis_user_services_view" model="ir.ui.view">
+        <field name="name">hrmis.user.services.form</field>
+        <field name="model">hrmis.service.history</field>
+        <field name="arch" type="xml">
+            <form string="Services &amp; Postings">
+                <sheet>
+                    <group col="1">
+                        <field name="employee_id" readonly="1"/>
+                        <field name="district_id" />
+                        <field name="facility_id" />
+                        <field name="from_date" />
+                        <field name="end_date" />
+                        <field name="commission_date" />  
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hrmis_service_posting_list" model="ir.ui.view">
+        <field name="name">hrmis.service.postings.list</field>
+        <field name="model">hrmis.service.history</field>
+        <field name="arch" type="xml">
+            <list string="Services &amp; Postings">
+                <field name="employee_id" />
+                <field name="district_id" />
+                <field name="facility_id" />
+                <field name="from_date" />
+                <field name="end_date" />
+                <field name="commission_date" />  
+            </list>
+        </field>
+    </record>
+
+    <record id="action_hrmis_services_postings" model="ir.actions.act_window">
+        <field name="name">Services &amp; Postings</field>
+        <field name="res_model">hrmis.service.history</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_hrmis_employee_records" name="Employee Records" parent="hr.menu_hr_root"/>
+    <menuitem id="menu_hrmis_services_postings" 
+            name="Services &amp; Postings" 
+            parent="menu_hrmis_employee_records"
+            action="action_hrmis_services_postings"/>
+</odoo>

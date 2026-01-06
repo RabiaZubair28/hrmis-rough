@@ -1,0 +1,12 @@
+[options]
+admin_passwd = ${ODOO_MASTER_PASSWORD}
+db_host = ${POSTGRES_HOST}
+db_port = ${POSTGRES_PORT}
+db_user = ${POSTGRES_USER}
+db_password = ${POSTGRES_PASSWORD}
+db_name = ${POSTGRES_DB}
+addons_path = /app/modules/custom/,/app/modules/external/,/app/odoo-src/addons/
+workers = ${ODOO_WORKERS}
+log-level = ${ODOO_LOG_LEVEL}
+data-dir=/app/data/
+without_demo = all

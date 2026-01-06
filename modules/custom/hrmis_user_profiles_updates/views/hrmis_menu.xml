@@ -1,0 +1,28 @@
+<odoo>
+
+    <!-- Root -->
+    <menuitem id="menu_hrmis_root" name="Profile Approvals"/>
+
+    <!-- Employee -->
+    <!-- <menuitem id="menu_hrmis_employee"
+              name="My Profile"
+              parent="menu_hrmis_root"/> -->
+
+    <!-- <menuitem id="menu_profile_requests"
+              name="Profile Update Requests"
+              parent="menu_hrmis_employee"
+              action="action_profile_request_employee"/> -->
+
+    <!-- HR -->
+    <menuitem id="menu_hrmis_hr"
+              name="Requests"
+              parent="menu_hrmis_root"
+              groups="hr.group_hr_manager"/>
+
+    <menuitem id="menu_profile_requests_hr"
+              name="Profile Approval Requests"
+              parent="menu_hrmis_hr"
+              action="action_profile_request_hr"
+              groups="hr.group_hr_manager"/>
+
+</odoo>

@@ -1,0 +1,7 @@
+<odoo>
+<template id="tab_notifications">
+    <div class="tab-pane fade" id="notifications">
+        <t t-call="custom_approvals_odoo18.notifications_block"/>
+    </div>
+</template>
+</odoo>

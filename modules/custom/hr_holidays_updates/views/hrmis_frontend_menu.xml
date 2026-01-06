@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Actions that open the HRMIS UI inside Odoo (Time Off menu) -->
+    <record id="action_hrmis_services" model="ir.actions.act_url">
+        <field name="name">HRMIS Services</field>
+        <field name="url">/hrmis/services</field>
+        <field name="target">self</field>
+    </record>
+
+    <record id="action_hrmis_staff_search" model="ir.actions.act_url">
+        <field name="name">HRMIS Search Staff</field>
+        <field name="url">/hrmis/staff</field>
+        <field name="target">self</field>
+    </record>
+
+    <record id="action_hrmis_leave_requests" model="ir.actions.act_url">
+        <field name="name">HRMIS Leave Requests</field>
+        <field name="url">/hrmis/leave/requests</field>
+        <field name="target">self</field>
+    </record>
+
+    <!-- Menu entries under Time Off -->
+    <menuitem
+        id="menu_hrmis_services"
+        name="HRMIS Services"
+        parent="hr_holidays.menu_hr_holidays_management"
+        action="action_hrmis_services"
+        sequence="0"
+    />
+    <menuitem
+        id="menu_hrmis_staff_search"
+        name="HRMIS Search Staff"
+        parent="hr_holidays.menu_hr_holidays_management"
+        action="action_hrmis_staff_search"
+        sequence="1"
+    />
+    <menuitem
+        id="menu_hrmis_leave_requests"
+        name="HRMIS Leave Requests"
+        parent="hr_holidays.menu_hr_holidays_management"
+        action="action_hrmis_leave_requests"
+        sequence="2"
+    />
+</odoo>
+

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="services_block" name="Services Block">
+    <h5 class="mb-3">Servicess</h5>
+        <div class="container mt-5">
+            <div class="row text-center g-4">
+
+                <!-- Leave -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Leave</h5>
+                            <p class="text-muted">Apply and track time off</p>
+                            <a href="/web#action=hr_holidays.hr_leave_action_my"
+                               class="btn btn-primary">
+                                Open
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Transfer</h5>
+                            <p class="text-muted">Request posting transfer</p>
+                            <a href="#"
+                               class="btn btn-outline-secondary disabled">
+                                Coming Soon
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Complaint Channel -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Complaint Channel</h5>
+                            <p class="text-muted">Submit and track complaints</p>
+                            <a href="/complaints" class="btn btn-primary">
+                                Open
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Approvals -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Approvals</h5>
+                            <a href="/approvals"
+                                class="btn btn-outline-primary w-100">
+                                    Requests
+                                </a>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </template>
+</odoo>

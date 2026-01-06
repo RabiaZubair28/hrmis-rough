@@ -1,0 +1,35 @@
+<odoo>
+    <record id="view_hr_leave_form_multi_approval" model="ir.ui.view">
+        <field name="name">hr.leave.form.multi.approval</field>
+        <field name="model">hr.leave</field>
+        <field name="inherit_id" ref="hr_holidays.hr_leave_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Replace approve button -->
+            <xpath expr="//button[@name='action_approve']" position="replace">
+                <button
+                    name="action_approve_by_user"
+                    type="object"
+                    string="Approve"
+                    class="btn-primary"
+                    invisible="state == 'validate'"/>
+            </xpath>
+
+            <!-- Approval status block -->
+            <xpath expr="//sheet" position="inside">
+                <group string="Approval Status">
+                    <field name="approval_step"/>
+
+                    <field name="approval_status_ids">
+                        <list>
+                            <field name="user_id"/>
+                            <field name="approved"/>
+                            <field name="approved_on"/>
+                        </list>
+                    </field>
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

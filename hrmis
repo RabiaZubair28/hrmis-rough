@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+"""
+Sindh HRMIS Management CLI
+Consolidated tool for managing the HRMIS Docker environment
+"""
+
+import click
+import subprocess
+import sys
+import os
+from pathlib import Path
+
+
+def run_command(cmd, env=None, check=True):
+    """Run a shell command and return success status"""
+    try:
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            env=env,
+            check=check,
+            capture_output=False
+        )
+        return result.returncode == 0
+    except subprocess.CalledProcessError:
+        return False
+
+
+@click.group()
+def cli():
+    """Sindh HRMIS Management CLI - Manage your HRMIS Docker environment"""
+    pass
+
+
+@cli.command()
+@click.option('--prod', is_flag=True, help='Run in production mode')
+def start(prod):
+    """Start the HRMIS system"""
+
+    # Determine environment and compose files
+    if prod:
+        env_file = ".env.prod"
+        compose_files = "-f compose.yml -f compose.prod.yml"
+        mode = "PRODUCTION"
+    else:
+        env_file = ".env"
+        compose_files = "-f compose.yml -f compose.override.yml"
+        mode = "DEVELOPMENT"
+
+    # Visual confirmation
+    click.echo("----------------------------------------------------")
+    click.echo(f"🚀 Launching Sindh HRMIS in [{mode}] mode")
+    click.echo(f"📂 Using Environment: {env_file}")
+    click.echo("----------------------------------------------------")
+
+    # Check if env file exists
+    if not Path(env_file).exists():
+        click.echo(f"❌ Error: Configuration file '{env_file}' not found!", err=True)
+        click.echo("   Please create it based on the template provided.", err=True)
+        sys.exit(1)
+
+    # Load environment variables from env file
+    env = os.environ.copy()
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                env[key.strip()] = value.strip()
+
+    # Run docker compose
+    cmd = f"docker compose {compose_files} up -d --build --remove-orphans"
+    success = run_command(cmd, env=env)
+
+    # Post-launch feedback
+    if success:
+        click.echo("✅ System is running!")
+        if not prod:
+            click.echo("   📝 Logs: docker compose logs -f odoo")
+            click.echo("   🌍 Web:  http://localhost:8069")
+        else:
+            click.echo("   🔒 Production Mode active.")
+    else:
+        click.echo("❌ Failed to start Docker Compose.", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--clean', is_flag=True, help='Remove volumes and config files')
+def stop(clean):
+    """Stop the HRMIS system"""
+
+    if clean:
+        click.echo("🛑 Stopping containers and removing volumes...")
+        success = run_command("docker compose down -v --remove-orphans")
+
+        if success:
+            click.echo("🧹 Cleaning up local volumes and config...")
+
+            # Clean volumes directory
+            volumes_path = Path("volumes")
+            if volumes_path.exists():
+                run_command(f"rm -rf {volumes_path}/*", check=False)
+
+            # Clean config file
+            config_file = Path("config/odoo.conf")
+            if config_file.exists():
+                config_file.unlink()
+
+            click.echo("✅ Sindh HRMIS has been stopped and fully cleaned up.")
+        else:
+            click.echo("❌ Failed to stop containers.", err=True)
+            sys.exit(1)
+    else:
+        click.echo("🛑 Stopping and removing containers...")
+        success = run_command("docker compose down --remove-orphans")
+
+        if success:
+            click.echo("✅ Sindh HRMIS has been stopped.")
+        else:
+            click.echo("❌ Failed to stop containers.", err=True)
+            sys.exit(1)
+
+
+@cli.command()
+@click.option('-f', '--follow', is_flag=True, help='Follow log output')
+@click.option('-n', '--lines', default=100, help='Number of lines to show')
+@click.argument('service', required=False, default='odoo')
+def logs(follow, lines, service):
+    """View logs from HRMIS services"""
+
+    cmd_parts = ["docker compose logs"]
+
+    if follow:
+        cmd_parts.append("-f")
+    else:
+        cmd_parts.append(f"--tail={lines}")
+
+    cmd_parts.append(service)
+
+    cmd = " ".join(cmd_parts)
+
+    try:
+        subprocess.run(cmd, shell=True)
+    except KeyboardInterrupt:
+        click.echo("\n👋 Stopped following logs.")
+
+
+@cli.command()
+def status():
+    """Show status of HRMIS containers"""
+    click.echo("📊 HRMIS Container Status:")
+    click.echo("----------------------------------------------------")
+    run_command("docker compose ps", check=False)
+
+
+if __name__ == '__main__':
+    cli()
