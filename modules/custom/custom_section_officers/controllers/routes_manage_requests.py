@@ -8,17 +8,33 @@ from odoo.addons.hr_holidays_updates.controllers.allocation_data import (
     pending_allocation_requests_for_user,
 )
 from odoo.addons.hr_holidays_updates.controllers.leave_data import (
+    leave_pending_for_current_user,
     pending_leave_requests_for_user,
 )
 from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_manage_allocations
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
+    def _managed_employee_domain(self):
+        """Restrict records to employees managed by current user."""
+        return [("employee_id.parent_id.user_id", "=", request.env.user.id)]
+
     @http.route(["/hrmis/leave/<int:leave_id>"], type="http", auth="user", website=True)
     def hrmis_leave_view(self, leave_id: int, **kw):
         lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not lv:
             return request.not_found()
+
+        # Section officers should only see requests for employees they manage,
+        # unless they are HR (who can access via other menus anyway).
+        if not (
+            request.env.user.has_group("hr_holidays.group_hr_holidays_user")
+            or request.env.user.has_group("hr_holidays.group_hr_holidays_manager")
+        ):
+            if not (
+                lv.employee_id and lv.employee_id.parent_id and lv.employee_id.parent_id.user_id.id == request.env.user.id
+            ):
+                return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         return request.render(
             "hr_holidays_updates.hrmis_leave_view",
@@ -37,6 +53,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not lv:
             return request.not_found()
+
+        # Allow only if pending for current user OR employee is managed by current user.
+        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.user_id == request.env.user)):
+            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
             if hasattr(lv.with_user(request.env.user), "action_approve"):
@@ -62,6 +82,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not lv:
             return request.not_found()
+
+        # Allow only if pending for current user OR employee is managed by current user.
+        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.user_id == request.env.user)):
+            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         # Some deployments/templates may trigger a GET navigation to this URL.
         # Avoid showing a 404 by presenting an explicit confirmation page that
@@ -96,13 +120,20 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
-        # Show ALL pending requests in the list (not per-user filtered).
+        # Show only pending requests for employees managed by this section officer.
         Leave = request.env["hr.leave"].sudo()
         Allocation = request.env["hr.leave.allocation"].sudo()
 
-        leaves = Leave.search([("state", "in", ("confirm", "validate1"))], order="create_date desc, id desc", limit=200)
+        managed_domain = self._managed_employee_domain()
+        leaves = Leave.search(
+            [("state", "in", ("confirm", "validate1"))] + managed_domain,
+            order="create_date desc, id desc",
+            limit=200,
+        )
         allocations = Allocation.search(
-            [("state", "in", ("confirm", "validate1"))], order="create_date desc, id desc", limit=200
+            [("state", "in", ("confirm", "validate1"))] + managed_domain,
+            order="create_date desc, id desc",
+            limit=200,
         )
         tab = tab if tab in ("leave", "allocation") else "leave"
         return request.render(
