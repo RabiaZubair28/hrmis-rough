@@ -50,6 +50,26 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         return request.redirect("/hrmis/manage/requests?tab=leave&success=approved")
 
+    @http.route(
+        ["/hrmis/leave/<int:leave_id>/dismiss"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def hrmis_leave_dismiss(self, leave_id: int, **post):
+        lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
+        if not lv:
+            return request.not_found()
+
+        try:
+            lv.sudo().write({"state": "dismissed"})
+        except Exception:
+            return request.redirect("/hrmis/manage/requests?tab=leave&error=dismiss_failed")
+
+        return request.redirect("/hrmis/manage/requests?tab=leave&success=dismissed")
+
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
         # Show ALL pending requests in the list (not per-user filtered).
@@ -142,4 +162,24 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=refuse_failed")
 
         return request.redirect("/hrmis/manage/requests?tab=allocation&success=refused")
+
+    @http.route(
+        ["/hrmis/allocation/<int:allocation_id>/dismiss"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def hrmis_allocation_dismiss(self, allocation_id: int, **post):
+        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
+        if not alloc:
+            return request.not_found()
+
+        try:
+            alloc.sudo().write({"state": "dismissed"})
+        except Exception:
+            return request.redirect("/hrmis/manage/requests?tab=allocation&error=dismiss_failed")
+
+        return request.redirect("/hrmis/manage/requests?tab=allocation&success=dismissed")
 

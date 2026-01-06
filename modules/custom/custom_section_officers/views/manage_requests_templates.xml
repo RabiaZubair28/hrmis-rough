@@ -52,6 +52,10 @@
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <button class="hrmis-btn hrmis-btn--primary" type="submit">Approve</button>
                                     </form>
+                                    <form t-att-action="'/hrmis/leave/%s/dismiss' % lv.id" method="post">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button class="hrmis-btn hrmis-btn--outline" type="submit">Dismiss</button>
+                                    </form>
                                 </div>
                             </div>
                         </t>
@@ -83,6 +87,10 @@
                                     <form t-att-action="'/hrmis/allocation/%s/approve' % al.id" method="post">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <button class="hrmis-btn hrmis-btn--primary" type="submit">Approve</button>
+                                    </form>
+                                    <form t-att-action="'/hrmis/allocation/%s/dismiss' % al.id" method="post">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button class="hrmis-btn hrmis-btn--outline" type="submit">Dismiss</button>
                                     </form>
                                 </div>
                             </div>
