@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-      Align Allocation Requests "default state" with Leave Requests:
-      show "Awaiting" by default (confirm + validate1) instead of only confirm.
+      Section Officer: default Allocation Requests to "Awaiting"
+      (confirm + validate1), mirroring Leave Requests behavior.
     -->
     <record id="hr_holidays.hr_leave_allocation_action" model="ir.actions.act_window">
         <field name="domain">[('state', 'in', ('confirm', 'validate1'))]</field>

@@ -17,7 +17,6 @@
         'data/support_document_rules.xml',
         'data/auto_allocation_cron.xml',
         'views/hr_holidays_views.xml',
-        'views/hr_leave_allocation_action.xml',
         'views/hrmis_frontend_templates.xml',
         'views/hrmis_hide_manage_requests.xml',
         'views/hrmis_frontend_menu.xml',
