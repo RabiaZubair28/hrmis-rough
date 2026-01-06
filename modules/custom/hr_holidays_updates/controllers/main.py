@@ -131,6 +131,18 @@ def _pending_leave_requests_for_user(user_id: int):
     Leave = request.env["hr.leave"].sudo()
 
     domains = []
+    # Custom approval flow (hr_holidays_updates): show leaves where current user has a
+    # pending approval status entry. We later filter to only the "current step".
+    has_custom_flow = "approval_status_ids" in Leave._fields and "approval_step" in Leave._fields
+    if has_custom_flow:
+        domains.append(
+            [
+                ("state", "in", ("confirm", "validate1")),
+                ("approval_status_ids.user_id", "=", user_id),
+                ("approval_status_ids.approved", "=", False),
+            ]
+        )
+
     # OpenHRMS multi-level approval: show only requests where current user is a validator
     # and has NOT yet approved.
     if "validation_status_ids" in Leave._fields:
@@ -158,17 +170,24 @@ def _pending_leave_requests_for_user(user_id: int):
     ):
         # Be permissive across versions: some builds gate validate1 by validation_type,
         # others don't. Showing validate1 to HR users matches Odoo's "To Approve" behavior.
-        domains.append([("state", "=", "validate1")])
+        # Also include "confirm": HR users commonly need to action leaves still in "To Approve".
+        domains.append([("state", "in", ("confirm", "validate1"))])
 
     if not domains:
         return Leave.browse([])
     if len(domains) == 1:
-        return Leave.search(domains[0], order="request_date_from desc, id desc", limit=200)
+        leaves = Leave.search(domains[0], order="request_date_from desc, id desc", limit=200)
+        if has_custom_flow and hasattr(leaves, "is_pending_for_user"):
+            leaves = leaves.filtered(lambda lv: lv.is_pending_for_user(request.env.user))
+        return leaves
     # OR the domains
     domain = ["|"] + domains[0] + domains[1]
     for extra in domains[2:]:
         domain = ["|"] + domain + extra
-    return Leave.search(domain, order="request_date_from desc, id desc", limit=200)
+    leaves = Leave.search(domain, order="request_date_from desc, id desc", limit=200)
+    if has_custom_flow and hasattr(leaves, "is_pending_for_user"):
+        leaves = leaves.filtered(lambda lv: lv.is_pending_for_user(request.env.user))
+    return leaves
 
 
 def _leave_pending_for_current_user(leave) -> bool:
