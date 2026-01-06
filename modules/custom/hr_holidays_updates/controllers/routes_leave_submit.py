@@ -20,10 +20,13 @@ class HrmisLeaveSubmitController(http.Controller):
         type="http",
         auth="user",
         website=True,
-        methods=["POST"],
+        methods=["GET", "POST"],
         csrf=True,
     )
     def hrmis_leave_submit(self, employee_id: int, **post):
+        if request.httprequest.method != "POST":
+            return request.redirect(f"/hrmis/staff/{employee_id}/leave?tab=new&error=Please+use+the+form+to+submit+a+leave+request")
+
         employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
         if not employee:
             return request.not_found()
@@ -94,10 +97,15 @@ class HrmisLeaveSubmitController(http.Controller):
         type="http",
         auth="user",
         website=True,
-        methods=["POST"],
+        methods=["GET", "POST"],
         csrf=True,
     )
     def hrmis_allocation_submit(self, employee_id: int, **post):
+        if request.httprequest.method != "POST":
+            return request.redirect(
+                f"/hrmis/staff/{employee_id}/leave?tab=allocation&error=Please+use+the+form+to+submit+an+allocation+request"
+            )
+
         employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
         if not employee:
             return request.not_found()
