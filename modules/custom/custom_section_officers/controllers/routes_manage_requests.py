@@ -15,9 +15,28 @@ from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_mana
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
+    def _section_officer_employee_ids(self):
+        """Return hr.employee ids linked to current user.
+
+        Note: Some databases may contain multiple hr.employee rows for one user.
+        Using employee ids (not user ids) avoids accidental overlap if manager
+        linkage is done via hr.employee.parent_id.
+        """
+        Emp = request.env["hr.employee"].sudo()
+        return Emp.search([("user_id", "=", request.env.user.id)]).ids
+
     def _managed_employee_domain(self):
-        """Restrict records to employees managed by current user."""
-        return [("employee_id.parent_id.user_id", "=", request.env.user.id)]
+        """Restrict records to employees managed by current user.
+
+        We prefer filtering by manager employee record (parent_id) rather than
+        manager user (parent_id.user_id) because user↔employee linkage can be
+        non-unique in some deployments.
+        """
+        so_emp_ids = self._section_officer_employee_ids()
+        if not so_emp_ids:
+            # No employee linked to this user => nothing to manage.
+            return [("employee_id", "=", False)]
+        return [("employee_id.parent_id", "in", so_emp_ids)]
 
     @http.route(["/hrmis/leave/<int:leave_id>"], type="http", auth="user", website=True)
     def hrmis_leave_view(self, leave_id: int, **kw):
@@ -31,9 +50,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             request.env.user.has_group("hr_holidays.group_hr_holidays_user")
             or request.env.user.has_group("hr_holidays.group_hr_holidays_manager")
         ):
-            if not (
-                lv.employee_id and lv.employee_id.parent_id and lv.employee_id.parent_id.user_id.id == request.env.user.id
-            ):
+            so_emp_ids = self._section_officer_employee_ids()
+            if not (lv.employee_id and lv.employee_id.parent_id and lv.employee_id.parent_id.id in so_emp_ids):
                 return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         return request.render(
@@ -55,7 +73,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.not_found()
 
         # Allow only if pending for current user OR employee is managed by current user.
-        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.user_id == request.env.user)):
+        so_emp_ids = self._section_officer_employee_ids()
+        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.id in so_emp_ids)):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
@@ -84,7 +103,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.not_found()
 
         # Allow only if pending for current user OR employee is managed by current user.
-        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.user_id == request.env.user)):
+        so_emp_ids = self._section_officer_employee_ids()
+        if not (leave_pending_for_current_user(lv) or (lv.employee_id and lv.employee_id.parent_id.id in so_emp_ids)):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         # Some deployments/templates may trigger a GET navigation to this URL.
@@ -148,11 +168,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.not_found()
 
         if not can_manage_allocations():
-            if not (
-                alloc.employee_id
-                and alloc.employee_id.parent_id
-                and alloc.employee_id.parent_id.user_id.id == request.env.user.id
-            ):
+            so_emp_ids = self._section_officer_employee_ids()
+            if not (alloc.employee_id and alloc.employee_id.parent_id and alloc.employee_id.parent_id.id in so_emp_ids):
                 return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         return request.render(
