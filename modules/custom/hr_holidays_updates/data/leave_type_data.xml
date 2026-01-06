@@ -5,12 +5,6 @@
     <record id="leave_type_casual" model="hr.leave.type">
         <field name="name">Casual Leave</field>
         <field name="allowed_gender">all</field>
-        <!-- Use allocation engine so UI shows "X remaining out of Y" -->
-        <!-- Auto-allocated monthly entitlement (no manual allocation request needed) -->
-        <field name="requires_allocation">yes</field>
-        <field name="auto_allocate">1</field>
-        <field name="max_days_per_month">2.0</field>
-        <field name="max_days_per_year">24.0</field>
     </record>
 
     <!-- Earned Leave With Pay -->

@@ -135,10 +135,28 @@ class HrLeaveTypePolicies(models.Model):
     @api.model
     def ensure_casual_leave_policy(self):
         """
-        DEPRECATED (HRMIS policy change):
-        - Do NOT auto-create or reconfigure "Casual Leave".
-        - "Accumulated Casual Leave" is the allocation-based leave type (like Ex-Pakistan).
+        Ensure a Casual Leave type exists and matches policy:
+        - 2 days/month (auto-allocated monthly; employee does NOT request allocation)
+        - 24 days/year cap
 
-        This method is intentionally a no-op to avoid altering existing databases.
+        Note:
+        We keep `requires_allocation = yes` so Odoo can compute/show
+        "X remaining out of Y" in dropdowns and forms.
         """
-        return
+        # IMPORTANT: exact-ish match to avoid catching e.g. "Accumulated Casual Leave"
+        lt = self.search(
+            ["|", ("name", "=ilike", "Casual Leave"), ("name", "=ilike", "Casual Leave (CL)")],
+            limit=1,
+        )
+        vals = {
+            "name": lt.name if lt else "Casual Leave",
+            "allowed_gender": "all",
+            "requires_allocation": "yes",
+            "max_days_per_month": 2.0,
+            "max_days_per_year": 24.0,
+            "auto_allocate": True,
+        }
+        if lt:
+            lt.write(vals)
+        else:
+            self.create(vals)
