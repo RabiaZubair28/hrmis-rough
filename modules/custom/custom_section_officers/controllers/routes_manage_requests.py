@@ -8,7 +8,6 @@ from odoo.addons.hr_holidays_updates.controllers.allocation_data import (
     pending_allocation_requests_for_user,
 )
 from odoo.addons.hr_holidays_updates.controllers.leave_data import (
-    leave_pending_for_current_user,
     pending_leave_requests_for_user,
 )
 from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_manage_allocations
@@ -20,9 +19,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
         if not lv:
             return request.not_found()
-
-        if not leave_pending_for_current_user(lv):
-            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         return request.render(
             "hr_holidays_updates.hrmis_leave_view",
@@ -42,9 +38,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         if not lv:
             return request.not_found()
 
-        if not leave_pending_for_current_user(lv):
-            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
-
         try:
             if hasattr(lv.with_user(request.env.user), "action_approve"):
                 lv.with_user(request.env.user).action_approve()
@@ -59,9 +52,14 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
-        uid = request.env.user.id
-        leaves = pending_leave_requests_for_user(uid)
-        allocations = pending_allocation_requests_for_user(uid)
+        # Show ALL pending requests in the list (not per-user filtered).
+        Leave = request.env["hr.leave"].sudo()
+        Allocation = request.env["hr.leave.allocation"].sudo()
+
+        leaves = Leave.search([("state", "in", ("confirm", "validate1"))], order="create_date desc, id desc", limit=200)
+        allocations = Allocation.search(
+            [("state", "in", ("confirm", "validate1"))], order="create_date desc, id desc", limit=200
+        )
         tab = tab if tab in ("leave", "allocation") else "leave"
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -100,7 +98,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         if not alloc:
             return request.not_found()
 
-        if not allocation_pending_for_current_user(alloc):
+        # Keep a light safety check: allow only if pending for current user OR user can manage allocations.
+        if not (allocation_pending_for_current_user(alloc) or can_manage_allocations()):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
@@ -128,7 +127,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         if not alloc:
             return request.not_found()
 
-        if not allocation_pending_for_current_user(alloc):
+        # Keep a light safety check: allow only if pending for current user OR user can manage allocations.
+        if not (allocation_pending_for_current_user(alloc) or can_manage_allocations()):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
