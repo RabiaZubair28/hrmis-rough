@@ -435,9 +435,6 @@ class HrLeaveType(models.Model):
         Safe to run on every module upgrade.
         """
         rules = {
-            # Casual Leave: 2 days/month OR 24 days/year
-            "Casual Leave (CL)": {"max_days_per_month": 2.0, "max_days_per_year": 24.0, "auto_allocate": True},
-            "Casual Leave": {"max_days_per_month": 2.0, "max_days_per_year": 24.0, "auto_allocate": True},
             # Earned Leave (Full Pay): 4 days/month, 48 days/year
             "Earned Leave (Full Pay)": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
             "Earned Leave With Pay": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
@@ -475,26 +472,11 @@ class HrLeaveType(models.Model):
     @api.model
     def ensure_casual_leave_policy(self):
         """
-        Ensure a Casual Leave type exists and matches policy:
-        - 2 days/month (auto-allocated monthly)
-        - 24 days/year cap
+        DEPRECATED (HRMIS policy change):
+        Do NOT auto-create or reconfigure "Casual Leave".
+        "Accumulated Casual Leave" is the allocation-based leave type (like Ex-Pakistan).
         """
-        # Try common naming variants to avoid creating duplicates.
-        lt = self.search(["|", ("name", "ilike", "Casual Leave"), ("name", "ilike", "Casual Leave (CL)")], limit=1)
-        vals = {
-            "name": lt.name if lt else "Casual Leave",
-            "allowed_gender": "all",
-            # Odoo core field (selection): yes/no. Keep CL allocation-based.
-            "requires_allocation": "yes",
-            # Policy fields used by our monthly cron + request constraints
-            "max_days_per_month": 2.0,
-            "max_days_per_year": 24.0,
-            "auto_allocate": True,
-        }
-        if lt:
-            lt.write(vals)
-        else:
-            self.create(vals)
+        return
 
     def name_get(self):
         """

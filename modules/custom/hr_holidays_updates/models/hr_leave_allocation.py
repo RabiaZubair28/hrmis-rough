@@ -91,3 +91,40 @@ class HrLeaveAllocation(models.Model):
                     f"This Time Off Type requires at least {required} months of service. "
                     "This employee is not eligible yet."
                 )
+
+    @api.constrains("employee_id", "holiday_status_id", "date_from", "number_of_days", "state")
+    def _check_accumulated_casual_leave_yearly_cap(self):
+        """
+        Accumulated Casual Leave:
+        - Requires allocation (handled via leave type config)
+        - Max 24 days per year (enforced here to prevent over-allocation)
+        """
+        for alloc in self:
+            if not alloc.employee_id or not alloc.holiday_status_id:
+                continue
+
+            # Match strictly by name (canonicalized by hr_leave_type_policies.ensure_approval_allocated_leave_types()).
+            if (alloc.holiday_status_id.name or "").strip().lower() != "accumulated casual leave":
+                continue
+
+            # Only enforce for meaningful allocation states.
+            if alloc.state not in ("confirm", "validate1", "validate"):
+                continue
+
+            date_from = fields.Date.to_date(alloc.date_from) or fields.Date.today()
+            year_start = fields.Date.to_date(f"{date_from.year}-01-01")
+            next_year_start = fields.Date.to_date(f"{date_from.year + 1}-01-01")
+
+            others = self.search(
+                [
+                    ("id", "!=", alloc.id),
+                    ("employee_id", "=", alloc.employee_id.id),
+                    ("holiday_status_id", "=", alloc.holiday_status_id.id),
+                    ("state", "in", ("confirm", "validate1", "validate")),
+                    ("date_from", ">=", year_start),
+                    ("date_from", "<", next_year_start),
+                ]
+            )
+            total = float(alloc.number_of_days or 0.0) + sum(float(x.number_of_days or 0.0) for x in others)
+            if total > 24.0 + 1e-6:
+                raise ValidationError("Accumulated Casual Leave allocation cannot exceed 24 days per year for an employee.")
