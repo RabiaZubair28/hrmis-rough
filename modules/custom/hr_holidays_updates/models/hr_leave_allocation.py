@@ -120,10 +120,20 @@ class HrLeaveAllocation(models.Model):
             if alloc.state not in ("confirm", "validate1", "validate"):
                 continue
 
-            if float(alloc.number_of_days or 0.0) > 24.0 + 1e-6:
+            def _days(a):
+                """
+                Use the same "days" value Odoo shows to users when available.
+                """
+                if "number_of_days_display" in a._fields:
+                    return float(a.number_of_days_display or 0.0)
+                return float(a.number_of_days or 0.0)
+
+            requested_days = _days(alloc)
+            if requested_days > 24.0 + 1e-6:
                 raise ValidationError("Accumulated Casual Leave allocation request cannot be more than 24 days.")
 
-            date_from = fields.Date.to_date(alloc.date_from) or fields.Date.today()
+            # Allocation periods are optional in some UIs; fall back safely.
+            date_from = fields.Date.to_date(alloc.date_from or alloc.date_to) or fields.Date.today()
             year_start = fields.Date.to_date(f"{date_from.year}-01-01")
             next_year_start = fields.Date.to_date(f"{date_from.year + 1}-01-01")
 
@@ -137,6 +147,11 @@ class HrLeaveAllocation(models.Model):
                     ("date_from", "<", next_year_start),
                 ]
             )
-            total = float(alloc.number_of_days or 0.0) + sum(float(x.number_of_days or 0.0) for x in others)
+            already = sum(_days(x) for x in others)
+            total = requested_days + already
             if total > 24.0 + 1e-6:
-                raise ValidationError("Accumulated Casual Leave allocation cannot exceed 24 days per year for an employee.")
+                remaining = max(0.0, 24.0 - already)
+                raise ValidationError(
+                    f"Accumulated Casual Leave allocation cannot exceed 24 days per year for an employee. "
+                    f"You already have {already:g} days allocated in {date_from.year}; you can allocate up to {remaining:g} more days."
+                )
