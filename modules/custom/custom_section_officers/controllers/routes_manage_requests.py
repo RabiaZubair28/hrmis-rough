@@ -80,7 +80,15 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             )
 
         try:
-            lv.sudo().write({"state": "dismissed"})
+            # "Dismiss" for section officers means "do not approve".
+            # Standard hr.leave does not have a "dismissed" state; use refusal.
+            rec = lv.with_user(request.env.user)
+            if hasattr(rec, "action_refuse"):
+                rec.action_refuse()
+            elif hasattr(rec, "action_reject"):
+                rec.action_reject()
+            else:
+                lv.sudo().write({"state": "refuse"})
         except Exception:
             return request.redirect("/hrmis/manage/requests?tab=leave&error=dismiss_failed")
 
@@ -207,7 +215,14 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             )
 
         try:
-            alloc.sudo().write({"state": "dismissed"})
+            # Standard hr.leave.allocation does not have a "dismissed" state; use refusal.
+            rec = alloc.with_user(request.env.user)
+            if hasattr(rec, "action_refuse"):
+                rec.action_refuse()
+            elif hasattr(rec, "action_reject"):
+                rec.action_reject()
+            else:
+                alloc.sudo().write({"state": "refuse"})
         except Exception:
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=dismiss_failed")
 
