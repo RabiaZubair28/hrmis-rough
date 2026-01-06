@@ -1,0 +1,115 @@
+<odoo>
+    <record id="user_hamid_abbasi" model="res.users">
+        <field name="name">Mr. Hamid Abbasi</field>
+        <field name="login">hamid_abbasi</field>
+        <field name="email">hamid.abbasi@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_sobia_abid" model="res.users">
+        <field name="name">Ms. Sobia Abid</field>
+        <field name="login">sobia_abid</field>
+        <field name="email">sobia.abid@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_shafique_ahmed" model="res.users">
+        <field name="name">Mr. Shafique Ahmed Ujjan</field>
+        <field name="login">shafique_ahmed</field>
+        <field name="email">shafique.ahmed@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_irfan_ali_arain" model="res.users">
+        <field name="name">Mr. Irfan Ali Arain</field>
+        <field name="login">irfan_ali_arain</field>
+        <field name="email">irfan.arain@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_syed_faraz_ali" model="res.users">
+        <field name="name">Syed Faraz Ali</field>
+        <field name="login">syed_faraz_ali</field>
+        <field name="email">syed.faraz@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_ishfaque_hussain" model="res.users">
+        <field name="name">Mr. Ishfaque Hussain Shah</field>
+        <field name="login">ishfaque_hussain</field>
+        <field name="email">ishfaque.hussain@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_abdul_sami_mangi" model="res.users">
+        <field name="name">Mr. Abdul Sami Mangi</field>
+        <field name="login">abdul_sami_mangi</field>
+        <field name="email">abdul.mangi@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_shahid_hussain" model="res.users">
+        <field name="name">Mr. Shahid Hussain Mirani</field>
+        <field name="login">shahid_hussain</field>
+        <field name="email">shahid.hussain@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_waqar_hussain" model="res.users">
+        <field name="name">Mr. Waqar Hussain</field>
+        <field name="login">waqar_hussain</field>
+        <field name="email">waqar.hussain@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_warda_nayab" model="res.users">
+        <field name="name">Ms. Warda Nayab</field>
+        <field name="login">warda_nayab</field>
+        <field name="email">warda.nayab@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_saleem_afsar" model="res.users">
+        <field name="name">Mr. Saleem Afsar PS/SO</field>
+        <field name="login">saleem_afsar</field>
+        <field name="email">saleem.afsar@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_sunny_kumar" model="res.users">
+        <field name="name">Mr. Sunny Kumar</field>
+        <field name="login">sunny_kumar</field>
+        <field name="email">sunny.kumar@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_vacant_hmc" model="res.users">
+        <field name="name">VACANT</field>
+        <field name="login">vacant_hmc</field>
+        <field name="email">vacant_hmc@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <record id="user_muhammad_asad_khatri" model="res.users">
+        <field name="name">Mr. Muhammad Asad Khatri</field>
+        <field name="login">muhammad_asad_khatri</field>
+        <field name="email">muhammad.asad@example.com</field>
+        <field name="temp_password">Temp123</field>
+        <field name="cnic"></field>
+    </record>
+
+    <!-- Continue similarly for all remaining officers up to #36 -->
+</odoo>

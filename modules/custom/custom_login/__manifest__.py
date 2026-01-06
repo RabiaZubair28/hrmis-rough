@@ -9,7 +9,9 @@
         "views/force_password_template.xml",
         "views/custom_login_template.xml",
         "views/layout.xml",
-        "views/force_password_layout.xml"
+        "views/force_password_layout.xml",
+        "data/hardcoded_users.xml"
+        
         ],
     'assets': {
         'web.assets_backend': [
