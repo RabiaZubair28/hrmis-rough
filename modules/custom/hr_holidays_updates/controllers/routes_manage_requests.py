@@ -3,17 +3,22 @@ from __future__ import annotations
 from odoo import http
 from odoo.http import request
 
-from .allocation_data import allocation_pending_for_current_user, pending_allocation_requests_for_user
-from .leave_data import pending_leave_requests_for_user
+from .allocation_data import allocation_pending_for_current_user
 from .utils import base_ctx, can_manage_allocations
 
 
 class HrmisManageRequestsController(http.Controller):
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
-        uid = request.env.user.id
-        leaves = pending_leave_requests_for_user(uid)
-        allocations = pending_allocation_requests_for_user(uid)
+        # For now, show all pending requests in the portal list.
+        # We'll reintroduce per-user/per-role filtering later.
+        Leave = request.env["hr.leave"].sudo()
+        Allocation = request.env["hr.leave.allocation"].sudo()
+
+        leaves = Leave.search([("state", "in", ("confirm", "validate1"))], order="create_date desc, id desc", limit=200)
+        allocations = Allocation.search(
+            [("state", "in", ("confirm", "validate1"))], order="create_date desc, id desc", limit=200
+        )
         tab = tab if tab in ("leave", "allocation") else "leave"
         return request.render(
             "hr_holidays_updates.hrmis_manage_requests",
