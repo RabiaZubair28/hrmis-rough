@@ -134,7 +134,11 @@ class HrLeaveTypePolicies(models.Model):
 
     @api.model
     def ensure_casual_leave_policy(self):
-        lt = self.search(["|", ("name", "ilike", "Casual Leave"), ("name", "ilike", "Casual Leave (CL)")], limit=1)
+        # IMPORTANT: use exact-ish match to avoid catching e.g. "Accumulated Casual Leave"
+        lt = self.search(
+            ["|", ("name", "=ilike", "Casual Leave"), ("name", "=ilike", "Casual Leave (CL)")],
+            limit=1,
+        )
         vals = {
             "name": lt.name if lt else "Casual Leave",
             "allowed_gender": "all",

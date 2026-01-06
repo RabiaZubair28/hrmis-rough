@@ -61,6 +61,8 @@ class HrLeaveTypeRules(models.Model):
             "Leave Preparatory to Retirement": {"max_days_per_request": 365.0, "auto_allocate": True},
         }
         for leave_type_name, vals in rules.items():
-            leave_types = self.search([("name", "ilike", leave_type_name)])
+            # Avoid substring collisions (e.g. "Casual Leave" matching "Accumulated Casual Leave").
+            op = "=ilike" if leave_type_name in ("Casual Leave", "Casual Leave (CL)", "Accumulated Casual Leave") else "ilike"
+            leave_types = self.search([("name", op, leave_type_name)])
             if leave_types:
                 leave_types.write(vals)
