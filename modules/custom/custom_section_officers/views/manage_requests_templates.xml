@@ -113,7 +113,17 @@
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Leave type</div><div class="hrmis-kv__v"><t t-esc="allocation.holiday_status_id.name"/></div></div>
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Days</div><div class="hrmis-kv__v"><t t-esc="allocation.number_of_days"/></div></div>
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Description</div><div class="hrmis-kv__v"><t t-esc="allocation.name"/></div></div>
-                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">State</div><div class="hrmis-kv__v"><t t-esc="allocation.state"/></div></div>
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">State</div>
+                            <div class="hrmis-kv__v">
+                                <t t-if="allocation.state in ('confirm','validate1')">Awaiting</t>
+                                <t t-elif="allocation.state in ('validate','validate2')">Approved</t>
+                                <t t-elif="allocation.state == 'refuse'">Rejected</t>
+                                <t t-elif="allocation.state == 'cancel'">Cancelled</t>
+                                <t t-elif="allocation.state == 'draft'">Draft</t>
+                                <t t-else=""><t t-esc="allocation.state"/></t>
+                            </div>
+                        </div>
                     </div>
                     <div class="hrmis-form__actions">
                         <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/manage/requests?tab=allocation">Back</a>
