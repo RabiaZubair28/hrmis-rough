@@ -18,6 +18,7 @@
         'data/auto_allocation_cron.xml',
         'views/hr_holidays_views.xml',
         'views/hrmis_frontend_templates.xml',
+        'views/hrmis_hide_manage_requests.xml',
         'views/hrmis_frontend_menu.xml',
         "views/hrmis_profile_request_views.xml",
         "views/hrmis_profile_approvals.xml",
