@@ -172,5 +172,12 @@
             </div>
         </t>
     </template>
+
+    <!-- Override leave view "Back" when opened from Manage Requests -->
+    <template id="hrmis_leave_view_back_section_officer" inherit_id="hr_holidays_updates.hrmis_leave_view">
+        <xpath expr="//div[contains(@class,'hrmis-form__actions')]//a[contains(@class,'hrmis-btn') and contains(@class,'hrmis-btn--outline')][normalize-space()='Back']" position="attributes">
+            <attribute name="t-att-href">'/hrmis/manage/requests?tab=leave' if active_menu == 'manage_requests' else '/hrmis/leave/requests'</attribute>
+        </xpath>
+    </template>
 </odoo>
 
