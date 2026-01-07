@@ -4,9 +4,11 @@ from odoo import api, models
 
 
 class HrLeaveNotifications(models.Model):
-    _inherit = "hr.leave"
+    _inherit = ["hr.leave", "mail.thread"]
 
     def _notify_employee(self, body: str):
+        if self.env.context.get("hrmis_skip_employee_notifications"):
+            return
         for rec in self:
             emp = rec.employee_id
             partner = emp.user_id.partner_id if emp and emp.user_id and emp.user_id.partner_id else None
@@ -23,9 +25,9 @@ class HrLeaveNotifications(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
-        # Notify on create only if the record is created directly in 'confirm'.
-        for rec, vals in zip(recs, vals_list):
-            if vals.get("state") == "confirm" and rec.state == "confirm":
+        # Notify on create if the record lands in a submitted state directly.
+        for rec in recs:
+            if rec.state in ("confirm", "validate1") and not self.env.context.get("hrmis_skip_employee_notifications"):
                 rec._notify_employee("Your leave request has been submitted.")
         return recs
 
@@ -45,7 +47,9 @@ class HrLeaveNotifications(models.Model):
 
                 if new == "confirm":
                     rec._notify_employee("Your leave request has been submitted.")
-                elif new in ("validate", "validate2"):
+                elif new == "validate1" and old in ("draft", "confirm"):
+                    rec._notify_employee("Your leave request has been approved.")
+                elif new in ("validate", "validate2") and old != "validate1":
                     rec._notify_employee("Your leave request has been approved.")
                 elif new in ("refuse", "dismissed"):
                     rec._notify_employee("Your leave request has been dismissed.")
@@ -54,10 +58,15 @@ class HrLeaveNotifications(models.Model):
 
 
 class HrLeaveAllocationNotifications(models.Model):
-    _inherit = "hr.leave.allocation"
+    _inherit = ["hr.leave.allocation", "mail.thread"]
 
     def _notify_employee(self, body: str):
+        if self.env.context.get("hrmis_skip_employee_notifications"):
+            return
         for rec in self:
+            # Skip policy-driven (auto) allocations
+            if getattr(rec.holiday_status_id, "auto_allocate", False):
+                continue
             emp = rec.employee_id
             partner = emp.user_id.partner_id if emp and emp.user_id and emp.user_id.partner_id else None
             if not partner:
@@ -72,8 +81,8 @@ class HrLeaveAllocationNotifications(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         recs = super().create(vals_list)
-        for rec, vals in zip(recs, vals_list):
-            if vals.get("state") == "confirm" and rec.state == "confirm":
+        for rec in recs:
+            if rec.state in ("confirm", "validate1") and not self.env.context.get("hrmis_skip_employee_notifications"):
                 rec._notify_employee("Your allocation request has been submitted.")
         return recs
 
@@ -93,7 +102,9 @@ class HrLeaveAllocationNotifications(models.Model):
 
                 if new == "confirm":
                     rec._notify_employee("Your allocation request has been submitted.")
-                elif new in ("validate", "validate2"):
+                elif new == "validate1" and old in ("draft", "confirm"):
+                    rec._notify_employee("Your allocation request has been approved.")
+                elif new in ("validate", "validate2") and old != "validate1":
                     rec._notify_employee("Your allocation request has been approved.")
                 elif new in ("refuse", "dismissed"):
                     rec._notify_employee("Your allocation request has been dismissed.")

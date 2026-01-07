@@ -22,7 +22,7 @@ class HrLeaveAllocationAutoUtils(models.Model):
             if alloc.state == "validate":
                 return
             if hasattr(alloc, "action_validate") and alloc.state in ("confirm", "validate1"):
-                alloc.sudo().action_validate()
+                alloc.with_context(hrmis_skip_employee_notifications=True).sudo().action_validate()
             else:
                 return
 

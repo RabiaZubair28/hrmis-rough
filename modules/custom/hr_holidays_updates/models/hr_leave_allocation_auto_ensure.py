@@ -49,7 +49,7 @@ class HrLeaveAllocationAutoEnsure(models.Model):
             if ex_to and ex_to < end:
                 updates["date_to"] = end
             if updates:
-                existing.sudo().write(updates)
+                existing.with_context(hrmis_skip_employee_notifications=True).sudo().write(updates)
             self._force_validate_allocation(existing)
             return
 
@@ -61,7 +61,7 @@ class HrLeaveAllocationAutoEnsure(models.Model):
             if days <= 0.0:
                 return
 
-        alloc = self.sudo().create(
+        alloc = self.with_context(hrmis_skip_employee_notifications=True).sudo().create(
             {
                 "name": f"{leave_type.name} ({start} - {end})",
                 "employee_id": employee.id,
@@ -114,7 +114,7 @@ class HrLeaveAllocationAutoEnsure(models.Model):
             if ex_to and ex_to < end:
                 updates["date_to"] = end
             if updates:
-                existing.sudo().write(updates)
+                existing.with_context(hrmis_skip_employee_notifications=True).sudo().write(updates)
             self._force_validate_allocation(existing)
             return
 
@@ -130,7 +130,7 @@ class HrLeaveAllocationAutoEnsure(models.Model):
             if days <= 0.0:
                 return
 
-        alloc = self.sudo().create(
+        alloc = self.with_context(hrmis_skip_employee_notifications=True).sudo().create(
             {
                 "name": f"{leave_type.name} ({start.date()} - {end.date()})",
                 "employee_id": employee.id,
@@ -181,7 +181,7 @@ class HrLeaveAllocationAutoEnsure(models.Model):
 
         start = pydatetime.combine(pydate(joining.year, joining.month, joining.day), pytime.min)
 
-        alloc = self.sudo().create(
+        alloc = self.with_context(hrmis_skip_employee_notifications=True).sudo().create(
             {
                 "name": f"{leave_type.name} (Service Entitlement)",
                 "employee_id": employee.id,
