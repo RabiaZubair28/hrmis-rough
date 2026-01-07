@@ -122,11 +122,21 @@ class HrLeaveAllocation(models.Model):
 
             def _days(a):
                 """
-                Use the same "days" value Odoo shows to users when available.
+                Always use the canonical stored day value.
+
+                Note:
+                `number_of_days_display` is a UI helper and, depending on the leave type
+                request unit (hours vs days) and view context, it can represent a
+                non-day unit. Using it here can massively over-count yearly totals
+                (e.g. treating hours as days). `number_of_days` is the normalized
+                amount in *days* that Odoo uses for allocations.
                 """
+                if "number_of_days" in a._fields:
+                    return float(a.number_of_days or 0.0)
+                # Defensive fallback for older/custom environments.
                 if "number_of_days_display" in a._fields:
                     return float(a.number_of_days_display or 0.0)
-                return float(a.number_of_days or 0.0)
+                return 0.0
 
             requested_days = _days(alloc)
             if requested_days > 24.0 + 1e-6:
