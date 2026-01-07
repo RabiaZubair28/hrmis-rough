@@ -6,12 +6,28 @@ from odoo import api, models
 class HrLeaveNotifications(models.Model):
     _inherit = "hr.leave"
 
+    def _get_employee_notification_partner(self):
+        """
+        Best-effort partner to notify for "employee-facing" updates.
+
+        Primary target is the employee's linked user (employee_id.user_id).
+        Fallback is the record's creator user (create_uid), which covers
+        deployments where employees submit requests but the HR employee<->user
+        link isn't set.
+        """
+        self.ensure_one()
+        emp = self.employee_id
+        if emp and emp.user_id and emp.user_id.partner_id:
+            return emp.user_id.partner_id
+        if self.create_uid and self.create_uid.partner_id:
+            return self.create_uid.partner_id
+        return None
+
     def _notify_employee(self, body: str):
         if self.env.context.get("hrmis_skip_employee_notifications"):
             return
         for rec in self:
-            emp = rec.employee_id
-            partner = emp.user_id.partner_id if emp and emp.user_id and emp.user_id.partner_id else None
+            partner = rec._get_employee_notification_partner()
             if not partner:
                 continue
             # `message_notify` creates an inbox notification reliably even if the
@@ -61,6 +77,18 @@ class HrLeaveNotifications(models.Model):
 class HrLeaveAllocationNotifications(models.Model):
     _inherit = "hr.leave.allocation"
 
+    def _get_employee_notification_partner(self):
+        """
+        See HrLeaveNotifications._get_employee_notification_partner().
+        """
+        self.ensure_one()
+        emp = self.employee_id
+        if emp and emp.user_id and emp.user_id.partner_id:
+            return emp.user_id.partner_id
+        if self.create_uid and self.create_uid.partner_id:
+            return self.create_uid.partner_id
+        return None
+
     def _notify_employee(self, body: str):
         if self.env.context.get("hrmis_skip_employee_notifications"):
             return
@@ -68,8 +96,7 @@ class HrLeaveAllocationNotifications(models.Model):
             # Skip policy-driven (auto) allocations
             if getattr(rec.holiday_status_id, "auto_allocate", False):
                 continue
-            emp = rec.employee_id
-            partner = emp.user_id.partner_id if emp and emp.user_id and emp.user_id.partner_id else None
+            partner = rec._get_employee_notification_partner()
             if not partner:
                 continue
             rec.sudo().message_notify(
