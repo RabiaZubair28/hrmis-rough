@@ -41,6 +41,20 @@ class HrmisLeaveSubmitController(http.Controller):
             return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields")
 
         try:
+            # Guard against backdated requests (UI can be bypassed).
+            d_from = fields.Date.to_date(dt_from)
+            d_to = fields.Date.to_date(dt_to)
+            if not d_from or not d_to:
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+date+format")
+
+            today = fields.Date.context_today(request.env.user)
+            if d_from < today:
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=You+cannot+request+leave+for+past+dates"
+                )
+            if d_to < d_from:
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date")
+
             allowed_types = dedupe_leave_types_for_ui(
                 leave_types_for_employee(employee, request_date_from=dt_from)
                 | allocation_types_for_employee(employee, date_from=dt_from)

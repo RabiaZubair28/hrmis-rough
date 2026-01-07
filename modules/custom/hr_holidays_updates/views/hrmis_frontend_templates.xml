@@ -516,11 +516,11 @@
                                 <div class="hrmis-form__grid">
                                     <div class="hrmis-field">
                                         <label>Leave starting date<span class="req">*</span></label>
-                                        <input class="hrmis-input js-hrmis-date-from" type="date" name="date_from" t-att-value="today"/>
+                                        <input class="hrmis-input js-hrmis-date-from" type="date" name="date_from" t-att-value="today" t-att-min="today"/>
                                     </div>
                                     <div class="hrmis-field">
                                         <label>Leaving ending date<span class="req">*</span></label>
-                                        <input class="hrmis-input js-hrmis-date-to" type="date" name="date_to" t-att-value="today"/>
+                                        <input class="hrmis-input js-hrmis-date-to" type="date" name="date_to" t-att-value="today" t-att-min="today"/>
                                     </div>
                                     <div class="hrmis-field">
                                         <label>Leave type<span class="req">*</span></label>
