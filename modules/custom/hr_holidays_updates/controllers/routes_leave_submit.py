@@ -97,34 +97,41 @@ class HrmisLeaveSubmitController(http.Controller):
                 msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
 
-            leave = request.env["hr.leave"].with_user(request.env.user).create(
-                {
-                    "employee_id": employee.id,
-                    "holiday_status_id": leave_type_id,
-                    "request_date_from": dt_from,
-                    "request_date_to": dt_to,
-                    "name": remarks,
-                }
-            )
+            # IMPORTANT: force flush inside a savepoint so any constraints (e.g. overlap)
+            # raised at flush/commit time are caught here and shown in the HRMIS UI,
+            # instead of bubbling up to Odoo's generic "Oops" page on /leave/submit.
+            with request.env.cr.savepoint():
+                leave = request.env["hr.leave"].with_user(request.env.user).create(
+                    {
+                        "employee_id": employee.id,
+                        "holiday_status_id": leave_type_id,
+                        "request_date_from": dt_from,
+                        "request_date_to": dt_to,
+                        "name": remarks,
+                    }
+                )
 
-            if uploaded:
-                data = uploaded.read()
-                if data:
-                    att = request.env["ir.attachment"].sudo().create(
-                        {
-                            "name": getattr(uploaded, "filename", None) or "supporting_document",
-                            "res_model": "hr.leave",
-                            "res_id": leave.id,
-                            "type": "binary",
-                            "datas": base64.b64encode(data),
-                            "mimetype": getattr(uploaded, "mimetype", None),
-                        }
-                    )
-                    if "supported_attachment_ids" in leave._fields:
-                        leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+                if uploaded:
+                    data = uploaded.read()
+                    if data:
+                        att = request.env["ir.attachment"].sudo().create(
+                            {
+                                "name": getattr(uploaded, "filename", None) or "supporting_document",
+                                "res_model": "hr.leave",
+                                "res_id": leave.id,
+                                "type": "binary",
+                                "datas": base64.b64encode(data),
+                                "mimetype": getattr(uploaded, "mimetype", None),
+                            }
+                        )
+                        if "supported_attachment_ids" in leave._fields:
+                            leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
 
-            if hasattr(leave, "action_confirm"):
-                leave.action_confirm()
+                if hasattr(leave, "action_confirm"):
+                    leave.action_confirm()
+
+                # Ensure any pending constraints trigger here.
+                request.env.cr.flush()
         except (ValidationError, UserError, AccessError, Exception) as e:
             # Never show the Odoo "Oops" error page for known validation issues.
             # Always return to the normal HRMIS leave form with the banner error.
