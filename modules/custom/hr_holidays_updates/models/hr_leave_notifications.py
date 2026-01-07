@@ -4,6 +4,7 @@ from odoo import api, models
 
 
 class HrLeaveNotifications(models.Model):
+    _name = "hr.leave"
     _inherit = ["hr.leave", "mail.thread"]
 
     def _notify_employee(self, body: str):
@@ -58,6 +59,7 @@ class HrLeaveNotifications(models.Model):
 
 
 class HrLeaveAllocationNotifications(models.Model):
+    _name = "hr.leave.allocation"
     _inherit = ["hr.leave.allocation", "mail.thread"]
 
     def _notify_employee(self, body: str):
