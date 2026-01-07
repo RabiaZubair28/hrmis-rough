@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import base64
+import re
 from urllib.parse import quote_plus
 
 from odoo import http, fields
 from odoo.http import request
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .leave_data import (
     allocation_types_for_employee,
@@ -12,6 +14,28 @@ from .leave_data import (
     leave_types_for_employee,
 )
 from .utils import can_manage_employee_leave, safe_int
+
+
+_OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
+
+
+def _friendly_leave_error(e: Exception) -> str:
+    """
+    Convert common Odoo errors into short, user-friendly messages for the website UI.
+    """
+    # Odoo exceptions often carry the user-facing text in `name` or `args[0]`.
+    msg = getattr(e, "name", None) or (e.args[0] if getattr(e, "args", None) else None) or str(e) or ""
+    msg = str(msg).strip()
+
+    # Normalize common "leave already taken/overlap" errors to match other website errors.
+    if _OVERLAP_ERR_RE.search(msg):
+        return "Leave already taken for the selected dates"
+
+    # Avoid leaking internal access errors in a scary way.
+    if isinstance(e, AccessError):
+        return "You are not allowed to submit this leave request"
+
+    return msg or "Could not submit leave request"
 
 
 class HrmisLeaveSubmitController(http.Controller):
@@ -99,9 +123,9 @@ class HrmisLeaveSubmitController(http.Controller):
 
             if hasattr(leave, "action_confirm"):
                 leave.action_confirm()
-        except Exception as e:
+        except (ValidationError, UserError, AccessError, Exception) as e:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(str(e) or 'Could not submit leave request')}"
+                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}"
             )
 
         return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted")
