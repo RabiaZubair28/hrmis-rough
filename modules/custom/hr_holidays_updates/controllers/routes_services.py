@@ -16,6 +16,11 @@ class HrmisServicesController(http.Controller):
         emp = current_employee()
         if not emp:
             return request.render("hr_holidays_updates.hrmis_services", base_ctx("My Time Off", "services"))
+        # Section officers should land on their profile (SO module extends it).
+        if request.env.user.has_group("custom_section_officers.group_section_officer"):
+            return request.redirect(f"/hrmis/staff/{emp.id}")
+
+        # Default: employees land on time off history.
         return request.redirect(f"/hrmis/staff/{emp.id}/leave?tab=history")
 
     @http.route(["/odoo/my-time-off/new"], type="http", auth="user", website=True)
