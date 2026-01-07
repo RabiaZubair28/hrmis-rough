@@ -48,23 +48,25 @@ class HrmisLeaveSubmitController(http.Controller):
         csrf=True,
     )
     def hrmis_leave_submit(self, employee_id: int, **post):
-        if request.httprequest.method != "POST":
-            return request.redirect(f"/hrmis/staff/{employee_id}/leave?tab=new&error=Please+use+the+form+to+submit+a+leave+request")
-
-        employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
-        if not employee:
-            return request.not_found()
-        if not can_manage_employee_leave(employee):
-            return request.redirect("/hrmis/services?error=not_allowed")
-
-        dt_from = (post.get("date_from") or "").strip()
-        dt_to = (post.get("date_to") or "").strip()
-        leave_type_id = safe_int(post.get("leave_type_id"))
-        remarks = (post.get("remarks") or "").strip()
-        if not dt_from or not dt_to or not leave_type_id or not remarks:
-            return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields")
-
         try:
+            if request.httprequest.method != "POST":
+                return request.redirect(
+                    f"/hrmis/staff/{employee_id}/leave?tab=new&error=Please+use+the+form+to+submit+a+leave+request"
+                )
+
+            employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
+            if not employee:
+                return request.not_found()
+            if not can_manage_employee_leave(employee):
+                return request.redirect("/hrmis/services?error=not_allowed")
+
+            dt_from = (post.get("date_from") or "").strip()
+            dt_to = (post.get("date_to") or "").strip()
+            leave_type_id = safe_int(post.get("leave_type_id"))
+            remarks = (post.get("remarks") or "").strip()
+            if not dt_from or not dt_to or not leave_type_id or not remarks:
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields")
+
             # Guard against backdated requests (UI can be bypassed).
             d_from = fields.Date.to_date(dt_from)
             d_to = fields.Date.to_date(dt_to)
@@ -124,9 +126,16 @@ class HrmisLeaveSubmitController(http.Controller):
             if hasattr(leave, "action_confirm"):
                 leave.action_confirm()
         except (ValidationError, UserError, AccessError, Exception) as e:
-            return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}"
-            )
+            # Never show the Odoo "Oops" error page for known validation issues.
+            # Always return to the normal HRMIS leave form with the banner error.
+            target_emp_id = employee_id
+            try:
+                # Prefer the browsed employee when available.
+                if "employee" in locals() and locals()["employee"]:
+                    target_emp_id = locals()["employee"].id
+            except Exception:
+                pass
+            return request.redirect(f"/hrmis/staff/{target_emp_id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}")
 
         return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted")
 
