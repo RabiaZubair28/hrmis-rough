@@ -4,8 +4,7 @@ from odoo import api, models
 
 
 class HrLeaveNotifications(models.Model):
-    _name = "hr.leave"
-    _inherit = ["hr.leave", "mail.thread"]
+    _inherit = "hr.leave"
 
     def _notify_employee(self, body: str):
         if self.env.context.get("hrmis_skip_employee_notifications"):
@@ -15,11 +14,12 @@ class HrLeaveNotifications(models.Model):
             partner = emp.user_id.partner_id if emp and emp.user_id and emp.user_id.partner_id else None
             if not partner:
                 continue
-            # Use sudo to ensure message creation works from website flows.
-            rec.sudo().message_post(
-                body=body,
+            # `message_notify` creates an inbox notification reliably even if the
+            # partner isn't following the record.
+            rec.sudo().message_notify(
                 partner_ids=[partner.id],
-                message_type="comment",
+                body=body,
+                subject="Leave request update",
                 subtype_xmlid="mail.mt_comment",
             )
 
@@ -59,8 +59,7 @@ class HrLeaveNotifications(models.Model):
 
 
 class HrLeaveAllocationNotifications(models.Model):
-    _name = "hr.leave.allocation"
-    _inherit = ["hr.leave.allocation", "mail.thread"]
+    _inherit = "hr.leave.allocation"
 
     def _notify_employee(self, body: str):
         if self.env.context.get("hrmis_skip_employee_notifications"):
@@ -73,10 +72,10 @@ class HrLeaveAllocationNotifications(models.Model):
             partner = emp.user_id.partner_id if emp and emp.user_id and emp.user_id.partner_id else None
             if not partner:
                 continue
-            rec.sudo().message_post(
-                body=body,
+            rec.sudo().message_notify(
                 partner_ids=[partner.id],
-                message_type="comment",
+                body=body,
+                subject="Allocation request update",
                 subtype_xmlid="mail.mt_comment",
             )
 
