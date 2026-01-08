@@ -51,12 +51,17 @@
 }
 
 .hrmis-user-stack {
-  /* Align "Logout" under the username (meta) column, not to the side. */
+  /* Keep notifications and user stack side-by-side,
+     and stack username + logout vertically. */
   display: grid;
   grid-template-columns: 44px auto; /* avatar width + meta */
   column-gap: 12px;
   row-gap: 6px;
-  justify-content: end; /* keep the whole stack right-aligned in the topbar */
+  width: fit-content; /* prevent overlap with the bell */
+}
+.hrmis-user-stack > .hrmis-user-link {
+  grid-column: 1 / -1; /* take full width for avatar+meta row */
+  justify-self: end; /* align the whole row to the right */
 }
 .hrmis-logout {
   grid-column: 2;
