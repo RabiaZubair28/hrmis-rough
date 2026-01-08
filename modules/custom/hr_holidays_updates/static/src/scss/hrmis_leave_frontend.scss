@@ -51,13 +51,16 @@
 }
 
 .hrmis-user-stack {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  /* Align "Logout" under the username (meta) column, not to the side. */
+  display: grid;
+  grid-template-columns: 44px auto; /* avatar width + meta */
+  column-gap: 12px;
+  row-gap: 6px;
+  justify-content: end; /* keep the whole stack right-aligned in the topbar */
 }
 .hrmis-logout {
-  align-self: flex-end;
+  grid-column: 2;
+  justify-self: start; /* align with the meta column */
   line-height: 1;
 }
 
