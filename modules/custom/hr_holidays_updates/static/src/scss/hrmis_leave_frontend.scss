@@ -38,6 +38,57 @@
   padding: 0 24px;
 }
 
+.hrmis-topbar__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.hrmis-bell {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+}
+.hrmis-bell:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.hrmis-bell__icon {
+  display: inline-flex;
+  line-height: 0;
+}
+
+.hrmis-notifications {
+  display: grid;
+  gap: 12px;
+}
+.hrmis-notification {
+  border: 1px solid #cfd7da;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+}
+.hrmis-notification__title {
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+.hrmis-notification__body {
+  opacity: 0.9;
+}
+.hrmis-notification__meta {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
 .hrmis-topbar__title {
   font-weight: 600;
   line-height: 1.1;

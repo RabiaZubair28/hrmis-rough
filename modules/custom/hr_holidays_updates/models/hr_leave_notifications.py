@@ -52,7 +52,9 @@ class HrLeaveNotifications(models.Model):
                     rec._notify_employee("Your leave request has been approved.")
                 elif new in ("validate", "validate2") and old != "validate1":
                     rec._notify_employee("Your leave request has been approved.")
-                elif new in ("refuse", "dismissed"):
+                elif new == "refuse":
+                    rec._notify_employee("Your leave request has been rejected.")
+                elif new == "dismissed":
                     rec._notify_employee("Your leave request has been dismissed.")
 
         return res
@@ -107,7 +109,9 @@ class HrLeaveAllocationNotifications(models.Model):
                     rec._notify_employee("Your allocation request has been approved.")
                 elif new in ("validate", "validate2") and old != "validate1":
                     rec._notify_employee("Your allocation request has been approved.")
-                elif new in ("refuse", "dismissed"):
+                elif new == "refuse":
+                    rec._notify_employee("Your allocation request has been rejected.")
+                elif new == "dismissed":
                     rec._notify_employee("Your allocation request has been dismissed.")
 
         return res

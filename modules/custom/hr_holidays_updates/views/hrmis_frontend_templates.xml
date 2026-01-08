@@ -19,6 +19,15 @@
                         </form>
                     </div>
                     <div class="hrmis-topbar__right">
+                        <a class="hrmis-bell" href="/hrmis/notifications" title="Notifications" aria-label="Notifications">
+                            <span class="hrmis-bell__icon" aria-hidden="true">
+                                <!-- inline SVG bell -->
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 22a2.5 2.5 0 0 0 2.45-2H9.55A2.5 2.5 0 0 0 12 22Z" fill="currentColor"/>
+                                    <path d="M18 16.5H6c1.3-1.2 2-2.6 2-4.5V9a4 4 0 1 1 8 0v3c0 1.9.7 3.3 2 4.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                        </a>
                         <t t-if="current_employee">
                             <a class="hrmis-user-link" t-att-href="'/hrmis/staff/%s' % current_employee.id">
                                 <div class="hrmis-user">
@@ -94,6 +103,39 @@
                     </main>
                 </div>
                 <div class="hrmis-footer-bar"></div>
+            </div>
+        </t>
+    </template>
+
+    <template id="hrmis_notifications" name="HRMIS Notifications">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">Notifications</div>
+                </div>
+                <div class="hrmis-panel__body">
+                    <t t-if="not notifications">
+                        <div class="hrmis-empty">No notifications available.</div>
+                    </t>
+                    <t t-else="">
+                        <div class="hrmis-notifications">
+                            <t t-foreach="notifications" t-as="n">
+                                <t t-set="msg" t-value="n.mail_message_id"/>
+                                <div class="hrmis-notification">
+                                    <div class="hrmis-notification__title">
+                                        <t t-esc="(msg.subject or msg.record_name or 'Notification')"/>
+                                    </div>
+                                    <div class="hrmis-notification__body">
+                                        <t t-raw="(msg.body or '')"/>
+                                    </div>
+                                    <div class="hrmis-notification__meta">
+                                        <t t-esc="(msg.date or msg.create_date or '')"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                </div>
             </div>
         </t>
     </template>

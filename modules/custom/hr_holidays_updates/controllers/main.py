@@ -13,4 +13,5 @@ from . import routes_leave_requests  # noqa: F401
 from . import routes_leave_submit  # noqa: F401
 from . import routes_services  # noqa: F401
 from . import routes_staff  # noqa: F401
+from . import notifications  # noqa: F401
 from . import utils  # noqa: F401
