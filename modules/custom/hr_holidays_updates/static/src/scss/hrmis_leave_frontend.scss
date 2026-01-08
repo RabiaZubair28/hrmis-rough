@@ -50,6 +50,17 @@
   z-index: 2; /* ensure clickable if any overlap */
 }
 
+.hrmis-user-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.hrmis-logout {
+  align-self: flex-end;
+  line-height: 1;
+}
+
 .hrmis-topbar__title {
   font-weight: 600;
   line-height: 1.1;
