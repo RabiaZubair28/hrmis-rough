@@ -52,27 +52,28 @@
                                             <div class="hrmis-user__value">
                                                 <t t-esc="request.env.user.name"/>
                                             </div>
-                                             <t t-if="request.session.uid">
+                                        </div>
+                                    </div>
+                                </a>
+                                <t t-if="request.session.uid">
                                     <a href="/web/session/logout?redirect=/web/login"
                                        class="btn btn-outline-danger btn-sm hrmis-logout"
                                        style="font-weight: 600; border-radius: 8px;">
                                         Logout
                                     </a>
                                 </t>
-                                        </div>
-                                    </div>
-                                </a>
-                               
                             </div>
                         </t>
                         <t t-else="">
                             <div class="hrmis-user-stack">
-                                <div class="hrmis-user">
-                                    <div class="hrmis-user__avatar"></div>
-                                    <div class="hrmis-user__meta">
-                                        <div class="hrmis-user__label">Username</div>
-                                        <div class="hrmis-user__value">
-                                            <t t-esc="request.env.user.name"/>
+                                <div class="hrmis-user-link">
+                                    <div class="hrmis-user">
+                                        <div class="hrmis-user__avatar"></div>
+                                        <div class="hrmis-user__meta">
+                                            <div class="hrmis-user__label">Username</div>
+                                            <div class="hrmis-user__value">
+                                                <t t-esc="request.env.user.name"/>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
