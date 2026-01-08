@@ -120,6 +120,10 @@ class HrLeaveTypePolicies(models.Model):
                 ],
             },
             {"canonical": "Ex-Pakistan Leave", "aliases": ["Ex-Pakistan Leave", "Ex Pakistan Leave", "Ex–Pakistan Leave"]},
+            {
+                "canonical": "Accumulated Casual Leave",
+                "aliases": ["Accumulated Casual Leave"],
+            },
         ]
         for g in groups:
             self._hrmis_dedupe_by_aliases(
@@ -130,7 +134,20 @@ class HrLeaveTypePolicies(models.Model):
 
     @api.model
     def ensure_casual_leave_policy(self):
-        lt = self.search(["|", ("name", "ilike", "Casual Leave"), ("name", "ilike", "Casual Leave (CL)")], limit=1)
+        """
+        Ensure a Casual Leave type exists and matches policy:
+        - 2 days/month (auto-allocated monthly; employee does NOT request allocation)
+        - 24 days/year cap
+
+        Note:
+        We keep `requires_allocation = yes` so Odoo can compute/show
+        "X remaining out of Y" in dropdowns and forms.
+        """
+        # IMPORTANT: exact-ish match to avoid catching e.g. "Accumulated Casual Leave"
+        lt = self.search(
+            ["|", ("name", "=ilike", "Casual Leave"), ("name", "=ilike", "Casual Leave (CL)")],
+            limit=1,
+        )
         vals = {
             "name": lt.name if lt else "Casual Leave",
             "allowed_gender": "all",

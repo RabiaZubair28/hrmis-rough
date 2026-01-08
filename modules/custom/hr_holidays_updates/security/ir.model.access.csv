@@ -6,3 +6,4 @@ access_leave_approval_flow,leave.approval.flow,model_hr_leave_approval_flow,hr.g
 access_leave_approval_status,leave.approval.status,model_hr_leave_approval_status,hr.group_hr_manager,1,0,0,0
 
 access_hr_leave_validator,Leave Validator,model_hr_leave_validator,base.group_user,1,1,1,0
+access_hrmis_notification_user,hrmis.notification user,model_hrmis_notification,	base.group_user,1,1,1,0

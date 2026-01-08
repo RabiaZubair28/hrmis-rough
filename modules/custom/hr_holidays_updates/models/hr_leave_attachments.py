@@ -85,15 +85,17 @@ class HrLeaveAttachments(models.Model):
                     cur = pydate(d_from.year, d_from.month, 1)
                     end_month = pydate((d_to or d_from).year, (d_to or d_from).month, 1)
                     while cur <= end_month:
-                        Allocation._ensure_monthly_allocation(emp, lt, cur.year, cur.month)
+                        Allocation.with_context(hrmis_skip_employee_notifications=True)._ensure_monthly_allocation(
+                            emp, lt, cur.year, cur.month
+                        )
                         cur = cur + relativedelta(months=1)
                 elif getattr(lt, "max_days_per_year", 0.0):
                     # Ensure yearly allocations for all years touched by the request
                     for y in range(d_from.year, (d_to or d_from).year + 1):
-                        Allocation._ensure_yearly_allocation(emp, lt, y)
+                        Allocation.with_context(hrmis_skip_employee_notifications=True)._ensure_yearly_allocation(emp, lt, y)
                 else:
                     # One-time employment entitlement (e.g. maternity/paternity/LPR)
-                    Allocation._ensure_one_time_allocation(emp, lt)
+                    Allocation.with_context(hrmis_skip_employee_notifications=True)._ensure_one_time_allocation(emp, lt)
             except Exception:
                 # Never block leave creation due to auto-allocation helper
                 continue

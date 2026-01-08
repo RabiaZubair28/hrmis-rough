@@ -16,7 +16,8 @@ class HrmisServicesController(http.Controller):
         emp = current_employee()
         if not emp:
             return request.render("hr_holidays_updates.hrmis_services", base_ctx("My Time Off", "services"))
-        return request.redirect(f"/hrmis/staff/{emp.id}/leave?tab=history")
+        # Landing page for everyone: user profile.
+        return request.redirect(f"/hrmis/staff/{emp.id}")
 
     @http.route(["/odoo/my-time-off/new"], type="http", auth="user", website=True)
     def odoo_my_time_off_new(self, **kw):

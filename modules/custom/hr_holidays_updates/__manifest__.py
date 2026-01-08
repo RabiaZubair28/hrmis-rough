@@ -13,6 +13,7 @@
         'ohrms_holidays_approval',
     ],  # Important: extend the built-in module
     'data': [
+        'security/hrmis_notification_rules.xml',
         'data/leave_type_data.xml',  # optional
         'data/support_document_rules.xml',
         'data/auto_allocation_cron.xml',
@@ -30,6 +31,7 @@
         'web.assets_frontend': [
             'hr_holidays_updates/static/src/scss/hrmis_leave_frontend.scss',
             'hr_holidays_updates/static/src/js/hrmis_leave_frontend.js',
+            'hr_holidays_updates/static/src/js/hrmis_notifications.js',
         ],
     },
     'installable': True,

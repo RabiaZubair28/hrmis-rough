@@ -1,6 +1,15 @@
+<<<<<<< HEAD
 <odoo>
     <record id="group_section_officer" model="res.groups">
         <field name="name">Section Officer</field>
         <field name="category_id" ref="base.module_category_human_resources"/>
     </record>
 </odoo>
+=======
+<odoo>
+    <record id="group_section_officer" model="res.groups">
+        <field name="name">Section Officer</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+    </record>
+</odoo>
+>>>>>>> 5d82e4802509d6f025a240c5861d5c2892b9505b

@@ -21,7 +21,9 @@ def pending_allocation_requests_for_user(user_id: int):
         )
 
     if "employee_id" in Allocation._fields:
-        domains.append([("state", "=", "confirm"), ("employee_id.parent_id.user_id", "=", user_id)])
+        # Standard Odoo manager approval fallback:
+        # "Awaiting" in our UI corresponds to both confirm + validate1.
+        domains.append([("state", "in", ("confirm", "validate1")), ("employee_id.parent_id.user_id", "=", user_id)])
 
     if can_manage_allocations():
         domains.append([("state", "in", ("confirm", "validate1"))])
