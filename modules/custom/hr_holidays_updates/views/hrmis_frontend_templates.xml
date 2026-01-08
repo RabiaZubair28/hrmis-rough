@@ -13,18 +13,21 @@
                             <div class="hrmis-topbar__title">Facility Name<br/>District</div>
                         </t>
                     </div>
-                    <div class="hrmis-topbar__center">
+                    <!-- <div class="hrmis-topbar__center">
                         <form class="hrmis-search" action="/hrmis/staff" method="get">
                             <input class="hrmis-search__input" type="text" name="q" placeholder="Search staff"/>
                         </form>
-                    </div>
+                    </div> -->
                     <div class="hrmis-topbar__right">
+                    
                         <div class="hrmis-notifications">
-                            <button class="hrmis-bell js-hrmis-bell" type="button" aria-label="Notifications">
-                                <span class="hrmis-bell__icon">🔔</span>
+                      
+                         <button class="hrmis-bell js-hrmis-bell" type="button" aria-label="Notifications">
+                                <i class="fa fa-bell hrmis-bell__icon" aria-hidden="true"></i>
                                 <span class="hrmis-bell__badge js-hrmis-bell-badge" style="display:none;">0</span>
                             </button>
                             <div class="hrmis-notif-dropdown js-hrmis-notif-dropdown" style="display:none;">
+                               
                                 <div class="hrmis-notif-dropdown__head">
                                     <div class="hrmis-notif-dropdown__title">Notifications</div>
                                     <button class="hrmis-notif-dropdown__action js-hrmis-notif-read-all" type="button">
@@ -40,7 +43,30 @@
                             </div>
                         </div>
                         <t t-if="current_employee">
-                            <a class="hrmis-user-link" t-att-href="'/hrmis/staff/%s' % current_employee.id">
+                            <div class="hrmis-user-stack">
+                                <a class="hrmis-user-link" t-att-href="'/hrmis/staff/%s' % current_employee.id">
+                                    <div class="hrmis-user">
+                                        <div class="hrmis-user__avatar"></div>
+                                        <div class="hrmis-user__meta">
+                                            <div class="hrmis-user__label">Username</div>
+                                            <div class="hrmis-user__value">
+                                                <t t-esc="request.env.user.name"/>
+                                            </div>
+                                             <t t-if="request.session.uid">
+                                    <a href="/web/session/logout?redirect=/web/login"
+                                       class="btn btn-outline-danger btn-sm hrmis-logout"
+                                       style="font-weight: 600; border-radius: 8px;">
+                                        Logout
+                                    </a>
+                                </t>
+                                        </div>
+                                    </div>
+                                </a>
+                               
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="hrmis-user-stack">
                                 <div class="hrmis-user">
                                     <div class="hrmis-user__avatar"></div>
                                     <div class="hrmis-user__meta">
@@ -50,25 +76,14 @@
                                         </div>
                                     </div>
                                 </div>
-                            </a>
-                        </t>
-                        <t t-else="">
-                            <div class="hrmis-user">
-                                <div class="hrmis-user__avatar"></div>
-                                <div class="hrmis-user__meta">
-                                    <div class="hrmis-user__label">Username</div>
-                                    <div class="hrmis-user__value">
-                                        <t t-esc="request.env.user.name"/>
-                                    </div>
-                                </div>
+                                <t t-if="request.session.uid">
+                                    <a href="/web/session/logout?redirect=/web/login"
+                                       class="btn btn-outline-danger btn-sm hrmis-logout"
+                                       style="font-weight: 600; border-radius: 8px;">
+                                        Logout
+                                    </a>
+                                </t>
                             </div>
-                        </t>
-                        <t t-if="request.session.uid">
-                            <a href="/web/session/logout?redirect=/web/login"
-                               class="btn btn-outline-danger btn-sm"
-                               style="font-weight: 600; border-radius: 8px;">
-                                Logout
-                            </a>
                         </t>
                     </div>
                 </div>

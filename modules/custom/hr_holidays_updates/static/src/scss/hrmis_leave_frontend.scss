@@ -33,7 +33,9 @@
   background: linear-gradient(180deg, #064526 0%, #064526 100%);
   color: #fff;
   display: grid;
-  grid-template-columns: 320px 1fr 320px;
+  /* Let the right side (notifications + user stack) take what it needs,
+     and allow the center search column to shrink to avoid overlap. */
+  grid-template-columns: 320px minmax(0, 1fr) max-content;
   align-items: center;
   padding: 0 24px;
 }
@@ -50,6 +52,25 @@
   z-index: 2; /* ensure clickable if any overlap */
 }
 
+.hrmis-user-stack {
+  /* Keep notifications and user stack side-by-side,
+     and stack username + logout vertically. */
+  display: grid;
+  grid-template-columns: 44px auto; /* avatar width + meta */
+  column-gap: 12px;
+  row-gap: 6px;
+  width: fit-content; /* prevent overlap with the bell */
+}
+.hrmis-user-stack > .hrmis-user-link {
+  grid-column: 1 / -1; /* take full width for avatar+meta row */
+  justify-self: end; /* align the whole row to the right */
+}
+.hrmis-logout {
+  grid-column: 2;
+  justify-self: start; /* align with the meta column */
+  line-height: 1;
+}
+
 .hrmis-topbar__title {
   font-weight: 600;
   line-height: 1.1;
@@ -57,7 +78,7 @@
 }
 
 .hrmis-search__input {
-  width: 520px;
+  width: 100%;
   max-width: 100%;
   height: 34px;
   border-radius: 6px;
@@ -342,6 +363,7 @@
 .hrmis-panel__tools {
   display: flex;
   align-items: center;
+  margin-top: 10px;
   gap: 10px;
 }
 
@@ -683,7 +705,7 @@
 
 @media (max-width: 1200px) {
   .hrmis-topbar {
-    grid-template-columns: 260px 1fr 260px;
+    grid-template-columns: 260px minmax(0, 1fr) max-content;
   }
   .hrmis-cards {
     grid-template-columns: 1fr;
