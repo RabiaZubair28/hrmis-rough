@@ -21,7 +21,7 @@
                     <div class="hrmis-topbar__right">
                         <div class="hrmis-notifications">
                             <button class="hrmis-bell js-hrmis-bell" type="button" aria-label="Notifications">
-                                <span class="hrmis-bell__icon">🔔</span>
+                                <i class="fa fa-bell hrmis-bell__icon" aria-hidden="true"></i>
                                 <span class="hrmis-bell__badge js-hrmis-bell-badge" style="display:none;">0</span>
                             </button>
                             <div class="hrmis-notif-dropdown js-hrmis-notif-dropdown" style="display:none;">
