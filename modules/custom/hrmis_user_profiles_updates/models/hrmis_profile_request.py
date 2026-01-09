@@ -88,7 +88,10 @@ class EmployeeProfileRequest(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
-        employee = self.env.user.employee_id
+        # Important: for non-HR users, `self.env.user.employee_id` can be an
+        # `hr.employee.public` record (limited fields) which crashes when we
+        # prefill custom HRMIS fields. Always resolve the real hr.employee via sudo.
+        employee = self.env["hr.employee"].sudo().search([("user_id", "=", self.env.uid)], limit=1)
 
         if not employee:
             raise UserError("No employee is linked to your user.")

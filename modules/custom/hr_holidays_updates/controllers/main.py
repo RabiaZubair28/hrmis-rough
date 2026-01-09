@@ -1125,7 +1125,8 @@ class HrmisProfileRequestController(http.Controller):
     @http.route("/hrmis/profile/request", type="http", auth="user", website=True, methods=["GET"], csrf=False)
     def hrmis_profile_request_form(self, **kw):
         user = request.env.user
-        employee = user.employee_id
+        # `user.employee_id` may be `hr.employee.public` for non-HR users; resolve the real employee via sudo.
+        employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
         if not employee:
             return request.render("hr_holidays_updates.hrmis_error", {"error": "No employee linked to your user."})
 
@@ -1190,7 +1191,7 @@ class HrmisProfileRequestController(http.Controller):
     )
     def hrmis_profile_request_submit(self, **post):
         user = request.env.user
-        employee = user.employee_id
+        employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
         if not employee:
             return request.render("hr_holidays_updates.hrmis_error", {"error": "No employee linked to your user."})
 
