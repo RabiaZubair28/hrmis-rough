@@ -325,7 +325,10 @@ def _allowed_allocation_type_domain(employee, date_from=None):
     (gender/service eligibility in this codebase).
     """
     date_from = _safe_date(date_from)
-    alloc_new = request.env["hr.leave.allocation"].with_user(request.env.user).new(
+    # Allocation requests in the HRMIS website must not depend on private employee
+    # profile fields. Using sudo(user) avoids Odoo switching to hr.employee.public
+    # and exploding when custom HR fields exist but aren't public.
+    alloc_new = request.env["hr.leave.allocation"].sudo(request.env.user).new(
         {
             "employee_id": employee.id,
             "date_from": date_from,
@@ -913,7 +916,9 @@ class HrmisLeaveFrontendController(http.Controller):
                 # Standard field on most Odoo builds
                 "allocation_type": "regular",
             }
-            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
+            # Website flow must not depend on hr.employee.public field limitations.
+            # Create under sudo(user) to keep create_uid=user while bypassing public-profile reads.
+            alloc = request.env["hr.leave.allocation"].sudo(request.env.user).create(vals)
             if hasattr(alloc, "action_confirm"):
                 alloc.action_confirm()
         except Exception as e:
