@@ -75,6 +75,10 @@ class HRMISProfileRequest(http.Controller):
             }
         )
 
+     # Backward-compatible alias (some older templates used this URL)
+    @http.route('/hrmis/request/profile', type='http', auth='user', website=True)
+    def profile_request_form_alias(self):
+        return request.redirect('/hrmis/profile/request')
 
     @http.route(
         '/hrmis/profile/request/submit',
@@ -122,6 +126,18 @@ class HRMISProfileRequest(http.Controller):
 
         success = 'Profile update request submitted successfully.'
         return self._render_profile_form(employee, req, success=success)
+    
+    # Backward-compatible alias (some older templates used this URL)
+    @http.route(
+        '/hrmis/request/profile/submit',
+        type='http',
+        auth='user',
+        website=True,
+        methods=['POST'],
+        csrf=True
+    )
+    def submit_profile_request_alias(self, **post):
+        return self.submit_profile_request(**post)
 
     # Helper to render the same form with messages
     def _render_profile_form(self, employee, req, error=None, success=None):

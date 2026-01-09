@@ -12,7 +12,6 @@ class EmployeeProfileRequest(models.Model):
 
     employee_id = fields.Many2one(
         'hr.employee',
-        required=True,
         readonly=True
     )
 
@@ -31,57 +30,49 @@ class EmployeeProfileRequest(models.Model):
 
 
     hrmis_employee_id = fields.Char(
-        string="Employee ID / Service Number",
-        required=True
-    )
+        string="Employee ID / Service Number"    )
 
     hrmis_cnic = fields.Char(
         string="CNIC",
-        required=True
     )
 
     hrmis_father_name = fields.Char(
         string="Father's Name",
-        required=True
     )
 
     hrmis_joining_date = fields.Date(
         string="Joining Date",
-        required=True
     )
 
     gender = fields.Selection([
         ('male', 'Male'),
         ('female', 'Female'),
         ('other', 'Other')
-    ], required=True)
+    ])
 
     hrmis_cadre = fields.Selection([
         ('anesthesia', 'Anesthesia'),
         ('public_health', 'Public Health'),
         ('medical', 'Medical'),
-    ], required=True)
+    ])
 
     hrmis_designation = fields.Char(
-        string="Designation",
-        required=True
-    )
+        string="Designation"    )
 
     hrmis_bps = fields.Integer(
-        string="BPS Grade",
-        required=True
+        string="BPS Grade"
     )
 
     district_id = fields.Many2one(
         'hrmis.district.master',
         string="Current District",
-        required=True
+        required=False
     )
 
     facility_id = fields.Many2one(
         'hrmis.facility.type',
         string="Current Facility",
-        required=True,
+        required=False,
         domain="[('district_id','=',district_id)]"
     )
 
@@ -128,18 +119,18 @@ class EmployeeProfileRequest(models.Model):
                 }
             }
 
-    @api.constrains('hrmis_joining_date')
-    def _check_joining_date(self):
-        today = date.today()
-        for rec in self:
-            if rec.hrmis_joining_date and rec.hrmis_joining_date > today:
-                raise ValidationError("Joining Date cannot be in the future.")
+    # @api.constrains('hrmis_joining_date')
+    # def _check_joining_date(self):
+    #     today = date.today()
+    #     for rec in self:
+    #         if rec.hrmis_joining_date and rec.hrmis_joining_date > today:
+    #             raise ValidationError("Joining Date cannot be in the future.")
 
-    @api.constrains('hrmis_bps')
-    def _check_bps(self):
-        for rec in self:
-            if rec.hrmis_bps < 6 or rec.hrmis_bps > 22:
-                raise ValidationError("BPS must be between 6 and 22.")
+    # @api.constrains('hrmis_bps')
+    # def _check_bps(self):
+    #     for rec in self:
+    #         if rec.hrmis_bps < 6 or rec.hrmis_bps > 22:
+    #             raise ValidationError("BPS must be between 6 and 22.")
 
     # -------------------------------------------------
     # ACTIONS
@@ -147,8 +138,30 @@ class EmployeeProfileRequest(models.Model):
     def action_submit(self):
         self.ensure_one()
 
-        if self.state != 'draft':
-            return
+        required_fields = [
+            'district_id',
+            'facility_id',
+            'hrmis_employee_id',
+            'hrmis_cnic',
+            'hrmis_father_name',
+            'hrmis_joining_date',
+            'gender',
+            'hrmis_cadre',
+            'hrmis_designation',
+            'hrmis_bps',
+        ]
+
+        missing = [
+            self._fields[f].string
+            for f in required_fields
+            if not getattr(self, f)
+        ]
+
+        if missing:
+            raise UserError(
+                "Please complete the following fields before submitting:\n• "
+                + "\n• ".join(missing)
+            )
 
         self.state = 'submitted'
 
@@ -234,3 +247,15 @@ class EmployeeProfileRequest(models.Model):
                 message_type="comment",
                 subtype_xmlid="mail.mt_comment",
             )
+
+    @api.constrains('employee_id', 'state')
+    def _check_multiple_requests(self):
+        for rec in self:
+            if rec.state == 'submitted':
+                count = self.search_count([
+                    ('employee_id', '=', rec.employee_id.id),
+                    ('state', '=', 'submitted'),
+                    ('id', '!=', rec.id)
+                ])
+                if count:
+                    raise ValidationError("You already have a pending request.")

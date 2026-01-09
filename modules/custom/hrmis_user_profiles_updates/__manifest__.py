@@ -7,7 +7,7 @@
     'depends': ['hr'],
     'data': [
         'security/ir.model.access.csv',
-        'security/security.xml',
+        # 'security/security.xml',
         'views/hr_employee_inherit.xml',
         'views/hrmis_user_services_views.xml',
         'views/hrmis_training_views.xml',

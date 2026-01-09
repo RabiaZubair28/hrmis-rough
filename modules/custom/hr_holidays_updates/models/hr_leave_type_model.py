@@ -1,7 +1,7 @@
 import re
 
 from odoo import api, fields, models
-
+from odoo.exceptions import UserError
 
 def _num_to_word(n: int) -> str:
     # Keep intentionally small/safe: only what we need for UI labels.
@@ -60,6 +60,55 @@ class HrLeaveType(models.Model):
     # -------------------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------------------
+    def _hrmis_safe_write(self, vals: dict):
+        """
+        Write helper used by data/upgrade functions.
+
+        Odoo (hr_holidays) blocks changing `requires_allocation` once leaves of that
+        type exist. On real databases, policy functions may try to "normalize" that
+        field and crash module upgrades.
+
+        This helper applies `vals` but automatically **skips changing**
+        `requires_allocation` when it's locked.
+        """
+        if not vals:
+            return True
+
+        Leave = self.env["hr.leave"].sudo()
+        for lt in self:
+            v = dict(vals)
+            if "requires_allocation" in v:
+                target = v.get("requires_allocation")
+                if target and lt.requires_allocation != target:
+                    # If any non-cancelled/non-refused leave exists, Odoo forbids changing it.
+                    has_leaves = bool(
+                        Leave.search_count(
+                            [
+                                ("holiday_status_id", "=", lt.id),
+                                ("state", "not in", ("cancel", "refuse")),
+                            ]
+                        )
+                    )
+                    if has_leaves:
+                        v.pop("requires_allocation", None)
+
+            if not v:
+                continue
+
+            # Extra guard: if the core constraint still blocks, retry without it.
+            try:
+                lt.write(v)
+            except UserError as e:
+                msg = str(e) or ""
+                if "allocation requirement" in msg.lower() and "cannot be changed" in msg.lower():
+                    v.pop("requires_allocation", None)
+                    if v:
+                        lt.write(v)
+                else:
+                    raise
+
+        return True
+
     def _hrmis_choose_canonical_leave_type(self, leave_types):
         """
         Pick a single leave type record to keep active when we detect duplicates.
@@ -108,7 +157,7 @@ class HrLeaveType(models.Model):
             return rec
 
         # Keep configuration consistent across all matches.
-        matched.write(base_vals)
+        matched._hrmis_safe_write(base_vals)
 
         keep = self._hrmis_choose_canonical_leave_type(matched)
         if keep:
@@ -476,7 +525,22 @@ class HrLeaveType(models.Model):
         Do NOT auto-create or reconfigure "Casual Leave".
         "Accumulated Casual Leave" is the allocation-based leave type (like Ex-Pakistan).
         """
-        return
+        # Try common naming variants to avoid creating duplicates.
+        lt = self.search(["|", ("name", "ilike", "Casual Leave"), ("name", "ilike", "Casual Leave (CL)")], limit=1)
+        vals = {
+            "name": lt.name if lt else "Casual Leave",
+            "allowed_gender": "all",
+            # Odoo core field (selection): yes/no. Keep CL allocation-based.
+            "requires_allocation": "yes",
+            # Policy fields used by our monthly cron + request constraints
+            "max_days_per_month": 2.0,
+            "max_days_per_year": 24.0,
+            "auto_allocate": True,
+        }
+        if lt:
+            lt._hrmis_safe_write(vals)
+        else:
+            self.create(vals)
 
     def name_get(self):
         """

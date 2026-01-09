@@ -48,17 +48,17 @@
                     <group col="4">
 
                         <field name="employee_id" readonly="1"/>
-                        <field name="hrmis_employee_id" readonly="1"/>
-                        <field name="hrmis_cnic" readonly="1"/>
-                        <field name="hrmis_father_name" readonly="1"/>
-                        <field name="gender" readonly="1"/>
-                        <field name="hrmis_joining_date" readonly="1"/>
-                        <field name="hrmis_cadre" readonly="1"/>
-                        <field name="hrmis_designation" readonly="1"/>
-                        <field name="hrmis_bps" readonly="1"/>
-                        <field name="district_id" readonly="1"/>
-                        <field name="facility_id" readonly="1"/>
-                        <field name="hrmis_contact_info" readonly="1"/>
+                        <field name="hrmis_employee_id"/>
+                        <field name="hrmis_cnic"/>
+                        <field name="hrmis_father_name"/>
+                        <field name="gender"/>
+                        <field name="hrmis_joining_date"/>
+                        <field name="hrmis_cadre"/>
+                        <field name="hrmis_designation"/>
+                        <field name="hrmis_bps"/>
+                        <field name="district_id"/>
+                        <field name="facility_id"/>
+                        <field name="hrmis_contact_info"/>
 
                     </group>
                 </sheet>
@@ -68,12 +68,12 @@
         </field>
     </record>
 
-    <record id="action_profile_request_employee" model="ir.actions.act_window">
+    <!-- <record id="action_profile_request_employee" model="ir.actions.act_window">
         <field name="name">My Profile Update Requests</field>
         <field name="res_model">hrmis.employee.profile.request</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('user_id','=',uid)]</field>
-    </record>
+    </record> -->
 
     <record id="action_profile_request_hr" model="ir.actions.act_window">
         <field name="name">Profile Update Approval Requests</field>

@@ -25,21 +25,21 @@
                     <group col="4" readonly="user_id == uid">
 
                         <group string="Personal Details" col="2">
-                            <field name="hrmis_cnic"/>
-                            <field name="hrmis_father_name"/>
-                            <field name="birthday"/>
-                            <field name="gender"/>
-                            <field name="work_phone"/>
-                            <field name="hrmis_contact_info"/>
+                            <field name="hrmis_cnic" readonly="1"/>
+                            <field name="hrmis_father_name" readonly="1"/>
+                            <field name="birthday" readonly="1"/>
+                            <field name="gender" readonly="1"/>
+                            <field name="work_phone" readonly="1"/>
+                            <field name="hrmis_contact_info" readonly="1"/>
                         </group>
 
                         <group string="Job Information" col="2">
-                            <field name="hrmis_cadre"/>
-                            <field name="hrmis_designation"/>
-                            <field name="hrmis_bps"/>
-                            <field name="hrmis_joining_date"/>
-                            <field name="district_id"/>
-                            <field name="facility_id"/>
+                            <field name="hrmis_cadre" readonly="1"/>
+                            <field name="hrmis_designation" readonly="1"/>
+                            <field name="hrmis_bps" readonly="1"/>
+                            <field name="hrmis_joining_date" readonly="1"/>
+                            <field name="district_id" readonly="1"/>
+                            <field name="facility_id" readonly="1"/>
                         </group>
 
                     </group>

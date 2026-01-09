@@ -9,7 +9,19 @@ class HrHolidaysValidators(models.Model):
         default=10,
         help="Approval order"
     )
-
+    sequence_type = fields.Selection(
+        [
+            ("sequential", "Sequential"),
+            ("parallel", "Parallel"),
+        ],
+        string="Sequence Type",
+        default=False,
+        required=False,
+        help=(
+            "Sequential: validator receives the request after the previous one approves.\n"
+            "Parallel: validator receives the request together with the next consecutive parallel validators."
+        ),
+    )
     action_type = fields.Selection(
         [
             ('approve', 'Approve'),

@@ -1,0 +1,21 @@
+<odoo>
+    <!-- HRMIS Roles Category -->
+    <record id="module_category_hrmis_roles" model="ir.module.category">
+        <field name="name">HRMIS Roles</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <!-- HRMIS Employee Group -->
+    <record id="group_hrmis_employee_self" model="res.groups">
+        <field name="name">HRMIS Employee (Self)</field>
+        <field name="category_id" ref="module_category_hrmis_roles"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Section Officer Group -->
+    <record id="group_section_officer" model="res.groups">
+        <field name="name">Section Officer</field>
+        <field name="category_id" ref="module_category_hrmis_roles"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+</odoo>

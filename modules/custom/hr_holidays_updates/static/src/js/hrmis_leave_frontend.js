@@ -6,6 +6,15 @@ function _qs(root, sel) {
   return root ? root.querySelector(sel) : null;
 }
 
+function _escapeHtml(s) {
+  return String(s || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function _setSelectOptions(selectEl, options, keepValue) {
   if (!selectEl) return;
   const current = keepValue ? selectEl.value : "";
@@ -38,6 +47,90 @@ function _setSelectOptions(selectEl, options, keepValue) {
   }
 }
 
+function _renderApproverSteps(panelEl, steps) {
+  const emptyEl = _qs(panelEl, ".js-hrmis-approver-empty");
+  const stepsEl = _qs(panelEl, ".js-hrmis-approver-steps");
+  if (!stepsEl) return;
+
+  const has = Array.isArray(steps) && steps.length > 0;
+  if (emptyEl) emptyEl.style.display = has ? "none" : "";
+  stepsEl.style.display = has ? "" : "none";
+  if (!has) {
+    stepsEl.innerHTML = "";
+    return;
+  }
+
+  const html = [];
+  for (const st of steps) {
+    const stepNo = st?.step;
+    const approvers = st?.approvers || [];
+    html.push(
+      `<div class="hrmis-approver-step">
+        <div class="hrmis-approver-step__title">Step ${_escapeHtml(stepNo)}</div>
+        <div class="hrmis-approver-step__list">
+          ${approvers
+            .map((a) => {
+              const name = _escapeHtml(a?.name || "");
+              const seq = _escapeHtml(a?.sequence ?? "");
+              const stype = _escapeHtml(a?.sequence_type || "sequential");
+              const job = _escapeHtml(a?.job_title || "");
+              const dept = _escapeHtml(a?.department || "");
+              const meta = [job, dept].filter(Boolean).join(" • ");
+              return `<div class="hrmis-approver-step__item">
+                <div class="hrmis-approver-step__row">
+                  <div class="hrmis-approver-step__name">${name}</div>
+                  <div class="hrmis-approver-step__badge">${stype}</div>
+                </div>
+                <div class="hrmis-approver-step__sub">Seq: ${seq}${meta ? ` — ${meta}` : ""}</div>
+              </div>`;
+            })
+            .join("")}
+        </div>
+      </div>`
+    );
+  }
+  stepsEl.innerHTML = html.join("");
+}
+
+async function _refreshApprovers(formEl) {
+  const url = formEl?.dataset?.leaveApproversUrl;
+  const employeeId = formEl?.dataset?.employeeId;
+  const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
+  const panelEl = document.querySelector(".js-hrmis-approver-panel");
+  if (!url || !employeeId || !leaveTypeEl || !panelEl) return;
+
+  const leaveTypeId = leaveTypeEl.value;
+  if (!leaveTypeId) {
+    _renderApproverSteps(panelEl, []);
+    return;
+  }
+
+  const params = new URLSearchParams({
+    employee_id: employeeId,
+    leave_type_id: leaveTypeId,
+  });
+
+  try {
+    const resp = await fetch(`${url}?${params.toString()}`, {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) {
+      _renderApproverSteps(panelEl, []);
+      return;
+    }
+    const data = await resp.json();
+    if (!data || !data.ok) {
+      _renderApproverSteps(panelEl, []);
+      return;
+    }
+    _renderApproverSteps(panelEl, data.steps || []);
+  } catch {
+    _renderApproverSteps(panelEl, []);
+  }
+}
+
 async function _refreshLeaveTypes(formEl) {
   const url = formEl?.dataset?.leaveTypesUrl;
   const employeeId = formEl?.dataset?.employeeId;
@@ -61,6 +154,7 @@ async function _refreshLeaveTypes(formEl) {
     if (!data || !data.ok) return;
     _setSelectOptions(selectEl, data.leave_types || [], true);
     _updateSupportDocUI(formEl);
+    _refreshApprovers(formEl);
   } catch {
     // Ignore - keep UX stable if endpoint isn't reachable
   }
@@ -98,10 +192,11 @@ function _init() {
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
   if (leaveTypeEl) {
-    leaveTypeEl.addEventListener("change", () => _updateSupportDocUI(formEl));
+    leaveTypeEl.addEventListener("change", () => _refreshApprovers(formEl));
   }
 
   _updateSupportDocUI(formEl);
+  _refreshApprovers(formEl);
 }
 
 // In some Odoo pages, assets can load after DOMContentLoaded.

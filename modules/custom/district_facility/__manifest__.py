@@ -8,6 +8,8 @@
         'views/facility_type_views.xml',
         'views/tehsil_views.xml',
         'security/ir.model.access.csv',
+        "data/districts.xml",
+        "data/facilities.xml",
     ],
     'installable': True,
     'application': False,

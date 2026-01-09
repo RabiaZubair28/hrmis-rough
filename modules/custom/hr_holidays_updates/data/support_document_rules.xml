@@ -16,4 +16,6 @@
     <function model="hr.leave.type" name="apply_service_eligibility_rules"/>
     <!-- Apply/refresh max duration rules on module upgrade -->
     <function model="hr.leave.type" name="apply_max_duration_rules"/>
+    <!-- Ensure sequential-approver record rules apply to existing validators -->
+    <!-- <function model="hr.leave" name="hrmis_sync_sequential_approver_group"/> -->
 </odoo>

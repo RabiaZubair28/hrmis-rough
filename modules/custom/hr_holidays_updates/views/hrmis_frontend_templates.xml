@@ -52,27 +52,28 @@
                                             <div class="hrmis-user__value">
                                                 <t t-esc="request.env.user.name"/>
                                             </div>
-                                             <t t-if="request.session.uid">
+                                        </div>
+                                    </div>
+                                </a>
+                                <t t-if="request.session.uid">
                                     <a href="/web/session/logout?redirect=/web/login"
                                        class="btn btn-outline-danger btn-sm hrmis-logout"
                                        style="font-weight: 600; border-radius: 8px;">
                                         Logout
                                     </a>
                                 </t>
-                                        </div>
-                                    </div>
-                                </a>
-                               
                             </div>
                         </t>
                         <t t-else="">
                             <div class="hrmis-user-stack">
-                                <div class="hrmis-user">
-                                    <div class="hrmis-user__avatar"></div>
-                                    <div class="hrmis-user__meta">
-                                        <div class="hrmis-user__label">Username</div>
-                                        <div class="hrmis-user__value">
-                                            <t t-esc="request.env.user.name"/>
+                                <div class="hrmis-user-link">
+                                    <div class="hrmis-user">
+                                        <div class="hrmis-user__avatar"></div>
+                                        <div class="hrmis-user__meta">
+                                            <div class="hrmis-user__label">Username</div>
+                                            <div class="hrmis-user__value">
+                                                <t t-esc="request.env.user.name"/>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -517,13 +518,13 @@
 
     <template id="hrmis_leave_form" name="HRMIS Leave Form">
         <t t-call="hr_holidays_updates.hrmis_ui_layout">
-            <div class="hrmis-split">
+            <div class="hrmis-split hrmis-split--leave-request">
                
 
                 <div class="hrmis-panel">
-                    <div class="hrmis-breadcrumb">
+                    <!-- <div class="hrmis-breadcrumb">
                         <a t-att-href="'/hrmis/staff/%s/services' % employee.id">&lt; Back to Services</a>
-                    </div>
+                    </div> -->
                     <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
                         <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=history' % employee.id">Leave history</a>
                         <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=new' % employee.id">New leave request</a>
@@ -544,6 +545,7 @@
                                   t-att-action="'/hrmis/staff/%s/leave/submit' % employee.id"
                                   t-att-data-employee-id="employee.id"
                                   t-att-data-leave-types-url="'/hrmis/api/leave/types'"
+                                  t-att-data-leave-approvers-url="'/hrmis/api/leave/approvers'"
                                   method="post"
                                   enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -664,6 +666,19 @@
                         </t>
                     </div>
                 </div>
+                <!-- Right-side panel: approval chain preview (updates on leave type change) -->
+                <div class="hrmis-panel hrmis-approver-panel js-hrmis-approver-panel" t-if="tab == 'new'">
+                    <div class="hrmis-panel__header">
+                        <div class="hrmis-panel__title" style="font-size: 22px;">Approval chain</div>
+                    </div>
+                    <div class="hrmis-panel__body">
+                        <div class="hrmis-help">
+                            Select a leave type to see who will approve your request and whether approvals are sequential or parallel.
+                        </div>
+                        <div class="hrmis-empty js-hrmis-approver-empty">No approvers configured for the selected leave type.</div>
+                        <div class="hrmis-approver-steps js-hrmis-approver-steps" style="display:none;"></div>
+                    </div>
+                </div>
             </div>
         </t>
     </template>
@@ -705,6 +720,7 @@
                                 <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/leave/%s' % lv.id">View</a>
                                 <form t-att-action="'/hrmis/leave/%s/forward' % lv.id" method="post">
                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    <input class="hrmis-input" type="text" name="comment" placeholder="Optional comment..."/>
                                     <button class="hrmis-btn hrmis-btn--primary" type="submit">Forward</button>
                                 </form>
                             </div>
@@ -727,17 +743,30 @@
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Leave type</div><div class="hrmis-kv__v"><t t-esc="leave.holiday_status_id.name"/></div></div>
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Dates</div><div class="hrmis-kv__v"><t t-esc="leave.request_date_from"/> to <t t-esc="leave.request_date_to"/></div></div>
                         <div class="hrmis-kv__row"><div class="hrmis-kv__k">Remarks</div><div class="hrmis-kv__v"><t t-esc="leave.name"/></div></div>
-                        <div class="hrmis-kv__row">
-                            <div class="hrmis-kv__k">State</div>
-                            <div class="hrmis-kv__v">
-                                <t t-if="leave.state in ('confirm','validate1')">Awaiting</t>
-                                <t t-elif="leave.state in ('validate','validate2')">Approved</t>
-                                <t t-elif="leave.state == 'refuse'">Rejected</t>
-                                <t t-elif="leave.state == 'cancel'">Cancelled</t>
-                                <t t-elif="leave.state == 'draft'">Draft</t>
-                                <t t-else=""><t t-esc="leave.state"/></t>
-                            </div>
+                        <div class="hrmis-kv__row"><div class="hrmis-kv__k">State</div><div class="hrmis-kv__v"><t t-esc="leave.state"/></div></div>
+                        <div class="hrmis-panel" style="margin-top: 16px;">
+                        <div class="hrmis-panel__header">
+                            <div class="hrmis-panel__title">Approval comments</div>
                         </div>
+                        <div class="hrmis-panel__body">
+                            <t t-set="comments" t-value="leave.approval_status_ids.filtered(lambda s: s.comment)"/>
+                            <t t-if="comments">
+                                <t t-foreach="comments" t-as="st">
+                                    <div class="hrmis-result" style="align-items: flex-start;">
+                                        <div class="hrmis-result__meta">
+                                            <div class="hrmis-result__name">
+                                                <t t-esc="st.user_id.name"/> <t t-if="st.commented_on">— <t t-esc="st.commented_on"/></t>
+                                            </div>
+                                            <div class="hrmis-result__sub"><t t-esc="st.comment"/></div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <div class="hrmis-empty">No comments yet.</div>
+                            </t>
+                        </div>
+                    </div>
                     </div>
                     <div class="hrmis-form__actions">
                         <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/leave/requests">Back</a>

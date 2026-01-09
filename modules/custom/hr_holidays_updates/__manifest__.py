@@ -15,6 +15,7 @@
     'data': [
         'security/hrmis_notification_rules.xml',
         'data/leave_type_data.xml',  # optional
+        'security/ir.model.access.csv',
         'data/support_document_rules.xml',
         'data/auto_allocation_cron.xml',
         'views/hr_holidays_views.xml',
@@ -25,7 +26,9 @@
         "views/hrmis_profile_request_templates.xml",
         "views/hr_leave_approval_flow_views.xml",
         "views/hr_leave_views.xml",
+        "views/hr_leave_approval_wizard_views.xml",
         'views/hr_leave_type_views.xml',
+        'views/hr_holidays_updates_security.xml',
     ],
     'assets': {
         'web.assets_frontend': [

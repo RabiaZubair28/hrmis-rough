@@ -20,7 +20,15 @@
                     <field name="leave_type_id"/>
                     <field name="sequence"/>
                     <field name="mode"/>
-                    <field name="approver_ids" widget="many2many_tags"/>
+                    <field name="approver_line_ids">
+                        <list editable="bottom">
+                            <field name="sequence"/>
+                            <field name="user_id"/>
+                            <field name="sequence_type" required="1"/>
+                        </list>
+                    </field>
+                    <!-- Backward compatibility (legacy field); keep hidden -->
+                    <field name="approver_ids" invisible="1"/>
                 </group>
             </form>
         </field>

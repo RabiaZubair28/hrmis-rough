@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="rule_hr_leave_sequential_visibility_any_approver" model="ir.rule">
+    <field name="name">Sequential approval: hide future-step leaves from approvers</field>
+    <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+    <field name="domain_force">
+      [
+        '|',
+        ('state', '!=', 'confirm'),
+        '|','|',
+          ('employee_id.user_id', '=', user.id),
+          ('create_uid', '=', user.id),
+          '|',
+            ('approver_user_ids', 'not in', [user.id]),
+            ('pending_approver_ids', 'in', [user.id])
+      ]
+    </field>
+  </record>
+ 
+  <record id="rule_hr_leave_approval_status_sequential_visibility_any_approver" model="ir.rule">
+    <field name="name">Sequential approval: approval status visibility</field>
+    <field name="model_id" ref="hr_holidays_updates.model_hr_leave_approval_status"/>
+    <field name="domain_force">
+      [
+        '|',
+        ('leave_id.state', '!=', 'confirm'),
+        '|','|',
+          ('leave_id.employee_id.user_id', '=', user.id),
+          ('leave_id.create_uid', '=', user.id),
+          '|',
+            ('leave_id.approver_user_ids', 'not in', [user.id]),
+            ('leave_id.pending_approver_ids', 'in', [user.id])
+      ]
+    </field>
+  </record>
+</odoo>

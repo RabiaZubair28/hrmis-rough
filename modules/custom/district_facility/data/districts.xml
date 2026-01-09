@@ -1,0 +1,14 @@
+<odoo>
+    <record id="district_badin" model="x_district.master">
+    <field name="name">Badin</field>
+    <field name="code">BDN</field>
+    <field name="region">south</field>
+</record>
+
+<record id="district_dadu" model="x_district.master">
+    <field name="name">Dadu</field>
+    <field name="code">DAD</field>
+    <field name="region">north</field>
+</record>
+
+</odoo>

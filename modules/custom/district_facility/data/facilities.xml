@@ -1,0 +1,32 @@
+<odoo>
+    <!-- Badin facilities -->
+    <record id="facility_dho_badin" model="x_facility.type">
+        <field name="name">DISTRICT HEALTH OFFICER BADIN</field>
+        <field name="district_id" ref="district_badin"/>
+        <field name="category">hospital</field>
+        <field name="capacity">0</field>
+        <field name="active">True</field>
+        <field name="description">DISTRICT HEALTH OFFICER BADIN</field>
+    </record>
+
+    <record id="facility_blood_transfusion_badin" model="x_facility.type">
+        <field name="name">BLOOD TRANSFUSION (EDO HEALTH) BADIN</field>
+        <field name="district_id" ref="district_badin"/>
+        <field name="category">hospital</field>
+        <field name="capacity">0</field>
+        <field name="active">True</field>
+        <field name="description">BLOOD TRANSFUSION (EDO HEALTH) BADIN</field>
+    </record>
+
+    <!-- Dadu facilities -->
+    <record id="facility_dho_dadu" model="x_facility.type">
+        <field name="name">DISTRICT HEALTH OFFICER DADU</field>
+        <field name="district_id" ref="district_dadu"/>
+        <field name="category">hospital</field>
+        <field name="capacity">0</field>
+        <field name="active">True</field>
+        <field name="description">DISTRICT HEALTH OFFICER DADU</field>
+    </record>
+
+    <!-- Repeat for all facilities -->
+</odoo>
