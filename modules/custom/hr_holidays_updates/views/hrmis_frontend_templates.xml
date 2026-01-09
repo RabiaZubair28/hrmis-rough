@@ -522,9 +522,9 @@
                
 
                 <div class="hrmis-panel">
-                    <div class="hrmis-breadcrumb">
+                    <!-- <div class="hrmis-breadcrumb">
                         <a t-att-href="'/hrmis/staff/%s/services' % employee.id">&lt; Back to Services</a>
-                    </div>
+                    </div> -->
                     <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
                         <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=history' % employee.id">Leave history</a>
                         <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=new' % employee.id">New leave request</a>
