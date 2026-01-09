@@ -76,11 +76,11 @@ def _friendly_leave_error(e: Exception) -> str:
     # Requested by business: replace the "started leave reset" errors with a single message.
     # Message wording varies by Odoo version/translation ("officer" vs "manager").
     if "reset a started leave" in msg or "reset the started leave" in msg:
-        return "you cannot take existing day's leave"
+        return "You cannot take existing day's leave"
 
     # Normalize common overlap messages to a single friendly one.
     if _OVERLAP_ERR_RE.search(msg):
-        return "you cannot take existing day's leave"
+        return "You cannot take existing day's leave"
 
     # Avoid leaking internal access errors.
     if isinstance(e, AccessError):
@@ -759,7 +759,7 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         try:
-            friendly_existing_day_msg = "you cannot take existing day's leave"
+            friendly_existing_day_msg = "You cannot take existing day's leave"
 
             # Validate dates early to avoid creating a record and then failing later.
             d_from = fields.Date.to_date(dt_from)
@@ -774,10 +774,11 @@ class HrmisLeaveFrontendController(http.Controller):
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date"
                 )
 
-            # Block past/started days explicitly (business requirement).
+            # Block past days explicitly (business requirement).
             today = fields.Date.context_today(request.env.user)
-            # "Started" includes today: do not allow leave starting today.
-            if d_from <= today or d_to < today:
+            # Allow "today" (backend may still reject based on started-leave rules);
+            # only block backdated requests here.
+            if d_from < today or d_to < today:
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
                 )
