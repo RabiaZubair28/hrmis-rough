@@ -25,17 +25,26 @@ class HrLeaveAllocation(models.Model):
         for alloc in self:
             alloc.employee_gender = alloc.employee_id.gender or False
 
-    @api.depends('employee_id', 'employee_id.hrmis_joining_date', 'date_from')
+    # Don't depend on custom HRMIS fields for allocations: many employees won't
+    # have them filled, and some flows use `hr.employee.public` (limited fields).
+    @api.depends('employee_id', 'date_from')
     def _compute_employee_service_months(self):
         for alloc in self:
-            # Use HRMIS joining date (available via hrmis_user_profiles_updates)
-            joining_date = alloc.employee_id.hrmis_joining_date
+            # Prefer HRMIS joining date when present, but do not *require* it.
+            # If missing, treat as "no restriction" (very large months), so
+            # allocation requests don't depend on profile completeness.
+            joining_date = False
+            try:
+                if alloc.employee_id and "hrmis_joining_date" in alloc.employee_id._fields:
+                    joining_date = alloc.employee_id.sudo().hrmis_joining_date
+            except Exception:
+                joining_date = False
             ref_date = alloc.date_from or fields.Date.today()
             if not joining_date or not ref_date:
-                alloc.employee_service_months = 0
+                alloc.employee_service_months = 10**9
                 continue
             if ref_date < joining_date:
-                alloc.employee_service_months = 0
+                alloc.employee_service_months = 10**9
                 continue
             delta = relativedelta(ref_date, joining_date)
             alloc.employee_service_months = delta.years * 12 + delta.months
@@ -54,7 +63,8 @@ class HrLeaveAllocation(models.Model):
             # Treat empty (False) as "All" for legacy leave types.
             domain = [('allowed_gender', 'in', [False, 'all', gender])]
         else:
-            domain = [('allowed_gender', 'in', [False, 'all'])]
+            # If gender isn't set, don't restrict (allow all gender-specific types too).
+            domain = [('allowed_gender', 'in', [False, 'all', 'male', 'female'])]
 
         months = self.employee_service_months
         domain += ['|', ('min_service_months', '=', 0), ('min_service_months', '<=', months)]
@@ -72,7 +82,10 @@ class HrLeaveAllocation(models.Model):
                 continue
 
             gender = alloc.employee_gender
-            if not gender or gender != allowed:
+            # If employee gender isn't set, don't block allocation requests.
+            if not gender:
+                continue
+            if gender != allowed:
                 raise ValidationError(
                     "This time off type is restricted by gender. "
                     "Please select a type allowed for this employee."
