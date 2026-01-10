@@ -12,3 +12,18 @@ access_hrmis_notification_user,hrmis.notification user,model_hrmis_notification,
 access_hr_leave_approval_wizard_user,leave.approval.wizard user,model_hr_leave_approval_wizard,base.group_user,1,1,1,0
 access_hr_holidays_validators_hr_manager,access.hr.holidays.validators.hr.manager,model_hr_holidays_validators,hr.group_hr_manager,1,1,1,1
 
+# -----------------------------------------------------------------------------
+# Time Off (hr.leave) ACLs
+#
+# IMPORTANT:
+# Using `model_hr_holidays` (legacy) won't grant anything on modern Odoo.
+# `hr.leave` is the Time Off request model, external id: `hr_holidays.model_hr_leave`.
+# -----------------------------------------------------------------------------
+access_hr_leave_form_admin,Time Off Form Admin,hr_holidays.model_hr_leave,hr.group_hr_manager,1,1,1,1
+access_hr_leave_form_user,Time Off Form User,hr_holidays.model_hr_leave,base.group_user,1,1,1,1
+access_hr_leave_status_form_admin,Edit Holiday Status Admin,hr_holidays.model_hr_leave,hr.group_hr_manager,1,1,1,1
+access_hr_leave_status_form_user,Edit Holiday Status User,hr_holidays.model_hr_leave,base.group_user,1,1,1,1
+access_hr_holidays_manager_request,hr.holidays.manager.request,hr_holidays.model_hr_leave,hr_holidays.group_hr_holidays_manager,1,1,1,1
+access_hr_holidays_employee_request,hr.holidays.employee.request,hr_holidays.model_hr_leave,base.group_user,1,0,0,0
+access_hr_holidays_user_request,hr.holidays.user.request,hr_holidays.model_hr_leave,hr_holidays.group_hr_holidays_officer,1,0,0,0
+

@@ -1,1 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+# Section Officer needs to read/approve leave & allocation requests
+# from the HRMIS "Manage Requests" UI.
+access_hr_leave_section_officer,hr.leave section officer,hr_holidays.model_hr_leave,custom_login.group_section_officer,1,1,0,0
+access_hr_leave_allocation_section_officer,hr.leave.allocation section officer,hr_holidays.model_hr_leave_allocation,custom_login.group_section_officer,1,1,0,0
