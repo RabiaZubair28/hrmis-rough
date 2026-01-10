@@ -237,13 +237,6 @@
                     </div> -->
                     <div class="hrmis-panel__body">
                         <div class="card-body">
-                            <t t-if="error">
-                                <div class="hrmis-alert hrmis-alert--danger"><t t-esc="error"/></div>
-                            </t>
-                            <t t-if="success">
-                                <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
-                            </t>
-
     <!-- TAB HEADERS -->
     <ul class="nav nav-tabs mb-3" role="tablist">
         <li class="nav-item">

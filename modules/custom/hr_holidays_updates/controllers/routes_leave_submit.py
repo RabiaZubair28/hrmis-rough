@@ -65,37 +65,37 @@ class HrmisLeaveSubmitController(http.Controller):
             leave_type_id = safe_int(post.get("leave_type_id"))
             remarks = (post.get("remarks") or "").strip()
             if not dt_from or not dt_to or not leave_type_id or not remarks:
-                return request.redirect(f"/hrmis/staff/{employee.id}?error=Please+fill+all+required+fields")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields")
 
             # Guard against backdated requests (UI can be bypassed).
             d_from = fields.Date.to_date(dt_from)
             d_to = fields.Date.to_date(dt_to)
             if not d_from or not d_to:
-                return request.redirect(f"/hrmis/staff/{employee.id}?error=Invalid+date+format")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+date+format")
 
             today = fields.Date.context_today(request.env.user)
             if d_from < today:
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}?error=You+cannot+request+leave+for+past+dates"
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=You+cannot+request+leave+for+past+dates"
                 )
             if d_to < d_from:
-                return request.redirect(f"/hrmis/staff/{employee.id}?error=End+date+cannot+be+before+start+date")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date")
 
             allowed_types = dedupe_leave_types_for_ui(
                 leave_types_for_employee(employee, request_date_from=dt_from)
                 | allocation_types_for_employee(employee, date_from=dt_from)
             )
             if leave_type_id not in set(allowed_types.ids):
-                return request.redirect(f"/hrmis/staff/{employee.id}?error=Selected+leave+type+is+not+allowed")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed")
 
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
             if not leave_type:
-                return request.redirect(f"/hrmis/staff/{employee.id}?error=Invalid+leave+type")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type")
 
             uploaded = request.httprequest.files.get("support_document")
             if getattr(leave_type, "support_document", False) and not uploaded:
                 msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
-                return request.redirect(f"/hrmis/staff/{employee.id}?error={msg}")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
 
             # IMPORTANT: force flush inside a savepoint so any constraints (e.g. overlap)
             # raised at flush/commit time are caught here and shown in the HRMIS UI,
@@ -142,9 +142,9 @@ class HrmisLeaveSubmitController(http.Controller):
                     target_emp_id = locals()["employee"].id
             except Exception:
                 pass
-            return request.redirect(f"/hrmis/staff/{target_emp_id}?error={quote_plus(_friendly_leave_error(e))}")
+            return request.redirect(f"/hrmis/staff/{target_emp_id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}")
 
-        return request.redirect(f"/hrmis/staff/{employee.id}?success=Leave+request+submitted")
+        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted")
 
     @http.route(
         ["/hrmis/staff/<int:employee_id>/allocation/submit"],
@@ -157,7 +157,7 @@ class HrmisLeaveSubmitController(http.Controller):
     def hrmis_allocation_submit(self, employee_id: int, **post):
         if request.httprequest.method != "POST":
             return request.redirect(
-                f"/hrmis/staff/{employee_id}?error=Please+use+the+form+to+submit+an+allocation+request"
+                f"/hrmis/staff/{employee_id}/leave?tab=allocation&error=Please+use+the+form+to+submit+an+allocation+request"
             )
 
         employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
@@ -174,7 +174,7 @@ class HrmisLeaveSubmitController(http.Controller):
             number_of_days = 0.0
 
         if not leave_type_id or number_of_days <= 0.0:
-            return request.redirect(f"/hrmis/staff/{employee.id}?error=Please+fill+all+required+fields")
+            return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Please+fill+all+required+fields")
 
         try:
             allowed_types = dedupe_leave_types_for_ui(
@@ -182,7 +182,7 @@ class HrmisLeaveSubmitController(http.Controller):
                 | allocation_types_for_employee(employee, date_from=fields.Date.today())
             )
             if leave_type_id not in set(allowed_types.ids):
-                return request.redirect(f"/hrmis/staff/{employee.id}?error=Selected+leave+type+is+not+allowed")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Selected+leave+type+is+not+allowed")
 
             alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(
                 {
@@ -197,7 +197,7 @@ class HrmisLeaveSubmitController(http.Controller):
                 alloc.action_confirm()
         except Exception as e:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}?error={quote_plus(str(e) or 'Could not submit allocation request')}"
+                f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
             )
 
-        return request.redirect(f"/hrmis/staff/{employee.id}?success=Allocation+request+submitted")
+        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=allocation&success=Allocation+request+submitted")
