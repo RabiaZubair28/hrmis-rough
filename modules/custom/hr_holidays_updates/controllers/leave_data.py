@@ -176,8 +176,6 @@ def merged_leave_and_allocation_types(employee, dt_leave=None, dt_alloc=None):
     lt_leave = dedupe_leave_types_for_ui(leave_types_for_employee(employee, request_date_from=dt_leave))
     if "auto_allocate" in lt_leave._fields:
         lt_leave = lt_leave.filtered(lambda lt: bool(lt.auto_allocate))
-    if "requires_allocation" in lt_leave._fields:
-        lt_leave = lt_leave.filtered(lambda lt: lt.requires_allocation == "yes")
 
     # Allocation Request dropdown: only types that REQUIRE allocation.
     lt_alloc = dedupe_leave_types_for_ui(allocation_types_for_employee(employee, date_from=dt_alloc))

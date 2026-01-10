@@ -530,10 +530,12 @@ class HrmisLeaveFrontendController(http.Controller):
         leave_types = _dedupe_leave_types_for_ui(
             _leave_types_for_employee(employee, request_date_from=dt_leave)
         )
+        # "Auto-allocated" types are those with policy-driven allocations.
+        # Do NOT additionally filter on `requires_allocation` here because some DBs
+        # may have these policy types created without that flag (e.g. Earned Leave/LPR),
+        # and the business requirement is to show auto-allocated types.
         if "auto_allocate" in leave_types._fields:
             leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
-        if "requires_allocation" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: lt.requires_allocation == "yes")
 
         allocation_types = _dedupe_leave_types_for_ui(
             _allocation_types_for_employee(employee, date_from=dt_alloc)
@@ -591,8 +593,6 @@ class HrmisLeaveFrontendController(http.Controller):
         # Endpoint powers the "New Leave Request" dropdown: keep only auto-allocated types.
         if "auto_allocate" in leave_types._fields:
             leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
-        if "requires_allocation" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: lt.requires_allocation == "yes")
         payload = {
             "ok": True,
             "leave_types": [
@@ -767,8 +767,6 @@ class HrmisLeaveFrontendController(http.Controller):
             )
             if "auto_allocate" in allowed_types._fields:
                 allowed_types = allowed_types.filtered(lambda lt: bool(lt.auto_allocate))
-            if "requires_allocation" in allowed_types._fields:
-                allowed_types = allowed_types.filtered(lambda lt: lt.requires_allocation == "yes")
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed"

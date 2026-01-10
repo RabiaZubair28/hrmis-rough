@@ -74,11 +74,9 @@ class HrmisLeaveFormController(http.Controller):
         leave_types = dedupe_leave_types_for_ui(
             leave_types_for_employee(employee, request_date_from=d_from)
         )
-        # API powers the Leave Request dropdown: only auto-allocated allocation-based types.
+        # API powers the Leave Request dropdown: only auto-allocated types.
         if "auto_allocate" in leave_types._fields:
             leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
-        if "requires_allocation" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: lt.requires_allocation == "yes")
 
         payload = {
             "ok": True,
