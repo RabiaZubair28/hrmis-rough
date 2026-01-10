@@ -91,7 +91,7 @@ def allowed_leave_type_domain(employee, request_date_from=None):
 def leave_types_for_employee(employee, request_date_from=None):
     domain = allowed_leave_type_domain(employee, request_date_from=request_date_from)
     request_date_from = safe_date(request_date_from)
-    return (
+    recs = (
         request.env["hr.leave.type"]
         .sudo()
         .with_context(
@@ -107,6 +107,57 @@ def leave_types_for_employee(employee, request_date_from=None):
         )
         .search(domain, order="name asc")
     )
+
+    # Include policy-driven auto-allocated types even if allocations aren't present yet.
+    if "auto_allocate" in recs._fields:
+        policy = (
+            request.env["hr.leave.type"]
+            .sudo()
+            .with_context(
+                allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
+                company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
+                employee_id=employee.id,
+                default_employee_id=employee.id,
+                request_type="leave",
+                default_date_from=request_date_from,
+                default_date_to=request_date_from,
+            )
+            .search([("auto_allocate", "=", True), ("active", "=", True)], order="name asc")
+        )
+
+        gender = getattr(employee, "gender", False) if employee and "gender" in employee._fields else False
+        joining = getattr(employee, "hrmis_joining_date", False) if employee and "hrmis_joining_date" in employee._fields else False
+
+        def _service_months():
+            if not joining or not request_date_from:
+                return 10**9
+            try:
+                if request_date_from < joining:
+                    return 10**9
+                return (request_date_from.year - joining.year) * 12 + (request_date_from.month - joining.month)
+            except Exception:
+                return 10**9
+
+        months = _service_months()
+
+        def _eligible(lt):
+            try:
+                if "allowed_gender" in lt._fields:
+                    allowed = lt.allowed_gender or "all"
+                    if gender and allowed not in ("all", False, gender):
+                        return False
+                if "min_service_months" in lt._fields:
+                    req = int(getattr(lt, "min_service_months") or 0)
+                    if req and months < req:
+                        return False
+            except Exception:
+                return True
+            return True
+
+        policy = policy.filtered(_eligible)
+        recs |= policy
+
+    return recs
 
 
 def allowed_allocation_type_domain(employee, date_from=None):
@@ -171,25 +222,12 @@ def dedupe_leave_types_for_ui(leave_types):
 def merged_leave_and_allocation_types(employee, dt_leave=None, dt_alloc=None):
     dt_leave = safe_date(dt_leave)
     dt_alloc = safe_date(dt_alloc)
+    # Leave Request dropdown: only AUTO-ALLOCATED allocation-based types
+    # (shows "X remaining out of Y").
     lt_leave = dedupe_leave_types_for_ui(leave_types_for_employee(employee, request_date_from=dt_leave))
-    lt_alloc = dedupe_leave_types_for_ui(allocation_types_for_employee(employee, date_from=dt_alloc))
+    if "auto_allocate" in lt_leave._fields:
+        lt_leave = lt_leave.filtered(lambda lt: bool(lt.auto_allocate))
 
-    all_ids = list(set(lt_leave.ids) | set(lt_alloc.ids))
-    all_types = (
-        request.env["hr.leave.type"]
-        .sudo()
-        .with_context(
-            allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-            company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-            employee_id=employee.id,
-            default_employee_id=employee.id,
-            request_type="leave",
-            default_date_from=dt_leave,
-            default_date_to=dt_leave,
-        )
-        .browse(all_ids)
-        .exists()
-        .sorted(lambda lt: (lt.name or "").lower())
-    )
-    all_types = dedupe_leave_types_for_ui(all_types)
-    return all_types, all_types
+    # Allocation Request dropdown: only types that REQUIRE allocation.
+    lt_alloc = dedupe_leave_types_for_ui(allocation_types_for_employee(employee, date_from=dt_alloc))
+    return lt_leave, lt_alloc

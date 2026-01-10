@@ -184,30 +184,17 @@ class HrmisLeaveSubmitController(http.Controller):
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Selected+leave+type+is+not+allowed")
 
-            vals = {
-                "employee_id": employee.id,
-                "holiday_status_id": leave_type_id,
-                "number_of_days": number_of_days,
-                "name": reason or "Allocation request",
-                "allocation_type": "regular",
-            }
-
-            # Create the request. If anything fails here, we must show an error because
-            # nothing was submitted.
-            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
-
-            # Best-effort confirm: if confirmation/constraints fail *after* creation,
-            # keep the created allocation request and avoid showing an error page/banner.
-            try:
-                with request.env.cr.savepoint():
-                    if hasattr(alloc, "action_confirm"):
-                        alloc.action_confirm()
-                    # Force constraints to trigger inside savepoint.
-                    request.env.cr.flush()
-            except Exception:
-                # Intentionally swallow post-create errors; user asked to let the
-                # allocation request go through without surfacing an error.
-                pass
+            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(
+                {
+                    "employee_id": employee.id,
+                    "holiday_status_id": leave_type_id,
+                    "number_of_days": number_of_days,
+                    "name": reason or "Allocation request",
+                    "allocation_type": "regular",
+                }
+            )
+            if hasattr(alloc, "action_confirm"):
+                alloc.action_confirm()
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
