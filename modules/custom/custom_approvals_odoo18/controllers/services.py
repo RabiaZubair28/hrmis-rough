@@ -77,20 +77,21 @@ def submit_approval(self, **post):
         return request.redirect('/approvals')
 
     approval_type = request.env['approval.type'].sudo().browse(int(approval_type_id))
-
-    approval_type = request.env['approval.type'].sudo().browse(int(approval_type_id))
     ApprovalRequest = request.env['approval.request'].sudo()
 
     # If Profile Completion, save employee fields
     if approval_type.name == "Profile Completion":
-        employee = request.env.user.sudo().employee_id
+        # `res.users.employee_id` may resolve to `hr.employee.public` for non-HR users.
+        # Resolve the real employee before writing.
+        employee = request.env["hr.employee"].sudo().search([("user_id", "=", request.env.user.id)], limit=1)
         employee_vals = {
             'work_email': post.get('work_email'),
             'phone': post.get('phone'),
             'work_location': post.get('work_location'),
             # add more fields if needed
         }
-        employee.write(employee_vals)  # write data to employee record
+        if employee:
+            employee.write(employee_vals)  # write data to employee record
 
     # Create approval request for tracking
     approval = ApprovalRequest.create({

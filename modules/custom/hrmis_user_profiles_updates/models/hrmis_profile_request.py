@@ -88,7 +88,12 @@ class EmployeeProfileRequest(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
-        employee = self.env.user.employee_id
+        # NOTE:
+        # `res.users.employee_id` may resolve to `hr.employee.public` for non-HR users.
+        # Reading private/custom fields from `hr.employee.public` raises:
+        # "The fields ..., which you are trying to read, are not available for employee public profiles."
+        # Always resolve the real employee record for the current user.
+        employee = self.env["hr.employee"].sudo().search([("user_id", "=", self.env.user.id)], limit=1)
 
         if not employee:
             raise UserError("No employee is linked to your user.")
@@ -103,8 +108,8 @@ class EmployeeProfileRequest(models.Model):
             'hrmis_cadre': employee.hrmis_cadre,
             'hrmis_designation': employee.hrmis_designation,
             'hrmis_bps': employee.hrmis_bps,
-            'district_id': employee.district_id.id,
-            'facility_id': employee.facility_id.id,
+            'district_id': employee.district_id.id if employee.district_id else False,
+            'facility_id': employee.facility_id.id if employee.facility_id else False,
             'hrmis_contact_info': employee.hrmis_contact_info,
         })
         return res
