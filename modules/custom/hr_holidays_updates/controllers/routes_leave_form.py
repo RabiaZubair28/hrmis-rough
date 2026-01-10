@@ -71,26 +71,14 @@ class HrmisLeaveFormController(http.Controller):
             return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
 
         d_from = safe_date(kw.get("date_from"))
-        lt_leave = leave_types_for_employee(employee, request_date_from=d_from)
-        lt_alloc = allocation_types_for_employee(employee, date_from=d_from)
-        all_ids = list(set(lt_leave.ids) | set(lt_alloc.ids))
-
         leave_types = dedupe_leave_types_for_ui(
-            request.env["hr.leave.type"]
-            .sudo()
-            .with_context(
-                allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-                company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-                employee_id=employee.id,
-                default_employee_id=employee.id,
-                request_type="leave",
-                default_date_from=d_from,
-                default_date_to=d_from,
-            )
-            .browse(all_ids)
-            .exists()
-            .sorted(lambda lt: (lt.name or "").lower())
+            leave_types_for_employee(employee, request_date_from=d_from)
         )
+        # API powers the Leave Request dropdown: only auto-allocated allocation-based types.
+        if "auto_allocate" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
+        if "requires_allocation" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: lt.requires_allocation == "yes")
 
         payload = {
             "ok": True,

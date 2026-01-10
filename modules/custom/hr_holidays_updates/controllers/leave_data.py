@@ -171,25 +171,14 @@ def dedupe_leave_types_for_ui(leave_types):
 def merged_leave_and_allocation_types(employee, dt_leave=None, dt_alloc=None):
     dt_leave = safe_date(dt_leave)
     dt_alloc = safe_date(dt_alloc)
+    # Leave Request dropdown: only AUTO-ALLOCATED allocation-based types
+    # (shows "X remaining out of Y").
     lt_leave = dedupe_leave_types_for_ui(leave_types_for_employee(employee, request_date_from=dt_leave))
-    lt_alloc = dedupe_leave_types_for_ui(allocation_types_for_employee(employee, date_from=dt_alloc))
+    if "auto_allocate" in lt_leave._fields:
+        lt_leave = lt_leave.filtered(lambda lt: bool(lt.auto_allocate))
+    if "requires_allocation" in lt_leave._fields:
+        lt_leave = lt_leave.filtered(lambda lt: lt.requires_allocation == "yes")
 
-    all_ids = list(set(lt_leave.ids) | set(lt_alloc.ids))
-    all_types = (
-        request.env["hr.leave.type"]
-        .sudo()
-        .with_context(
-            allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-            company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-            employee_id=employee.id,
-            default_employee_id=employee.id,
-            request_type="leave",
-            default_date_from=dt_leave,
-            default_date_to=dt_leave,
-        )
-        .browse(all_ids)
-        .exists()
-        .sorted(lambda lt: (lt.name or "").lower())
-    )
-    all_types = dedupe_leave_types_for_ui(all_types)
-    return all_types, all_types
+    # Allocation Request dropdown: only types that REQUIRE allocation.
+    lt_alloc = dedupe_leave_types_for_ui(allocation_types_for_employee(employee, date_from=dt_alloc))
+    return lt_leave, lt_alloc
