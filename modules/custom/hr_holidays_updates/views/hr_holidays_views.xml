@@ -25,12 +25,12 @@
 
             <!-- Make supporting document mandatory when required by leave type -->
             <xpath expr="//field[@name='supported_attachment_ids']" position="attributes">
-                <!-- TEMPORARILY DISABLED (per request): do not block save/submit -->
-                <attribute name="required">0</attribute>
+                <attribute name="attrs">{'required': [('leave_type_support_document', '=', True)]}</attribute>
             </xpath>
             <xpath expr="//field[@name='supported_attachment_ids']" position="before">
-                <field name="support_document_note" readonly="1"
-                       invisible="not leave_type_support_document or state not in ('confirm','validate1')"/>
+                <field name="support_document_note"
+                       readonly="1"
+                       invisible="not leave_type_support_document"/>
             </xpath>
         </field>
     </record>

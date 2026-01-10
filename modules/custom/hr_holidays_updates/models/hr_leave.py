@@ -32,6 +32,13 @@ class HrLeave(models.Model):
         readonly=True,
     )
 
+    # Used by form view + server-side enforcement at submit time.
+    leave_type_support_document = fields.Boolean(
+        related="holiday_status_id.support_document",
+        string="Supporting Document Required",
+        readonly=True,
+    )
+
     employee_service_months = fields.Integer(
         string="Service (Months)",
         compute="_compute_employee_service_months",
@@ -512,13 +519,12 @@ class HrLeave(models.Model):
         Implemented as a post create/write check to avoid timing issues with
         many2many_binary uploads (common with PDFs).
         """
-        # TEMPORARILY DISABLED (per request): supporting documents enforcement
-        # to allow testing of other eligibility rules without being blocked.
-        return
         for leave in self:
             if not leave.holiday_status_id:
                 continue
-            if leave.state in ('cancel', 'refuse'):
+            # Do not block saving drafts: many flows create a draft first, then
+            # attach documents, then submit (confirm). Enforce at submit time.
+            if leave.state in ("draft", "cancel", "refuse"):
                 continue
             if not leave.holiday_status_id.support_document:
                 continue
@@ -533,10 +539,9 @@ class HrLeave(models.Model):
                 ('res_id', '=', leave.id),
             ])
             if count <= 0:
-                raise ValidationError(
-                    "A supporting document is required for this Time Off Type. "
-                    "Please attach the required document before submitting."
-                )
+                note = (leave.holiday_status_id.support_document_note or "").strip()
+                # Requirement: mandatory with its configured label/note.
+                raise ValidationError(note or "Supporting document is required for this Time Off Type.")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -585,8 +590,8 @@ class HrLeave(models.Model):
                 continue
 
         leaves = super().create(vals_list)
-        for leave, vals in zip(leaves, vals_list):
-            leave._enforce_supporting_documents_required(vals)
+        # Do not enforce on create: most UIs create draft records first and
+        # upload attachments afterwards. Enforcement happens on submit/confirm.
 
          # Robustness: if a leave is created directly in confirm state (some
         # portal/API flows do this), ensure status rows exist.
@@ -597,7 +602,9 @@ class HrLeave(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        self._enforce_supporting_documents_required(vals)
+        # Enforce only when a leave is submitted/approved (not while drafting).
+        if vals.get("state") in ("confirm", "validate1", "validate", "validate2"):
+            self._enforce_supporting_documents_required(vals)
         # Robustness: if state is moved to confirm via write (bypassing
         # action_confirm), ensure status rows exist.
         if vals.get("state") == "confirm":
@@ -686,6 +693,9 @@ class HrLeave(models.Model):
     # INIT FLOW ON SUBMIT
     # ----------------------------
     def action_confirm(self):
+        # Enforce mandatory supporting documents at submit time.
+        # (Attachments are expected to be uploaded before confirming.)
+        self._enforce_supporting_documents_required()
         res = super().action_confirm()
         self._init_approval_flow()
         return res
