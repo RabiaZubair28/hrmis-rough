@@ -588,8 +588,10 @@
                                         <label>
                                             Supporting document
                                             <span class="req js-hrmis-support-doc-required" style="display:none;">*</span>
+                                            <span class="js-hrmis-support-doc-label" style="font-weight: 600;"></span>
                                         </label>
-                                        <div class="hrmis-help js-hrmis-support-doc-note">Optional.</div>
+                                        <!-- Filled dynamically based on selected leave type -->
+                                        <div class="hrmis-help js-hrmis-support-doc-note"></div>
                                         <input class="hrmis-input js-hrmis-support-doc-file"
                                                type="file"
                                                name="support_document"

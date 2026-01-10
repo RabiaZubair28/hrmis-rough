@@ -166,6 +166,7 @@ function _updateSupportDocUI(formEl) {
   const noteEl = _qs(formEl, ".js-hrmis-support-doc-note");
   const fileEl = _qs(formEl, ".js-hrmis-support-doc-file");
   const requiredMarkEl = _qs(formEl, ".js-hrmis-support-doc-required");
+  const labelEl = _qs(formEl, ".js-hrmis-support-doc-label");
   if (!selectEl || !boxEl || !noteEl || !fileEl) return;
 
   const opt = selectEl.selectedOptions?.[0];
@@ -174,6 +175,10 @@ function _updateSupportDocUI(formEl) {
 
   // Always show the upload field; only toggle required + helper text.
   if (requiredMarkEl) requiredMarkEl.style.display = required ? "" : "none";
+  if (labelEl) {
+    // Show the “label” next to the field title when required (e.g. “(Medical certificate)”)
+    labelEl.textContent = required && note ? ` (${note})` : "";
+  }
   noteEl.textContent = required
     ? note || "Please upload the required supporting document."
     : "Optional.";
