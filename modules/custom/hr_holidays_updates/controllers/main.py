@@ -519,35 +519,25 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.redirect("/hrmis/services?error=not_allowed")
 
         # Show leave types allowed by the same rules used in the backend UI.
-        # Expose the union in BOTH dropdowns.
+        #
+        # Business rule:
+        # - New Leave Request dropdown: only AUTO-ALLOCATED types (balance shown as
+        #   "X remaining out of Y").
+        # - New Allocation Request dropdown: only types that REQUIRE allocation.
         dt_leave = _safe_date(kw.get("date_from"))
         dt_alloc = _safe_date(kw.get("allocation_date_from"))
 
-        leave_types = _dedupe_leave_types_for_ui(_leave_types_for_employee(employee, request_date_from=dt_leave))
-        allocation_types = _dedupe_leave_types_for_ui(_allocation_types_for_employee(employee, date_from=dt_alloc))
-
-        # Build a unified recordset with a single, consistent context so name_get()
-        # computes balances correctly (employee/date/company).
-        all_ids = list(set(leave_types.ids) | set(allocation_types.ids))
-        all_types = (
-            request.env["hr.leave.type"]
-            .sudo()
-            .with_context(
-                allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-                company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-                employee_id=employee.id,
-                default_employee_id=employee.id,
-                request_type="leave",
-                default_date_from=dt_leave,
-                default_date_to=dt_leave,
-            )
-            .browse(all_ids)
-            .exists()
-            .sorted(lambda lt: (lt.name or "").lower())
+        leave_types = _dedupe_leave_types_for_ui(
+            _leave_types_for_employee(employee, request_date_from=dt_leave)
         )
-        all_types = _dedupe_leave_types_for_ui(all_types)
-        leave_types = all_types
-        allocation_types = all_types
+        if "auto_allocate" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
+        if "requires_allocation" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: lt.requires_allocation == "yes")
+
+        allocation_types = _dedupe_leave_types_for_ui(
+            _allocation_types_for_employee(employee, date_from=dt_alloc)
+        )
 
         history = request.env["hr.leave"].sudo().search(
             [("employee_id", "=", employee.id)],
@@ -595,25 +585,14 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         d_from = _safe_date(kw.get("date_from"))
-        lt_leave = _leave_types_for_employee(employee, request_date_from=d_from)
-        lt_alloc = _allocation_types_for_employee(employee, date_from=d_from)
-        all_ids = list(set(lt_leave.ids) | set(lt_alloc.ids))
         leave_types = _dedupe_leave_types_for_ui(
-            request.env["hr.leave.type"]
-            .sudo()
-            .with_context(
-                allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-                company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-                employee_id=employee.id,
-                default_employee_id=employee.id,
-                request_type="leave",
-                default_date_from=d_from,
-                default_date_to=d_from,
-            )
-            .browse(all_ids)
-            .exists()
-            .sorted(lambda lt: (lt.name or "").lower())
+            _leave_types_for_employee(employee, request_date_from=d_from)
         )
+        # Endpoint powers the "New Leave Request" dropdown: keep only auto-allocated types.
+        if "auto_allocate" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
+        if "requires_allocation" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: lt.requires_allocation == "yes")
         payload = {
             "ok": True,
             "leave_types": [
@@ -785,8 +764,11 @@ class HrmisLeaveFrontendController(http.Controller):
 
             allowed_types = _dedupe_leave_types_for_ui(
                 _leave_types_for_employee(employee, request_date_from=dt_from)
-                | _allocation_types_for_employee(employee, date_from=dt_from)
             )
+            if "auto_allocate" in allowed_types._fields:
+                allowed_types = allowed_types.filtered(lambda lt: bool(lt.auto_allocate))
+            if "requires_allocation" in allowed_types._fields:
+                allowed_types = allowed_types.filtered(lambda lt: lt.requires_allocation == "yes")
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed"
@@ -897,8 +879,7 @@ class HrmisLeaveFrontendController(http.Controller):
 
         try:
             allowed_types = _dedupe_leave_types_for_ui(
-                _leave_types_for_employee(employee, request_date_from=fields.Date.today())
-                | _allocation_types_for_employee(employee, date_from=fields.Date.today())
+                _allocation_types_for_employee(employee, date_from=fields.Date.today())
             )
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
