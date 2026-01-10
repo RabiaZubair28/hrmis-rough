@@ -11,6 +11,7 @@
             <xpath expr="//field[@name='employee_id']" position="after">
                 <field name="employee_gender" invisible="1"/>
                 <field name="employee_service_months" invisible="1"/>
+                <field name="leave_type_support_document" invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='holiday_status_id']" position="attributes">
