@@ -584,6 +584,47 @@ class HrLeaveType(models.Model):
 
             res = []
             Allocation = self.env["hr.leave.allocation"].sudo()
+            Leave = self.env["hr.leave"].sudo()
+
+            # Fast path: precompute validated allocations and taken days per leave type.
+            # This is used as a fallback when Odoo's balance engine returns 0 for
+            # allocation-based leave types that *do* have validated allocations.
+            alloc_by_type = {}
+            taken_by_type = {}
+            try:
+                groups = Allocation.read_group(
+                    [
+                        ("employee_id", "=", employee_id),
+                        ("holiday_status_id", "in", self.ids),
+                        ("state", "in", ("validate", "validate1")),
+                    ],
+                    ["number_of_days:sum", "holiday_status_id"],
+                    ["holiday_status_id"],
+                )
+                for g in groups or []:
+                    hid = (g.get("holiday_status_id") or [False])[0]
+                    if hid:
+                        alloc_by_type[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+            except Exception:
+                alloc_by_type = {}
+
+            try:
+                groups = Leave.read_group(
+                    [
+                        ("employee_id", "=", employee_id),
+                        ("holiday_status_id", "in", self.ids),
+                        ("state", "in", ("confirm", "validate1", "validate")),
+                    ],
+                    ["number_of_days:sum", "holiday_status_id"],
+                    ["holiday_status_id"],
+                )
+                for g in groups or []:
+                    hid = (g.get("holiday_status_id") or [False])[0]
+                    if hid:
+                        taken_by_type[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+            except Exception:
+                taken_by_type = {}
+
             for lt in self:
                 base = lt.name or ""
                 label = base
@@ -689,6 +730,17 @@ class HrLeaveType(models.Model):
                     except Exception:
                         remaining = 0.0
                         total = 0.0
+
+                # Final fallback for allocation-based leave types: if Odoo's balance
+                # engine still reports 0/0, but validated allocations exist, show
+                # "X remaining out of Y" based on validated allocations minus taken.
+                if float(total or 0.0) == 0.0:
+                    alloc_total = float(alloc_by_type.get(int(lt.id), 0.0) or 0.0)
+                    if alloc_total > 0.0:
+                        total = alloc_total
+                        if float(remaining or 0.0) <= 0.0:
+                            taken = float(taken_by_type.get(int(lt.id), 0.0) or 0.0)
+                            remaining = max(0.0, total - taken)
 
                 if float(total or 0.0) == 0.0:
                     label = _replace_requires_allocation(f"{base} (0 remaining out of 0 days)")

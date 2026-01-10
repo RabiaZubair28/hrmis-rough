@@ -632,7 +632,11 @@ class HrmisLeaveFrontendController(http.Controller):
             # Compute allocation total (similar to our name_get logic).
             try:
                 if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                    return float(lt_ctx.max_leaves or 0.0)
+                    total = float(lt_ctx.max_leaves or 0.0)
+                    # Do not trust 0 here: some deployments return 0 even when
+                    # validated allocations exist (causing dropdown omissions).
+                    if total > 0.0:
+                        return total
             except Exception:
                 pass
             try:
@@ -647,7 +651,10 @@ class HrmisLeaveFrontendController(http.Controller):
                                 if info.get("allocated_leaves") is not None
                                 else info.get("total_allocated_leaves")
                             )
-                        return float(total or 0.0)
+                        total = float(total or 0.0)
+                        # Same rule as above: only trust positive totals.
+                        if total > 0.0:
+                            return total
             except Exception:
                 pass
             # Fallback: sum of validated allocations in days (covers deployments where
@@ -768,7 +775,11 @@ class HrmisLeaveFrontendController(http.Controller):
             # Prefer Odoo's own leave balance engine (handles hours-based types too).
             try:
                 if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                    return float(lt_ctx.max_leaves or 0.0)
+                    total = float(lt_ctx.max_leaves or 0.0)
+                    # Do not trust 0 here: some deployments return 0 even when
+                    # validated allocations exist (causing dropdown omissions).
+                    if total > 0.0:
+                        return total
             except Exception:
                 pass
             try:
@@ -783,7 +794,10 @@ class HrmisLeaveFrontendController(http.Controller):
                                 if info.get("allocated_leaves") is not None
                                 else info.get("total_allocated_leaves")
                             )
-                        return float(total or 0.0)
+                        total = float(total or 0.0)
+                        # Same rule as above: only trust positive totals.
+                        if total > 0.0:
+                            return total
             except Exception:
                 pass
             # Fallback: sum of validated allocations in days.
