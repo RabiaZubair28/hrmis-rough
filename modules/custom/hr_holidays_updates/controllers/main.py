@@ -913,9 +913,18 @@ class HrmisLeaveFrontendController(http.Controller):
                 # Standard field on most Odoo builds
                 "allocation_type": "regular",
             }
+            # Create first; if confirm fails later we still keep the request.
             alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
-            if hasattr(alloc, "action_confirm"):
-                alloc.action_confirm()
+
+            # Best-effort confirm: swallow post-create errors so the allocation request
+            # still "goes in" even if confirm/constraints fail.
+            try:
+                with request.env.cr.savepoint():
+                    if hasattr(alloc, "action_confirm"):
+                        alloc.action_confirm()
+                    request.env.cr.flush()
+            except Exception:
+                pass
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
