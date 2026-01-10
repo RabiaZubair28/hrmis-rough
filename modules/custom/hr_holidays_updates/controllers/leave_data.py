@@ -237,6 +237,21 @@ def merged_leave_and_allocation_types(employee, dt_leave=None, dt_alloc=None):
     Allocation = request.env["hr.leave.allocation"].sudo()
     Emp = request.env["hr.employee"].browse(employee.id)
 
+    # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
+    alloc_totals = {}
+    try:
+        groups = Allocation.read_group(
+            [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
+            ["number_of_days:sum", "holiday_status_id"],
+            ["holiday_status_id"],
+        )
+        for g in groups or []:
+            hid = (g.get("holiday_status_id") or [False])[0]
+            if hid:
+                alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+    except Exception:
+        alloc_totals = {}
+
     def _total_allocated_days(lt):
         lt_ctx = lt.with_context(
             employee_id=employee.id,
@@ -258,28 +273,7 @@ def merged_leave_and_allocation_types(employee, dt_leave=None, dt_alloc=None):
         except Exception:
             pass
 
-        # Compute total allocated leaves (mirrors name_get() helpers).
-        try:
-            if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                return float(lt_ctx.max_leaves or 0.0)
-        except Exception:
-            pass
-        try:
-            if hasattr(lt_ctx, "get_days"):
-                days = lt_ctx.get_days(employee.id)
-                info = days.get(employee.id) if isinstance(days, dict) else None
-                if isinstance(info, dict):
-                    total = info.get("max_leaves")
-                    if total is None:
-                        total = (
-                            info.get("allocated_leaves")
-                            if info.get("allocated_leaves") is not None
-                            else info.get("total_allocated_leaves")
-                        )
-                    return float(total or 0.0)
-        except Exception:
-            pass
-        return 0.0
+        return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
 
     def _allowed_for_leave_request(lt):
         # Keep behavior consistent with the website/controller filtering:
