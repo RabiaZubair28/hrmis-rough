@@ -42,7 +42,13 @@ class HrmisStaffController(http.Controller):
         active_menu = "user_profile" if current_emp and current_emp.id == employee.id else "staff"
         return request.render(
             "hr_holidays_updates.hrmis_staff_profile",
-            base_ctx("User profile", active_menu, employee=employee),
+            base_ctx(
+                "User profile",
+                active_menu,
+                employee=employee,
+                error=kw.get("error"),
+                success=kw.get("success"),
+            ),
         )
 
     @http.route(

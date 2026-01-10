@@ -537,7 +537,13 @@ class HrmisLeaveFrontendController(http.Controller):
         )
         return request.render(
             "hr_holidays_updates.hrmis_staff_profile",
-            _base_ctx("User profile", active_menu, employee=employee),
+            _base_ctx(
+                "User profile",
+                active_menu,
+                employee=employee,
+                error=kw.get("error"),
+                success=kw.get("success"),
+            ),
         )
 
     @http.route(
@@ -892,7 +898,7 @@ class HrmisLeaveFrontendController(http.Controller):
 
         if not dt_from or not dt_to or not leave_type_id or not remarks:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields"
+                f"/hrmis/staff/{employee.id}?error=Please+fill+all+required+fields"
             )
 
         try:
@@ -903,12 +909,12 @@ class HrmisLeaveFrontendController(http.Controller):
             d_to = fields.Date.to_date(dt_to)
             if not d_from or not d_to:
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+date+format"
+                    f"/hrmis/staff/{employee.id}?error=Invalid+date+format"
                 )
 
             if d_to < d_from:
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date"
+                    f"/hrmis/staff/{employee.id}?error=End+date+cannot+be+before+start+date"
                 )
 
             # Block past days explicitly (business requirement).
@@ -917,7 +923,7 @@ class HrmisLeaveFrontendController(http.Controller):
             # only block backdated requests here.
             if d_from < today or d_to < today:
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                    f"/hrmis/staff/{employee.id}?error={quote_plus(friendly_existing_day_msg)}"
                 )
 
             allowed_types = _dedupe_leave_types_for_ui(
@@ -977,13 +983,13 @@ class HrmisLeaveFrontendController(http.Controller):
             allowed_types = allowed_types.filtered(_allowed)
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed"
+                    f"/hrmis/staff/{employee.id}?error=Selected+leave+type+is+not+allowed"
                 )
 
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
             if not leave_type:
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type"
+                    f"/hrmis/staff/{employee.id}?error=Invalid+leave+type"
                 )
 
             # -----------------------------------------------------------------
@@ -1002,7 +1008,7 @@ class HrmisLeaveFrontendController(http.Controller):
                 msg = quote_plus(
                     f"Maximum duration for this Time Off Type is {leave_type.max_days_per_request} day(s) per request."
                 )
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+                return request.redirect(f"/hrmis/staff/{employee.id}?error={msg}")
 
             # Per-month maximum (based on request start month; mirrors hr.leave constraint)
             if getattr(leave_type, "max_days_per_month", 0.0):
@@ -1029,7 +1035,7 @@ class HrmisLeaveFrontendController(http.Controller):
                         msg = quote_plus(
                             f"Maximum duration for this Time Off Type is {leave_type.max_days_per_month} day(s) per month."
                         )
-                        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+                        return request.redirect(f"/hrmis/staff/{employee.id}?error={msg}")
                 except Exception:
                     pass
 
@@ -1056,7 +1062,7 @@ class HrmisLeaveFrontendController(http.Controller):
                         msg = quote_plus(
                             f"Maximum duration for this Time Off Type is {leave_type.max_days_per_year} day(s) per year."
                         )
-                        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+                        return request.redirect(f"/hrmis/staff/{employee.id}?error={msg}")
                 except Exception:
                     pass
 
@@ -1065,7 +1071,7 @@ class HrmisLeaveFrontendController(http.Controller):
             if leave_type.support_document and not uploaded:
                 msg = quote_plus(leave_type.support_document_note or "Supporting document is required.")
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}"
+                    f"/hrmis/staff/{employee.id}?error={msg}"
                 )
 
             # Prevent creating leave over existing leave days.
@@ -1080,7 +1086,7 @@ class HrmisLeaveFrontendController(http.Controller):
                 ]
             if Leave.search(overlap_domain, limit=1):
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                    f"/hrmis/staff/{employee.id}?error={quote_plus(friendly_existing_day_msg)}"
                 )
 
             # IMPORTANT: use a savepoint so partial creates are rolled back on any error.
@@ -1120,11 +1126,11 @@ class HrmisLeaveFrontendController(http.Controller):
 
         except (ValidationError, UserError, AccessError, Exception) as e:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}"
+                f"/hrmis/staff/{employee.id}?error={quote_plus(_friendly_leave_error(e))}"
             )
 
         return request.redirect(
-            f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted"
+            f"/hrmis/staff/{employee.id}?success=Leave+request+submitted"
         )
 
     @http.route(
@@ -1154,7 +1160,7 @@ class HrmisLeaveFrontendController(http.Controller):
 
         if not leave_type_id or number_of_days <= 0.0:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Please+fill+all+required+fields"
+                f"/hrmis/staff/{employee.id}?error=Please+fill+all+required+fields"
             )
 
         try:
@@ -1163,7 +1169,7 @@ class HrmisLeaveFrontendController(http.Controller):
             )
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Selected+leave+type+is+not+allowed"
+                    f"/hrmis/staff/{employee.id}?error=Selected+leave+type+is+not+allowed"
                 )
 
             vals = {
@@ -1179,11 +1185,11 @@ class HrmisLeaveFrontendController(http.Controller):
                 alloc.action_confirm()
         except Exception as e:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
+                f"/hrmis/staff/{employee.id}?error={quote_plus(str(e) or 'Could not submit allocation request')}"
             )
 
         return request.redirect(
-            f"/hrmis/staff/{employee.id}/leave?tab=allocation&success=Allocation+request+submitted"
+            f"/hrmis/staff/{employee.id}?success=Allocation+request+submitted"
         )
 
     @http.route(["/hrmis/leave/requests"], type="http", auth="user", website=True)
