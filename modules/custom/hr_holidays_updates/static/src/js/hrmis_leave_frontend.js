@@ -192,7 +192,10 @@ function _init() {
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
   if (leaveTypeEl) {
-    leaveTypeEl.addEventListener("change", () => _refreshApprovers(formEl));
+    leaveTypeEl.addEventListener("change", () => {
+      _updateSupportDocUI(formEl);
+      _refreshApprovers(formEl);
+    });
   }
 
   _updateSupportDocUI(formEl);
