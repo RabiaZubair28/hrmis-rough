@@ -5,3 +5,4 @@ from . import hrmis_district
 from . import hrmis_facility_type
 from . import res_users_inherit
 from . import hrmis_profile_request
+from . import hr_employee_public
