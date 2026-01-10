@@ -88,25 +88,45 @@ class EmployeeProfileRequest(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
-        employee = self.env.user.employee_id
+        # NOTE:
+        # For non-HR users, `self.env.user.employee_id` may be a `hr.employee.public`
+        # record (limited fieldset). Accessing custom HRMIS fields on it raises:
+        # "The fields ... are not available for employee public profiles."
+        #
+        # Resolve the *real* employee row via sudo to avoid that error. Security
+        # rules/groups should still be enforced elsewhere (record rules / views).
+        employee = (
+            self.env["hr.employee"]
+            .sudo()
+            .search([("user_id", "=", self.env.user.id)], limit=1)
+        )
 
         if not employee:
             raise UserError("No employee is linked to your user.")
 
-        res.update({
-            'employee_id': employee.id,
-            'hrmis_employee_id': employee.hrmis_employee_id,
-            'hrmis_cnic': employee.hrmis_cnic,
-            'hrmis_father_name': employee.hrmis_father_name,
-            'hrmis_joining_date': employee.hrmis_joining_date,
-            'gender': employee.gender,
-            'hrmis_cadre': employee.hrmis_cadre,
-            'hrmis_designation': employee.hrmis_designation,
-            'hrmis_bps': employee.hrmis_bps,
-            'district_id': employee.district_id.id,
-            'facility_id': employee.facility_id.id,
-            'hrmis_contact_info': employee.hrmis_contact_info,
-        })
+        # Defensive: some deployments may not install all custom fields.
+        def _get_emp(field, default=None):
+            return getattr(employee, field, default) if field in employee._fields else default
+
+        district = _get_emp("district_id", False)
+        facility = _get_emp("facility_id", False)
+
+        res.update(
+            {
+                "employee_id": employee.id,
+                "hrmis_employee_id": _get_emp("hrmis_employee_id", False),
+                "hrmis_cnic": _get_emp("hrmis_cnic", False),
+                "hrmis_father_name": _get_emp("hrmis_father_name", False),
+                "hrmis_joining_date": _get_emp("hrmis_joining_date", False),
+                "gender": _get_emp("gender", False),
+                "hrmis_cadre": _get_emp("hrmis_cadre", False),
+                "hrmis_designation": _get_emp("hrmis_designation", False),
+                "hrmis_bps": _get_emp("hrmis_bps", False),
+                "district_id": district.id if district else False,
+                "facility_id": facility.id if facility else False,
+                "hrmis_contact_info": _get_emp("hrmis_contact_info", False),
+            }
+        )
         return res
 
     @api.onchange('district_id')

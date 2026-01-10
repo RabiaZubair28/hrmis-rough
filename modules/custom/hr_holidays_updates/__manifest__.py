@@ -9,6 +9,8 @@
         'website',
         'hr',
         'hr_holidays',
+        # Provides `hr.cadre` used by `cadre_id` on employee/public.
+        'custom_approvals_odoo18',
         'hrmis_user_profiles_updates',
         'ohrms_holidays_approval',
     ],  # Important: extend the built-in module
