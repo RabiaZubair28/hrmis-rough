@@ -77,6 +77,8 @@ class HrmisLeaveFormController(http.Controller):
         # API powers the Leave Request dropdown: only auto-allocated types.
         if "auto_allocate" in leave_types._fields:
             leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
+        if "allowed_gender" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
 
         payload = {
             "ok": True,

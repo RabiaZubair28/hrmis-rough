@@ -589,6 +589,10 @@ class HrmisLeaveFrontendController(http.Controller):
         # and the business requirement is to show auto-allocated types.
         if "auto_allocate" in leave_types._fields:
             leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
+        # Exclude gender-specific entitlement types (e.g. Maternity/Paternity) from Leave Requests.
+        # These should be handled via Allocation Requests in this deployment.
+        if "allowed_gender" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
 
         allocation_types = _dedupe_leave_types_for_ui(
             _allocation_types_for_employee(employee, date_from=dt_alloc)
@@ -646,6 +650,8 @@ class HrmisLeaveFrontendController(http.Controller):
         # Endpoint powers the "New Leave Request" dropdown: keep only auto-allocated types.
         if "auto_allocate" in leave_types._fields:
             leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
+        if "allowed_gender" in leave_types._fields:
+            leave_types = leave_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
         payload = {
             "ok": True,
             "leave_types": [
@@ -820,6 +826,8 @@ class HrmisLeaveFrontendController(http.Controller):
             )
             if "auto_allocate" in allowed_types._fields:
                 allowed_types = allowed_types.filtered(lambda lt: bool(lt.auto_allocate))
+            if "allowed_gender" in allowed_types._fields:
+                allowed_types = allowed_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed"
