@@ -466,8 +466,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 "hr_holidays_updates.hrmis_services",
                 _base_ctx("My Time Off", "services"),
             )
-        # Default landing: go to the staff profile page (requested).
-        return request.redirect(f"/hrmis/staff/{emp.id}")
+        # Requested: always land on staff profile id 1.
+        return request.redirect("/hrmis/staff/1")
 
     @http.route(
         ["/odoo/my-time-off/new"], type="http", auth="user", website=True

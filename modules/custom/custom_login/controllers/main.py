@@ -17,7 +17,7 @@ class CustomLogin(Home):
             user = request.env.user
             if getattr(user, 'is_temp_password', False):
                 return request.redirect('/force_password_reset')
-            return request.redirect('/odoo/custom-time-off')
+            return request.redirect('/hrmis/staff/1')
 
         # If POST request → call Odoo login
         if request.httprequest.method == 'POST':
@@ -30,7 +30,7 @@ class CustomLogin(Home):
                 user = request.env.user
                 if getattr(user, 'is_temp_password', False):
                     return request.redirect('/force_password_reset')
-                return request.redirect('/odoo/custom-time-off')
+                return request.redirect('/hrmis/staff/1')
 
             # If login failed → render your custom template with error
             return request.render('custom_login.custom_login_template', {
@@ -97,6 +97,6 @@ class ForcePasswordController(http.Controller):
         
         # request.session.uid = user.id
 
-        return request.redirect('/odoo/custom-time-off')
+        return request.redirect('/hrmis/staff/1')
 
 
