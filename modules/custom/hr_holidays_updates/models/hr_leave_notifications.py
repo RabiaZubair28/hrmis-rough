@@ -108,7 +108,13 @@ class HrLeaveNotifications(models.Model):
             rec._hrmis_push(users, "Leave request submitted", body)
 
     def action_confirm(self):
-        res = super().action_confirm()
+        # Some deployments have a parent chain that does not implement
+        # `hr.leave.action_confirm()` (or it is renamed). Be tolerant.
+        try:
+            res = super().action_confirm()
+        except AttributeError:
+            self.write({"state": "confirm"})
+            res = True
         for rec in self:
             if rec.state == "confirm":
                 rec._notify_approvers(f"New leave request from {rec.employee_id.name or 'an employee'} needs approval.")
@@ -241,7 +247,13 @@ class HrLeaveAllocationNotifications(models.Model):
             rec._hrmis_push(users, "Allocation request submitted", body)
 
     def action_confirm(self):
-        res = super().action_confirm()
+        # Odoo versions differ for allocations: some provide action_confirm(),
+        # others don't. The website flow expects moving to "confirm".
+        try:
+            res = super().action_confirm()
+        except AttributeError:
+            self.write({"state": "confirm"})
+            res = True
         for rec in self:
             if rec.state == "confirm":
                 rec._notify_approvers(

@@ -8,6 +8,7 @@ import base64
 from urllib.parse import quote_plus
 
 from odoo import http, fields
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
 
 
@@ -19,6 +20,7 @@ def _safe_int(v, default=None):
 
 
 _DATE_DMY_RE = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$")
+_OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
 
 
 def _safe_date(v, default=None):
@@ -61,6 +63,30 @@ def _safe_date(v, default=None):
             return default
 
     return default
+
+
+def _friendly_leave_error(e: Exception) -> str:
+    """
+    Convert common Odoo errors into short, user-friendly messages for the website UI.
+    """
+    # Odoo exceptions often carry the user-facing text in `name` or `args[0]`.
+    msg = getattr(e, "name", None) or (e.args[0] if getattr(e, "args", None) else None) or str(e) or ""
+    msg = str(msg).strip()
+
+    # Requested by business: replace the "started leave reset" errors with a single message.
+    # Message wording varies by Odoo version/translation ("officer" vs "manager").
+    if "reset a started leave" in msg or "reset the started leave" in msg:
+        return "You cannot take existing day's leave"
+
+    # Normalize common overlap messages to a single friendly one.
+    if _OVERLAP_ERR_RE.search(msg):
+        return "You cannot take existing day's leave"
+
+    # Avoid leaking internal access errors.
+    if isinstance(e, AccessError):
+        return "You are not allowed to submit this leave request"
+
+    return msg or "Could not submit leave request"
 
 
 def _current_employee():
@@ -733,6 +759,30 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         try:
+            friendly_existing_day_msg = "You cannot take existing day's leave"
+
+            # Validate dates early to avoid creating a record and then failing later.
+            d_from = fields.Date.to_date(dt_from)
+            d_to = fields.Date.to_date(dt_to)
+            if not d_from or not d_to:
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+date+format"
+                )
+
+            if d_to < d_from:
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date"
+                )
+
+            # Block past days explicitly (business requirement).
+            today = fields.Date.context_today(request.env.user)
+            # Allow "today" (backend may still reject based on started-leave rules);
+            # only block backdated requests here.
+            if d_from < today or d_to < today:
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                )
+
             allowed_types = _dedupe_leave_types_for_ui(
                 _leave_types_for_employee(employee, request_date_from=dt_from)
                 | _allocation_types_for_employee(employee, date_from=dt_from)
@@ -756,38 +806,59 @@ class HrmisLeaveFrontendController(http.Controller):
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}"
                 )
 
-            vals = {
-                "employee_id": employee.id,
-                "holiday_status_id": leave_type_id,
-                "request_date_from": dt_from,
-                "request_date_to": dt_to,
-                "name": remarks,
-            }
-            leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
+            # Prevent creating leave over existing leave days.
+            Leave = request.env["hr.leave"].sudo()
+            overlap_domain = [("employee_id", "=", employee.id), ("state", "not in", ("cancel", "refuse"))]
+            if "request_date_from" in Leave._fields and "request_date_to" in Leave._fields:
+                overlap_domain += [("request_date_from", "<=", d_to), ("request_date_to", ">=", d_from)]
+            elif "date_from" in Leave._fields and "date_to" in Leave._fields:
+                overlap_domain += [
+                    ("date_from", "<=", fields.Datetime.to_datetime(d_to)),
+                    ("date_to", ">=", fields.Datetime.to_datetime(d_from)),
+                ]
+            if Leave.search(overlap_domain, limit=1):
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                )
 
-            if uploaded:
-                data = uploaded.read()
-                if data:
-                    att = request.env["ir.attachment"].sudo().create(
-                        {
-                            "name": getattr(uploaded, "filename", None) or "supporting_document",
-                            "res_model": "hr.leave",
-                            "res_id": leave.id,
-                            "type": "binary",
-                            "datas": base64.b64encode(data),
-                            "mimetype": getattr(uploaded, "mimetype", None),
-                        }
-                    )
-                    # Link it to the standard support-document field if present,
-                    # so it also shows up in the native Odoo form view.
-                    if "supported_attachment_ids" in leave._fields:
-                        leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+            # IMPORTANT: use a savepoint so partial creates are rolled back on any error.
+            with request.env.cr.savepoint():
+                vals = {
+                    "employee_id": employee.id,
+                    "holiday_status_id": leave_type_id,
+                    "request_date_from": dt_from,
+                    "request_date_to": dt_to,
+                    "name": remarks,
+                }
+                leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
 
-            if hasattr(leave, "action_confirm"):
-                leave.action_confirm()
-        except Exception as e:
+                if uploaded:
+                    data = uploaded.read()
+                    if data:
+                        att = request.env["ir.attachment"].sudo().create(
+                            {
+                                "name": getattr(uploaded, "filename", None) or "supporting_document",
+                                "res_model": "hr.leave",
+                                "res_id": leave.id,
+                                "type": "binary",
+                                "datas": base64.b64encode(data),
+                                "mimetype": getattr(uploaded, "mimetype", None),
+                            }
+                        )
+                        # Link it to the standard support-document field if present,
+                        # so it also shows up in the native Odoo form view.
+                        if "supported_attachment_ids" in leave._fields:
+                            leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+
+                if hasattr(leave, "action_confirm"):
+                    leave.action_confirm()
+
+                # Force constraint checks inside the savepoint (so failures roll back).
+                request.env.cr.flush()
+
+        except (ValidationError, UserError, AccessError, Exception) as e:
             return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(str(e) or 'Could not submit leave request')}"
+                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}"
             )
 
         return request.redirect(
@@ -1054,7 +1125,8 @@ class HrmisProfileRequestController(http.Controller):
     @http.route("/hrmis/profile/request", type="http", auth="user", website=True, methods=["GET"], csrf=False)
     def hrmis_profile_request_form(self, **kw):
         user = request.env.user
-        employee = user.employee_id
+        # `user.employee_id` may be `hr.employee.public` for non-HR users; resolve the real employee via sudo.
+        employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
         if not employee:
             return request.render("hr_holidays_updates.hrmis_error", {"error": "No employee linked to your user."})
 
@@ -1119,7 +1191,7 @@ class HrmisProfileRequestController(http.Controller):
     )
     def hrmis_profile_request_submit(self, **post):
         user = request.env.user
-        employee = user.employee_id
+        employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
         if not employee:
             return request.render("hr_holidays_updates.hrmis_error", {"error": "No employee linked to your user."})
 
