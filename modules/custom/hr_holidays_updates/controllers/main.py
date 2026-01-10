@@ -986,6 +986,80 @@ class HrmisLeaveFrontendController(http.Controller):
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type"
                 )
 
+            # -----------------------------------------------------------------
+            # Policy guardrails (show max-duration errors before overlap errors)
+            # -----------------------------------------------------------------
+            # If a request violates a leave-type duration limit, show that message
+            # instead of the generic "existing day's leave" overlap message.
+            try:
+                # Best-effort day count for website UI (calendar days, inclusive).
+                days = float((d_to - d_from).days + 1)
+            except Exception:
+                days = 0.0
+
+            # Per-request maximum
+            if getattr(leave_type, "max_days_per_request", 0.0) and days > float(leave_type.max_days_per_request or 0.0):
+                msg = quote_plus(
+                    f"Maximum duration for this Time Off Type is {leave_type.max_days_per_request} day(s) per request."
+                )
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+
+            # Per-month maximum (based on request start month; mirrors hr.leave constraint)
+            if getattr(leave_type, "max_days_per_month", 0.0):
+                try:
+                    import calendar as _cal
+
+                    start = d_from.replace(day=1)
+                    end = d_from.replace(day=_cal.monthrange(d_from.year, d_from.month)[1])
+                    used = sum(
+                        request.env["hr.leave"]
+                        .sudo()
+                        .search(
+                            [
+                                ("employee_id", "=", employee.id),
+                                ("holiday_status_id", "=", leave_type.id),
+                                ("state", "not in", ("cancel", "refuse")),
+                                ("request_date_from", ">=", start),
+                                ("request_date_from", "<=", end),
+                            ]
+                        )
+                        .mapped("number_of_days")
+                    ) or 0.0
+                    if float(used) + float(days) > float(leave_type.max_days_per_month or 0.0):
+                        msg = quote_plus(
+                            f"Maximum duration for this Time Off Type is {leave_type.max_days_per_month} day(s) per month."
+                        )
+                        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+                except Exception:
+                    pass
+
+            # Per-year maximum (based on request start year; mirrors hr.leave constraint)
+            if getattr(leave_type, "max_days_per_year", 0.0):
+                try:
+                    start = d_from.replace(month=1, day=1)
+                    end = d_from.replace(month=12, day=31)
+                    used = sum(
+                        request.env["hr.leave"]
+                        .sudo()
+                        .search(
+                            [
+                                ("employee_id", "=", employee.id),
+                                ("holiday_status_id", "=", leave_type.id),
+                                ("state", "not in", ("cancel", "refuse")),
+                                ("request_date_from", ">=", start),
+                                ("request_date_from", "<=", end),
+                            ]
+                        )
+                        .mapped("number_of_days")
+                    ) or 0.0
+                    if float(used) + float(days) > float(leave_type.max_days_per_year or 0.0):
+                        msg = quote_plus(
+                            f"Maximum duration for this Time Off Type is {leave_type.max_days_per_year} day(s) per year."
+                        )
+                        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+                except Exception:
+                    pass
+
             # Supporting document handling for the custom UI
             uploaded = request.httprequest.files.get("support_document")
             if leave_type.support_document and not uploaded:
