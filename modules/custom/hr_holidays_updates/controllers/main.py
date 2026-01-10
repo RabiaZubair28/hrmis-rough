@@ -700,7 +700,11 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         d_from = _safe_date(kw.get("date_from"))
-        leave_types = _dedupe_leave_types_for_ui(_leave_types_for_employee(employee, request_date_from=d_from))
+        # Include allocation-based types too so approved allocations appear dynamically.
+        leave_types = _dedupe_leave_types_for_ui(
+            _leave_types_for_employee(employee, request_date_from=d_from)
+            | _allocation_types_for_employee(employee, date_from=d_from)
+        )
 
         Allocation = request.env["hr.leave.allocation"].sudo()
         Emp = request.env["hr.employee"].browse(employee.id)

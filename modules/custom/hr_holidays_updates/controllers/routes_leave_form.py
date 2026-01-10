@@ -71,8 +71,10 @@ class HrmisLeaveFormController(http.Controller):
             return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
 
         d_from = safe_date(kw.get("date_from"))
+        # Include allocation-based types too so approved allocations appear dynamically.
         leave_types = dedupe_leave_types_for_ui(
             leave_types_for_employee(employee, request_date_from=d_from)
+            | allocation_types_for_employee(employee, date_from=d_from)
         )
         # API powers the Leave Request dropdown: dynamic:
         # show policy auto-allocated types OR types with a non-zero allocation.
