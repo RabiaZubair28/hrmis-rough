@@ -1103,9 +1103,14 @@ class HrmisLeaveFrontendController(http.Controller):
                 # Standard field on most Odoo builds
                 "allocation_type": "regular",
             }
-            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
-            if hasattr(alloc, "action_confirm"):
-                alloc.action_confirm()
+            # IMPORTANT: force flush inside a savepoint so any constraints (e.g. 24-day ACL cap)
+            # raised at flush/commit time are caught here and the record is rolled back.
+            with request.env.cr.savepoint():
+                alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
+                if hasattr(alloc, "action_confirm"):
+                    alloc.action_confirm()
+                # Ensure any pending constraints trigger here.
+                request.env.cr.flush()
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"

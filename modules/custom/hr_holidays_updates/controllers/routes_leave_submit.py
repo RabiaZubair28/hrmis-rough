@@ -184,17 +184,22 @@ class HrmisLeaveSubmitController(http.Controller):
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Selected+leave+type+is+not+allowed")
 
-            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(
-                {
-                    "employee_id": employee.id,
-                    "holiday_status_id": leave_type_id,
-                    "number_of_days": number_of_days,
-                    "name": reason or "Allocation request",
-                    "allocation_type": "regular",
-                }
-            )
-            if hasattr(alloc, "action_confirm"):
-                alloc.action_confirm()
+            # IMPORTANT: force flush inside a savepoint so any constraints (e.g. 24-day ACL cap)
+            # raised at flush/commit time are caught here and the record is rolled back.
+            with request.env.cr.savepoint():
+                alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(
+                    {
+                        "employee_id": employee.id,
+                        "holiday_status_id": leave_type_id,
+                        "number_of_days": number_of_days,
+                        "name": reason or "Allocation request",
+                        "allocation_type": "regular",
+                    }
+                )
+                if hasattr(alloc, "action_confirm"):
+                    alloc.action_confirm()
+                # Ensure any pending constraints trigger here.
+                request.env.cr.flush()
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
