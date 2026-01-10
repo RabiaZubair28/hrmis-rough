@@ -580,19 +580,72 @@ class HrmisLeaveFrontendController(http.Controller):
         dt_leave = _safe_date(kw.get("date_from"))
         dt_alloc = _safe_date(kw.get("allocation_date_from"))
 
-        leave_types = _dedupe_leave_types_for_ui(
-            _leave_types_for_employee(employee, request_date_from=dt_leave)
-        )
-        # "Auto-allocated" types are those with policy-driven allocations.
-        # Do NOT additionally filter on `requires_allocation` here because some DBs
-        # may have these policy types created without that flag (e.g. Earned Leave/LPR),
-        # and the business requirement is to show auto-allocated types.
-        if "auto_allocate" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
-        # Exclude gender-specific entitlement types (e.g. Maternity/Paternity) from Leave Requests.
-        # These should be handled via Allocation Requests in this deployment.
-        if "allowed_gender" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
+        leave_types = _dedupe_leave_types_for_ui(_leave_types_for_employee(employee, request_date_from=dt_leave))
+
+        # Dynamic dropdown rule for Leave Requests:
+        # - Show types the employee can actually use right now:
+        #   (a) policy auto-allocated, OR
+        #   (b) employee has a non-zero approved allocation for the type.
+        # - Exclude gender-specific entitlement types (Maternity/Paternity) from Leave Requests.
+        Allocation = request.env["hr.leave.allocation"].sudo()
+        Emp = request.env["hr.employee"].browse(employee.id)
+
+        def _total_allocated_days(lt):
+            lt_ctx = lt.with_context(
+                employee_id=employee.id,
+                default_employee_id=employee.id,
+                request_type="leave",
+                default_date_from=dt_leave,
+                default_date_to=dt_leave,
+            )
+            # Best-effort: ensure allocations exist for policy-driven types.
+            try:
+                if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
+                    ref_date = dt_leave or fields.Date.today()
+                    if getattr(lt_ctx, "max_days_per_month", 0.0):
+                        Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
+                    elif getattr(lt_ctx, "max_days_per_year", 0.0):
+                        Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
+                    else:
+                        Allocation._ensure_one_time_allocation(Emp, lt_ctx)
+            except Exception:
+                pass
+
+            # Compute allocation total (similar to our name_get logic).
+            try:
+                if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
+                    return float(lt_ctx.max_leaves or 0.0)
+            except Exception:
+                pass
+            try:
+                if hasattr(lt_ctx, "get_days"):
+                    days = lt_ctx.get_days(employee.id)
+                    info = days.get(employee.id) if isinstance(days, dict) else None
+                    if isinstance(info, dict):
+                        total = info.get("max_leaves")
+                        if total is None:
+                            total = (
+                                info.get("allocated_leaves")
+                                if info.get("allocated_leaves") is not None
+                                else info.get("total_allocated_leaves")
+                            )
+                        return float(total or 0.0)
+            except Exception:
+                pass
+            return 0.0
+
+        def _leave_type_allowed_for_leave_request(lt):
+            try:
+                if "allowed_gender" in lt._fields:
+                    if (lt.allowed_gender or "all") not in ("all", False):
+                        return False
+                if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
+                    return True
+                return _total_allocated_days(lt) > 0.0
+            except Exception:
+                return True
+
+        leave_types = leave_types.filtered(_leave_type_allowed_for_leave_request)
 
         allocation_types = _dedupe_leave_types_for_ui(
             _allocation_types_for_employee(employee, date_from=dt_alloc)
@@ -644,14 +697,60 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         d_from = _safe_date(kw.get("date_from"))
-        leave_types = _dedupe_leave_types_for_ui(
-            _leave_types_for_employee(employee, request_date_from=d_from)
-        )
-        # Endpoint powers the "New Leave Request" dropdown: keep only auto-allocated types.
-        if "auto_allocate" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: bool(lt.auto_allocate))
-        if "allowed_gender" in leave_types._fields:
-            leave_types = leave_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
+        leave_types = _dedupe_leave_types_for_ui(_leave_types_for_employee(employee, request_date_from=d_from))
+
+        Allocation = request.env["hr.leave.allocation"].sudo()
+        Emp = request.env["hr.employee"].browse(employee.id)
+
+        def _total_allocated_days(lt):
+            lt_ctx = lt.with_context(
+                employee_id=employee.id,
+                default_employee_id=employee.id,
+                request_type="leave",
+                default_date_from=d_from,
+                default_date_to=d_from,
+            )
+            try:
+                if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
+                    ref_date = d_from or fields.Date.today()
+                    if getattr(lt_ctx, "max_days_per_month", 0.0):
+                        Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
+                    elif getattr(lt_ctx, "max_days_per_year", 0.0):
+                        Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
+                    else:
+                        Allocation._ensure_one_time_allocation(Emp, lt_ctx)
+            except Exception:
+                pass
+            try:
+                if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
+                    return float(lt_ctx.max_leaves or 0.0)
+            except Exception:
+                pass
+            try:
+                if hasattr(lt_ctx, "get_days"):
+                    days = lt_ctx.get_days(employee.id)
+                    info = days.get(employee.id) if isinstance(days, dict) else None
+                    if isinstance(info, dict):
+                        total = info.get("max_leaves")
+                        if total is None:
+                            total = (
+                                info.get("allocated_leaves")
+                                if info.get("allocated_leaves") is not None
+                                else info.get("total_allocated_leaves")
+                            )
+                        return float(total or 0.0)
+            except Exception:
+                pass
+            return 0.0
+
+        def _allowed(lt):
+            if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
+                return False
+            if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
+                return True
+            return _total_allocated_days(lt) > 0.0
+
+        leave_types = leave_types.filtered(_allowed)
         payload = {
             "ok": True,
             "leave_types": [
@@ -824,10 +923,58 @@ class HrmisLeaveFrontendController(http.Controller):
             allowed_types = _dedupe_leave_types_for_ui(
                 _leave_types_for_employee(employee, request_date_from=dt_from)
             )
-            if "auto_allocate" in allowed_types._fields:
-                allowed_types = allowed_types.filtered(lambda lt: bool(lt.auto_allocate))
-            if "allowed_gender" in allowed_types._fields:
-                allowed_types = allowed_types.filtered(lambda lt: (lt.allowed_gender or "all") in ("all", False))
+            Allocation = request.env["hr.leave.allocation"].sudo()
+            Emp = request.env["hr.employee"].browse(employee.id)
+
+            def _total_allocated_days(lt):
+                lt_ctx = lt.with_context(
+                    employee_id=employee.id,
+                    default_employee_id=employee.id,
+                    request_type="leave",
+                    default_date_from=_safe_date(dt_from),
+                    default_date_to=_safe_date(dt_from),
+                )
+                try:
+                    if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
+                        ref_date = _safe_date(dt_from)
+                        if getattr(lt_ctx, "max_days_per_month", 0.0):
+                            Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
+                        elif getattr(lt_ctx, "max_days_per_year", 0.0):
+                            Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
+                        else:
+                            Allocation._ensure_one_time_allocation(Emp, lt_ctx)
+                except Exception:
+                    pass
+                try:
+                    if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
+                        return float(lt_ctx.max_leaves or 0.0)
+                except Exception:
+                    pass
+                try:
+                    if hasattr(lt_ctx, "get_days"):
+                        days = lt_ctx.get_days(employee.id)
+                        info = days.get(employee.id) if isinstance(days, dict) else None
+                        if isinstance(info, dict):
+                            total = info.get("max_leaves")
+                            if total is None:
+                                total = (
+                                    info.get("allocated_leaves")
+                                    if info.get("allocated_leaves") is not None
+                                    else info.get("total_allocated_leaves")
+                                )
+                            return float(total or 0.0)
+                except Exception:
+                    pass
+                return 0.0
+
+            def _allowed(lt):
+                if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
+                    return False
+                if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
+                    return True
+                return _total_allocated_days(lt) > 0.0
+
+            allowed_types = allowed_types.filtered(_allowed)
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed"
