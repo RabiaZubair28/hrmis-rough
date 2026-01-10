@@ -650,7 +650,9 @@ class HrmisLeaveFrontendController(http.Controller):
                         return float(total or 0.0)
             except Exception:
                 pass
-            return 0.0
+            # Fallback: sum of validated allocations in days (covers deployments where
+            # max_leaves/get_days are unreliable for some allocation-based leave types).
+            return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
 
         def _leave_type_allowed_for_leave_request(lt):
             try:
