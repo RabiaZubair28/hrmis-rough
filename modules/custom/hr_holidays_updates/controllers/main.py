@@ -654,8 +654,13 @@ class HrmisLeaveFrontendController(http.Controller):
 
         def _leave_type_allowed_for_leave_request(lt):
             try:
+                # Gender eligibility (keep consistent with hr.leave onchange rules):
+                # - 'all'/False => everyone
+                # - 'male'/'female' => only that gender (and if employee gender is missing, hide it)
                 if "allowed_gender" in lt._fields:
-                    if (lt.allowed_gender or "all") not in ("all", False):
+                    allowed = lt.allowed_gender or "all"
+                    emp_gender = employee.gender if employee and "gender" in employee._fields else False
+                    if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
                         return False
                 if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
                     return True
@@ -758,11 +763,37 @@ class HrmisLeaveFrontendController(http.Controller):
                         Allocation._ensure_one_time_allocation(Emp, lt_ctx)
             except Exception:
                 pass
+            # Prefer Odoo's own leave balance engine (handles hours-based types too).
+            try:
+                if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
+                    return float(lt_ctx.max_leaves or 0.0)
+            except Exception:
+                pass
+            try:
+                if hasattr(lt_ctx, "get_days"):
+                    days = lt_ctx.get_days(employee.id)
+                    info = days.get(employee.id) if isinstance(days, dict) else None
+                    if isinstance(info, dict):
+                        total = info.get("max_leaves")
+                        if total is None:
+                            total = (
+                                info.get("allocated_leaves")
+                                if info.get("allocated_leaves") is not None
+                                else info.get("total_allocated_leaves")
+                            )
+                        return float(total or 0.0)
+            except Exception:
+                pass
+            # Fallback: sum of validated allocations in days.
             return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
 
         def _allowed(lt):
-            if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
-                return False
+            # Gender eligibility (keep consistent with hr.leave onchange rules).
+            if "allowed_gender" in lt._fields:
+                allowed = lt.allowed_gender or "all"
+                emp_gender = employee.gender if employee and "gender" in employee._fields else False
+                if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
+                    return False
             if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
                 return True
             return _total_allocated_days(lt) > 0.0
@@ -985,8 +1016,12 @@ class HrmisLeaveFrontendController(http.Controller):
                 return 0.0
 
             def _allowed(lt):
-                if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
-                    return False
+                # Gender eligibility (keep consistent with hr.leave onchange rules).
+                if "allowed_gender" in lt._fields:
+                    allowed = lt.allowed_gender or "all"
+                    emp_gender = employee.gender if employee and "gender" in employee._fields else False
+                    if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
+                        return False
                 if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
                     return True
                 return _total_allocated_days(lt) > 0.0
