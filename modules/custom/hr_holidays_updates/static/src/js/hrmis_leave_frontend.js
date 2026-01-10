@@ -197,6 +197,10 @@ function _init() {
 
   _updateSupportDocUI(formEl);
   _refreshApprovers(formEl);
+  // Ensure the leave-type dropdown reflects newly approved allocations
+  // even when the user navigates back to this page (BFCache) or doesn't
+  // change the date field after approvals.
+  _refreshLeaveTypes(formEl);
 }
 
 // In some Odoo pages, assets can load after DOMContentLoaded.
@@ -205,3 +209,11 @@ if (document.readyState === "loading") {
 } else {
   _init();
 }
+
+// Handle browser back/forward cache (page restored without a full reload).
+window.addEventListener("pageshow", () => {
+  const formEl = document.querySelector(".hrmis-leave-request-form");
+  if (!formEl) return;
+  _refreshLeaveTypes(formEl);
+  _refreshApprovers(formEl);
+});

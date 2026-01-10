@@ -724,6 +724,21 @@ class HrmisLeaveFrontendController(http.Controller):
         Allocation = request.env["hr.leave.allocation"].sudo()
         Emp = request.env["hr.employee"].browse(employee.id)
 
+        # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
+        alloc_totals = {}
+        try:
+            groups = Allocation.read_group(
+                [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
+                ["number_of_days:sum", "holiday_status_id"],
+                ["holiday_status_id"],
+            )
+            for g in groups or []:
+                hid = (g.get("holiday_status_id") or [False])[0]
+                if hid:
+                    alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+        except Exception:
+            alloc_totals = {}
+
         def _total_allocated_days(lt):
             lt_ctx = lt.with_context(
                 employee_id=employee.id,
