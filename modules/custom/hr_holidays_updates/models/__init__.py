@@ -26,3 +26,4 @@ from . import hr_leave_approval_status
 from . import hr_leave_approval_wizard
 from . import hr_leave_type_model
 from . import hr_leave
+from . import hr_employee_public
