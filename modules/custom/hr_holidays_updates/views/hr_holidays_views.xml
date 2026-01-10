@@ -50,9 +50,10 @@
             <xpath expr="//field[@name='holiday_status_id']" position="attributes">
                 <!-- Include legacy leave types where allowed_gender is empty/False -->
                 <attribute name="domain">
-                    ['&amp;',
+                    ['&amp;','&amp;',
                         '|','|',('allowed_gender','=',False),('allowed_gender','=','all'),('allowed_gender','=',employee_gender),
-                        '|',('min_service_months','=',0),('min_service_months','&lt;=',employee_service_months)
+                        '|',('min_service_months','=',0),('min_service_months','&lt;=',employee_service_months),
+                        '&amp;',('requires_allocation','=','yes'),('auto_allocate','=',False)
                     ]
                 </attribute>
             </xpath>

@@ -195,6 +195,9 @@ def allocation_types_for_employee(employee, date_from=None):
     )
     if "requires_allocation" in recs._fields:
         recs = recs.filtered(lambda lt: lt.requires_allocation == "yes")
+    # New Allocation Request tab: hide policy auto-allocated types.
+    if "auto_allocate" in recs._fields:
+        recs = recs.filtered(lambda lt: not bool(getattr(lt, "auto_allocate", False)))
     return recs
 
 
