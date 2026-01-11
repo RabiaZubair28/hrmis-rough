@@ -26,10 +26,13 @@ def _drop_leave_approver_user_fk(cr):
     )
 
 
-def post_init_hook(cr, registry):
-    _drop_leave_approver_user_fk(cr)
+def post_init_hook(env):
+    """
+    Odoo calls post-init hooks with a single argument: `env`.
+    """
+    _drop_leave_approver_user_fk(env.cr)
 
 
-def uninstall_hook(cr, registry):
+def uninstall_hook(env):
     # Nothing to restore (dropping FK is intentional).
     return
