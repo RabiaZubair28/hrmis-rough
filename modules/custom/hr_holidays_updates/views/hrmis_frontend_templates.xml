@@ -42,11 +42,14 @@
                                 </div>
                             </div>
                         </div>
-                         <div class="hrmis-user__avatar"></div>
                         <t t-if="current_employee">
                             <div class="hrmis-user-stack">
                                 <a class="hrmis-user-link" t-att-href="'/hrmis/staff/%s' % current_employee.id">
                                     <div class="hrmis-user">
+                                        <div class="hrmis-user__avatar">
+                                            <img t-att-alt="current_employee.name"
+                                                 t-att-src="'/web/image/hr.employee.public/%s/avatar_1024/' % current_employee.id"/>
+                                        </div>
                                        
                                         <div class="hrmis-user__meta">
                                             <div class="hrmis-user__label">Username</div>
@@ -207,7 +210,10 @@
                     </t>
                     <t t-foreach="employees" t-as="emp">
                         <div class="hrmis-result">
-                            <div class="hrmis-result__avatar"></div>
+                            <div class="hrmis-result__avatar">
+                                <img t-att-alt="emp.name"
+                                     t-att-src="'/web/image/hr.employee.public/%s/avatar_1024/' % emp.id"/>
+                            </div>
                             <div class="hrmis-result__meta">
                                 <div class="hrmis-result__name">
                                     <t t-esc="emp.name"/> <t t-if="emp.hrmis_bps">, BPS <t t-esc="emp.hrmis_bps"/></t>
