@@ -942,6 +942,38 @@ class HrLeave(models.Model):
         Keep any external callers (list view mass approve, RPCs, etc.) aligned with
         the custom sequential approval flow.
         """
+        # Section Officer "Manage Requests" uses manager-style approvals, even when
+        # the leave type is not configured with (or does not initialize) our custom
+        # sequential approval chain. Allow that flow explicitly when requested.
+        if self.env.context.get("hrmis_manager_approve"):
+            # Only allow if the current user is actually the manager of the employee
+            # (or is an HR time off officer/manager).
+            user = self.env.user
+            for leave in self:
+                emp = leave.employee_id
+                if not emp:
+                    continue
+
+                # HR users can approve as usual.
+                if (
+                    user.has_group("hr_holidays.group_hr_holidays_user")
+                    or user.has_group("hr_holidays.group_hr_holidays_manager")
+                ):
+                    continue
+
+                # Resolve current user's employee rows (some DBs have multiples).
+                mgr_emp_ids = self.env["hr.employee"].sudo().search([("user_id", "=", user.id)]).ids
+                if not mgr_emp_ids:
+                    raise UserError("You are not authorized to approve this request.")
+
+                # Support both schemas: `employee_parent_id` (custom) and `parent_id` (standard).
+                manager = getattr(emp, "employee_parent_id", False) or getattr(emp, "parent_id", False)
+                if not manager or manager.id not in set(mgr_emp_ids):
+                    raise UserError("You are not authorized to approve this request.")
+
+            # Bypass the custom flow engine and use standard Odoo approval.
+            return super().action_approve()
+
         return self.action_approve_by_user()
     
     def _get_approval_requests(self):
