@@ -1100,6 +1100,8 @@ class HrmisLeaveFrontendController(http.Controller):
                         # so it also shows up in the native Odoo form view.
                         if "supported_attachment_ids" in leave._fields:
                             leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+                        # Ensure attachment is persisted before confirm-time validations run.
+                        request.env.cr.flush()
 
                 if hasattr(leave, "action_confirm"):
                     leave.action_confirm()
