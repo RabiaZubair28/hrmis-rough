@@ -550,10 +550,24 @@ class HrmisLeaveFrontendController(http.Controller):
     @http.route(
         ["/hrmis/staff/<int:employee_id>"], type="http", auth="user", website=True
     )
-    def hrmis_staff_profile(self, employee_id: int, **kw):
+    def hrmis_staff_profile(self, employee_id: int, tab: str = "personal", **kw):
         employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
         if not employee:
             return request.not_found()
+
+        tab = (kw.get("tab") or tab or "personal").strip().lower()
+        if tab not in ("personal", "posting", "disciplinary", "qualifications"):
+            tab = "personal"
+
+        # Best-effort: different deployments use different service history field names.
+        service_history_lines = request.env["hrmis.service.history"].browse([])
+        try:
+            if "service_history_ids" in employee._fields:
+                service_history_lines = employee.service_history_ids
+            elif "hrmis_service_history_ids" in employee._fields:
+                service_history_lines = employee.hrmis_service_history_ids
+        except Exception:
+            service_history_lines = request.env["hrmis.service.history"].browse([])
 
         current_emp = _current_employee()
         active_menu = (
@@ -563,7 +577,13 @@ class HrmisLeaveFrontendController(http.Controller):
         )
         return request.render(
             "hr_holidays_updates.hrmis_staff_profile",
-            _base_ctx("User profile", active_menu, employee=employee),
+            _base_ctx(
+                "User profile",
+                active_menu,
+                employee=employee,
+                tab=tab,
+                service_history_lines=service_history_lines,
+            ),
         )
 
     @http.route(

@@ -241,64 +241,36 @@
             
 
                 <div class="hrmis-panel">
-                    <!-- <div class="hrmis-panel__header">
-                        <div class="hrmis-panel__title">User profile</div>
-                    </div> -->
+                    <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
+                        <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'personal' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=personal' % employee.id">
+                            User profile
+                        </a>
+                        <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'posting' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=posting' % employee.id">
+                            Posting and service history
+                        </a>
+                        <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'disciplinary' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=disciplinary' % employee.id">
+                            Disciplinary actions
+                        </a>
+                        <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'qualifications' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=qualifications' % employee.id">
+                            Trainings and qualifications
+                        </a>
+                    </div>
+
                     <div class="hrmis-panel__body">
-                        <div class="card-body">
-                            <t t-if="error">
-                                <div class="hrmis-alert hrmis-alert--danger"><t t-esc="error"/></div>
-                            </t>
-                            <t t-if="success">
-                                <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
-                            </t>
+                        <t t-if="error">
+                            <div class="hrmis-alert hrmis-alert--error"><t t-esc="error"/></div>
+                        </t>
+                        <t t-if="success">
+                            <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
+                        </t>
 
-    <!-- TAB HEADERS -->
-    <ul class="nav nav-tabs mb-3" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active"
-                    data-bs-toggle="tab"
-                    data-bs-target="#personal_data"
-                    type="button">
-                User Profile
-            </button>
-        </li>
-
-        <li class="nav-item">
-            <button class="nav-link"
-                    data-bs-toggle="tab"
-                    data-bs-target="#posting"
-                    type="button">
-                Posting and Service History
-            </button>
-        </li>
-
-        <li class="nav-item">
-            <button class="nav-link"
-                    data-bs-toggle="tab"
-                    data-bs-target="#disciplinary"
-                    type="button">
-                Disciplinary Actions
-            </button>
-        </li>
-
-        <li class="nav-item">
-            <button class="nav-link"
-                    data-bs-toggle="tab"
-                    data-bs-target="#qualifications"
-                    type="button">
-                Trainings and Qualifications
-            </button>
-        </li>
-    </ul>
-
-    <!-- TAB CONTENT -->
-    <div class="tab-content pt-3">
-
-        <!-- 🔹 TAB 1: USER PROFILE (YOUR ORIGINAL CONTENT) -->
-        <div class="tab-pane fade show active" id="personal_data">
-
-            <div class="hrmis-kv hrmis-kv--grid">
+                        <!-- TAB 1: USER PROFILE -->
+                        <t t-if="tab == 'personal'">
+                            <div class="hrmis-kv hrmis-kv--grid">
 
                 <div class="hrmis-kv__item">
 <div class="hrmis-kv__k">Name</div>
@@ -395,11 +367,11 @@
                 <!-- keep all remaining kv rows here as-is -->
 
             </div>
-        </div>
+                        </t>
 
-        <!-- 🔹 TAB 2: POSTING -->
-        <div class="tab-pane fade" id="posting">
-            <table class="table table-bordered table-sm">
+                        <!-- TAB 2: POSTING -->
+                        <t t-if="tab == 'posting'">
+                            <table class="table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
                             <th>From Date</th>
@@ -410,8 +382,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <t t-if="service_history">
-                            <t t-foreach="employee.service_history_ids" t-as="history">
+                        <t t-if="service_history_lines">
+                            <t t-foreach="service_history_lines" t-as="history">
                                 <tr>
                                     <td><t t-esc="history.from_date or ''"/></td>
                                     <td><t t-esc="history.end_date or ''"/></td>
@@ -421,18 +393,18 @@
                                 </tr>
                             </t>
                         </t>
-                        <t t-if="not service_history">
+                        <t t-if="not service_history_lines">
                             <tr>
                                 <td colspan="5" class="text-center text-muted">No service history available.</td>
                             </tr>
                         </t>
                     </tbody>
                 </table>
-        </div>
+                        </t>
 
-        <!-- 🔹 TAB 3: DISCIPLINARY -->
-        <div class="tab-pane fade" id="disciplinary">
-            <table class="table table-bordered table-sm">
+                        <!-- TAB 3: DISCIPLINARY -->
+                        <t t-if="tab == 'disciplinary'">
+                            <table class="table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
                             <th>Case Type</th>
@@ -448,11 +420,11 @@
                         </tr>
                     </tbody>
                 </table>
-        </div>
+                        </t>
 
-        <!-- 🔹 TAB 4: QUALIFICATIONS -->
-        <div class="tab-pane fade" id="qualifications">
-            <table class="table table-bordered table-sm">
+                        <!-- TAB 4: QUALIFICATIONS -->
+                        <t t-if="tab == 'qualifications'">
+                            <table class="table table-bordered table-sm">
     <thead class="table-light">
         <tr>
             <th>Type</th>
@@ -490,12 +462,7 @@
     </tbody>
 </table>
 
-        </div>
-
-    </div>
-</div>
-
-                    </div>
+                        </t>
                 </div>
             </div>
         </t>
