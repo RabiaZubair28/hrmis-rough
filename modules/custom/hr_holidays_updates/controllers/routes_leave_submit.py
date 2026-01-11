@@ -18,6 +18,7 @@ from .utils import can_manage_employee_leave, safe_int
 
 _OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
 _OVERLAP_FRIENDLY_MSG = "Leave already taken for this duration"
+_EXISTING_DAY_MSG = "You cannot take existing day's leave"
 
 
 def _friendly_leave_error(e: Exception) -> str:
@@ -106,7 +107,7 @@ class HrmisLeaveSubmitController(http.Controller):
 
             today = fields.Date.context_today(request.env.user)
             if d_from < today:
-                msg = "You cannot request leave for past dates"
+                msg = _EXISTING_DAY_MSG
                 if self._wants_json():
                     return self._json({"ok": False, "error": msg}, status=400)
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
@@ -220,6 +221,16 @@ class HrmisLeaveSubmitController(http.Controller):
             except Exception:
                 pass
             msg = _friendly_leave_error(e)
+            # Special-case: if the overlap is for "today", show the existing-day message.
+            try:
+                if msg == _OVERLAP_FRIENDLY_MSG:
+                    d_from = fields.Date.to_date((post.get("date_from") or "").strip())
+                    d_to = fields.Date.to_date((post.get("date_to") or "").strip())
+                    today = fields.Date.context_today(request.env.user)
+                    if d_from and d_to and d_from <= today <= d_to:
+                        msg = _EXISTING_DAY_MSG
+            except Exception:
+                pass
             if self._wants_json():
                 # Overlap should not navigate away; show the error inline.
                 return self._json({"ok": False, "error": msg}, status=400)

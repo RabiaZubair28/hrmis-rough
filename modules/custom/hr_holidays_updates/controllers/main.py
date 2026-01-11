@@ -25,6 +25,7 @@ def _safe_int(v, default=None):
 _DATE_DMY_RE = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$")
 _OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
 _OVERLAP_FRIENDLY_MSG = "Leave already taken for this duration"
+_EXISTING_DAY_MSG = "You cannot take existing day's leave"
 
 
 def _safe_date(v, default=None):
@@ -80,7 +81,7 @@ def _friendly_leave_error(e: Exception) -> str:
     # Requested by business: replace the "started leave reset" errors with a single message.
     # Message wording varies by Odoo version/translation ("officer" vs "manager").
     if "reset a started leave" in msg or "reset the started leave" in msg:
-        return "You cannot take existing day's leave"
+        return _EXISTING_DAY_MSG
 
     # Normalize common overlap messages to a single friendly one.
     if _OVERLAP_ERR_RE.search(msg):
@@ -970,7 +971,8 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
         try:
-            friendly_past_msg = "You cannot request leave for past dates"
+            friendly_past_msg = _EXISTING_DAY_MSG
+            friendly_existing_day_msg = _EXISTING_DAY_MSG
             friendly_overlap_msg = _OVERLAP_FRIENDLY_MSG
 
             # Validate dates early to avoid creating a record and then failing later.
@@ -1105,9 +1107,15 @@ class HrmisLeaveFrontendController(http.Controller):
                     ("date_to", ">=", fields.Datetime.to_datetime(d_from)),
                 ]
             if Leave.search(overlap_domain, limit=1):
+                # If the overlap includes today, use the existing-day message.
+                msg = (
+                    friendly_existing_day_msg
+                    if (d_from <= today <= d_to)
+                    else friendly_overlap_msg
+                )
                 if self._wants_json():
-                    return self._json({"ok": False, "error": friendly_overlap_msg}, status=400)
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_overlap_msg)}")
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # IMPORTANT: use a savepoint so partial creates are rolled back on any error.
             with request.env.cr.savepoint():
@@ -1164,6 +1172,16 @@ class HrmisLeaveFrontendController(http.Controller):
 
         except (ValidationError, UserError, AccessError, Exception) as e:
             msg = _friendly_leave_error(e)
+            # If this is an overlap and it includes today, force the existing-day message.
+            try:
+                if msg == _OVERLAP_FRIENDLY_MSG:
+                    d_from = fields.Date.to_date((post.get("date_from") or "").strip())
+                    d_to = fields.Date.to_date((post.get("date_to") or "").strip())
+                    today = fields.Date.context_today(request.env.user)
+                    if d_from and d_to and d_from <= today <= d_to:
+                        msg = _EXISTING_DAY_MSG
+            except Exception:
+                pass
             if self._wants_json():
                 return self._json({"ok": False, "error": msg}, status=400)
             return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
