@@ -163,6 +163,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             rec = lv.with_user(user).with_context(
                 hrmis_manager_approve=True,
                 hrmis_actor_user_id=user.id,
+                hr_leave_approval_no_user_unlink=True,
             )
 
             comment = (post.get("comment") or "").strip()

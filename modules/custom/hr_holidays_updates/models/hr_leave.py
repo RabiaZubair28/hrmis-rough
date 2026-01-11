@@ -865,6 +865,9 @@ class HrLeave(models.Model):
          - Sequential: only the next approver can see/approve the leave at that time.
         - Parallel: the next consecutive parallel approvers can see/approve together.
         """
+        # Safety guard: prevent any buggy codepath from deleting res.users while approving.
+        # (e.g. accidental `leave.approver_user_ids.unlink()` somewhere in the chain)
+        self = self.with_context(hr_leave_approval_no_user_unlink=True)
         now = fields.Datetime.now()
         for leave in self:
             user = leave.env.user
