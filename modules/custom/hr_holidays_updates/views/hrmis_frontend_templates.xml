@@ -548,6 +548,7 @@
 
                         <t t-if="tab == 'new'">
                             <form class="hrmis-form hrmis-leave-request-form"
+                                  id="hrmis-leave-request-form"
                                   t-att-action="'/hrmis/staff/%s/leave/submit' % employee.id"
                                   t-att-data-employee-id="employee.id"
                                   t-att-data-leave-types-url="'/hrmis/api/leave/types'"
@@ -594,6 +595,7 @@
                                         <div class="hrmis-help js-hrmis-support-doc-note"></div>
                                         <input class="hrmis-input js-hrmis-support-doc-file"
                                                type="file"
+                                               form="hrmis-leave-request-form"
                                                name="support_document"
                                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"/>
                                     </div>
