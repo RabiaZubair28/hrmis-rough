@@ -49,11 +49,18 @@ def _has_real_uploaded_file(fs) -> bool:
     return bool(name)
 
 
-def _get_uploaded_support_document():
+def _get_uploaded_support_document(post=None):
     """
     Best-effort extraction of the uploaded supporting document from the request,
     tolerant to field-name variations and empty placeholder uploads.
     """
+    # Some Odoo/Werkzeug setups place FileStorage objects in the controller kwargs.
+    if isinstance(post, dict):
+        for key in ("support_document", "support_document[]", "supporting_document", "support_document_file", "attachment", "file"):
+            fs = post.get(key)
+            if _has_real_uploaded_file(fs):
+                return fs
+
     files = getattr(request.httprequest, "files", None)
     if not files:
         return None
@@ -140,7 +147,7 @@ class HrmisLeaveSubmitController(http.Controller):
             if not leave_type:
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type")
 
-            uploaded = _get_uploaded_support_document()
+            uploaded = _get_uploaded_support_document(post)
             if getattr(leave_type, "support_document", False) and not _has_real_uploaded_file(uploaded):
                 msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
