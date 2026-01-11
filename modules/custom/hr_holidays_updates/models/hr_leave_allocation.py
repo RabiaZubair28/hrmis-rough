@@ -69,6 +69,12 @@ class HrLeaveAllocation(models.Model):
         months = self.employee_service_months
         domain += ['|', ('min_service_months', '=', 0), ('min_service_months', '<=', months)]
 
+        # Allocation request UI: only show non-auto-allocated types (manual allocations only).
+        if "requires_allocation" in self.env["hr.leave.type"]._fields:
+            domain += [("requires_allocation", "=", "yes")]
+        if "auto_allocate" in self.env["hr.leave.type"]._fields:
+            domain += [("auto_allocate", "=", False)]
+
         return {'domain': {'holiday_status_id': domain}}
 
     @api.constrains('employee_id', 'holiday_status_id')

@@ -11,6 +11,7 @@
             <xpath expr="//field[@name='employee_id']" position="after">
                 <field name="employee_gender" invisible="1"/>
                 <field name="employee_service_months" invisible="1"/>
+                <field name="leave_type_support_document" invisible="1"/>
             </xpath>
 
             <xpath expr="//field[@name='holiday_status_id']" position="attributes">
@@ -25,12 +26,13 @@
 
             <!-- Make supporting document mandatory when required by leave type -->
             <xpath expr="//field[@name='supported_attachment_ids']" position="attributes">
-                <!-- TEMPORARILY DISABLED (per request): do not block save/submit -->
-                <attribute name="required">0</attribute>
+                <!-- Odoo 17+: use JSON modifiers (attrs/states removed) -->
+                <attribute name="modifiers">{"required":[["leave_type_support_document","=",true]]}</attribute>
             </xpath>
             <xpath expr="//field[@name='supported_attachment_ids']" position="before">
-                <field name="support_document_note" readonly="1"
-                       invisible="not leave_type_support_document or state not in ('confirm','validate1')"/>
+                <field name="support_document_note"
+                       readonly="1"
+                       modifiers="{&quot;invisible&quot;:[[&quot;leave_type_support_document&quot;,&quot;=&quot;,false]]}"/>
             </xpath>
         </field>
     </record>
@@ -50,9 +52,10 @@
             <xpath expr="//field[@name='holiday_status_id']" position="attributes">
                 <!-- Include legacy leave types where allowed_gender is empty/False -->
                 <attribute name="domain">
-                    ['&amp;',
+                    ['&amp;','&amp;',
                         '|','|',('allowed_gender','=',False),('allowed_gender','=','all'),('allowed_gender','=',employee_gender),
-                        '|',('min_service_months','=',0),('min_service_months','&lt;=',employee_service_months)
+                        '|',('min_service_months','=',0),('min_service_months','&lt;=',employee_service_months),
+                        '&amp;',('requires_allocation','=','yes'),('auto_allocate','=',False)
                     ]
                 </attribute>
             </xpath>
@@ -69,7 +72,7 @@
                 <field name="allowed_gender"/>
                 <field name="support_document"/>
                 <field name="support_document_note"
-                       invisible="not support_document"
+                       modifiers="{&quot;invisible&quot;:[[&quot;support_document&quot;,&quot;=&quot;,false]]}"
                        placeholder="e.g. Medical Certificate / Government Permission Letter"/>
                 <field name="min_service_months"/>
                 <field name="max_days_per_request"/>

@@ -66,7 +66,9 @@ function _renderApproverSteps(panelEl, steps) {
     const approvers = st?.approvers || [];
     html.push(
       `<div class="hrmis-approver-step">
-        <div class="hrmis-approver-step__title">Step ${_escapeHtml(stepNo)}</div>
+        <div class="hrmis-approver-step__title">Step ${_escapeHtml(
+          stepNo
+        )}</div>
         <div class="hrmis-approver-step__list">
           ${approvers
             .map((a) => {
@@ -81,7 +83,9 @@ function _renderApproverSteps(panelEl, steps) {
                   <div class="hrmis-approver-step__name">${name}</div>
                   <div class="hrmis-approver-step__badge">${stype}</div>
                 </div>
-                <div class="hrmis-approver-step__sub">Seq: ${seq}${meta ? ` — ${meta}` : ""}</div>
+                <div class="hrmis-approver-step__sub">Seq: ${seq}${
+                meta ? ` — ${meta}` : ""
+              }</div>
               </div>`;
             })
             .join("")}
@@ -166,6 +170,7 @@ function _updateSupportDocUI(formEl) {
   const noteEl = _qs(formEl, ".js-hrmis-support-doc-note");
   const fileEl = _qs(formEl, ".js-hrmis-support-doc-file");
   const requiredMarkEl = _qs(formEl, ".js-hrmis-support-doc-required");
+  const labelEl = _qs(formEl, ".js-hrmis-support-doc-label");
   if (!selectEl || !boxEl || !noteEl || !fileEl) return;
 
   const opt = selectEl.selectedOptions?.[0];
@@ -174,6 +179,10 @@ function _updateSupportDocUI(formEl) {
 
   // Always show the upload field; only toggle required + helper text.
   if (requiredMarkEl) requiredMarkEl.style.display = required ? "" : "none";
+  if (labelEl) {
+    // Show the “label” next to the field title when required (e.g. “(Medical certificate)”)
+    labelEl.textContent = required && note ? ` (${note})` : "";
+  }
   noteEl.textContent = required
     ? note || "Please upload the required supporting document."
     : "Optional.";
@@ -192,11 +201,18 @@ function _init() {
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
   if (leaveTypeEl) {
-    leaveTypeEl.addEventListener("change", () => _refreshApprovers(formEl));
+    leaveTypeEl.addEventListener("change", () => {
+      _updateSupportDocUI(formEl);
+      _refreshApprovers(formEl);
+    });
   }
 
   _updateSupportDocUI(formEl);
   _refreshApprovers(formEl);
+  // Ensure the leave-type dropdown reflects newly approved allocations
+  // even when the user navigates back to this page (BFCache) or doesn't
+  // change the date field after approvals.
+  _refreshLeaveTypes(formEl);
 }
 
 // In some Odoo pages, assets can load after DOMContentLoaded.
@@ -205,3 +221,11 @@ if (document.readyState === "loading") {
 } else {
   _init();
 }
+
+// Handle browser back/forward cache (page restored without a full reload).
+window.addEventListener("pageshow", () => {
+  const formEl = document.querySelector(".hrmis-leave-request-form");
+  if (!formEl) return;
+  _refreshLeaveTypes(formEl);
+  _refreshApprovers(formEl);
+});

@@ -195,6 +195,9 @@ def allocation_types_for_employee(employee, date_from=None):
     )
     if "requires_allocation" in recs._fields:
         recs = recs.filtered(lambda lt: lt.requires_allocation == "yes")
+    # New Allocation Request tab: hide policy auto-allocated types.
+    if "auto_allocate" in recs._fields:
+        recs = recs.filtered(lambda lt: not bool(getattr(lt, "auto_allocate", False)))
     return recs
 
 
@@ -222,11 +225,66 @@ def dedupe_leave_types_for_ui(leave_types):
 def merged_leave_and_allocation_types(employee, dt_leave=None, dt_alloc=None):
     dt_leave = safe_date(dt_leave)
     dt_alloc = safe_date(dt_alloc)
-    # Leave Request dropdown: only AUTO-ALLOCATED allocation-based types
-    # (shows "X remaining out of Y").
-    lt_leave = dedupe_leave_types_for_ui(leave_types_for_employee(employee, request_date_from=dt_leave))
-    if "auto_allocate" in lt_leave._fields:
-        lt_leave = lt_leave.filtered(lambda lt: bool(lt.auto_allocate))
+    # Leave Request dropdown: dynamic
+    # - Show policy auto-allocated types, OR
+    # - Show any type where the employee has a non-zero approved allocation/balance.
+    # This makes the dropdown update as soon as an allocation request is approved.
+    lt_leave = dedupe_leave_types_for_ui(
+        leave_types_for_employee(employee, request_date_from=dt_leave)
+        | allocation_types_for_employee(employee, date_from=dt_leave)
+    )
+
+    Allocation = request.env["hr.leave.allocation"].sudo()
+    Emp = request.env["hr.employee"].browse(employee.id)
+
+    # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
+    alloc_totals = {}
+    try:
+        groups = Allocation.read_group(
+            [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
+            ["number_of_days:sum", "holiday_status_id"],
+            ["holiday_status_id"],
+        )
+        for g in groups or []:
+            hid = (g.get("holiday_status_id") or [False])[0]
+            if hid:
+                alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+    except Exception:
+        alloc_totals = {}
+
+    def _total_allocated_days(lt):
+        lt_ctx = lt.with_context(
+            employee_id=employee.id,
+            default_employee_id=employee.id,
+            request_type="leave",
+            default_date_from=dt_leave,
+            default_date_to=dt_leave,
+        )
+        # Best-effort: ensure allocations exist for policy-driven types.
+        try:
+            if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
+                ref_date = dt_leave or fields.Date.today()
+                if getattr(lt_ctx, "max_days_per_month", 0.0):
+                    Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
+                elif getattr(lt_ctx, "max_days_per_year", 0.0):
+                    Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
+                else:
+                    Allocation._ensure_one_time_allocation(Emp, lt_ctx)
+        except Exception:
+            pass
+
+        return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
+
+    def _allowed_for_leave_request(lt):
+        # Keep behavior consistent with the website/controller filtering:
+        # exclude gender-specific entitlement types from leave requests.
+        if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
+            return False
+        if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
+            return True
+        return _total_allocated_days(lt) > 0.0
+
+    lt_leave = lt_leave.filtered(_allowed_for_leave_request)
 
     # Allocation Request dropdown: only types that REQUIRE allocation.
     lt_alloc = dedupe_leave_types_for_ui(allocation_types_for_employee(employee, date_from=dt_alloc))

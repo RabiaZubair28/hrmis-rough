@@ -588,8 +588,10 @@
                                         <label>
                                             Supporting document
                                             <span class="req js-hrmis-support-doc-required" style="display:none;">*</span>
+                                            <span class="js-hrmis-support-doc-label" style="font-weight: 600;"></span>
                                         </label>
-                                        <div class="hrmis-help js-hrmis-support-doc-note">Optional.</div>
+                                        <!-- Filled dynamically based on selected leave type -->
+                                        <div class="hrmis-help js-hrmis-support-doc-note"></div>
                                         <input class="hrmis-input js-hrmis-support-doc-file"
                                                type="file"
                                                name="support_document"
@@ -626,7 +628,7 @@
 
                                     <div class="hrmis-field">
                                         <label>Allocation<span class="req">*</span></label>
-                                        <input class="hrmis-input" type="number" name="number_of_days" step="0.5" min="0" required="required" placeholder="0.00"/>
+                                        <input class="hrmis-input" type="number" name="number_of_days" step="1" min="0" required="required" placeholder="0"/>
                                     </div>
                                     <div class="hrmis-field">
                                         <label>Unit</label>

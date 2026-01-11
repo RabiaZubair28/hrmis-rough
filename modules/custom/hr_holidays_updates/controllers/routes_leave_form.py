@@ -71,13 +71,30 @@ class HrmisLeaveFormController(http.Controller):
             return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
 
         d_from = safe_date(kw.get("date_from"))
+        # Include allocation-based types too so approved allocations appear dynamically.
         leave_types = dedupe_leave_types_for_ui(
             leave_types_for_employee(employee, request_date_from=d_from)
+            | allocation_types_for_employee(employee, date_from=d_from)
         )
         # API powers the Leave Request dropdown: dynamic:
         # show policy auto-allocated types OR types with a non-zero allocation.
         Allocation = request.env["hr.leave.allocation"].sudo()
         Emp = request.env["hr.employee"].browse(employee.id)
+
+        # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
+        alloc_totals = {}
+        try:
+            groups = Allocation.read_group(
+                [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
+                ["number_of_days:sum", "holiday_status_id"],
+                ["holiday_status_id"],
+            )
+            for g in groups or []:
+                hid = (g.get("holiday_status_id") or [False])[0]
+                if hid:
+                    alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+        except Exception:
+            alloc_totals = {}
 
         def _total_allocated_days(lt):
             lt_ctx = lt.with_context(
@@ -98,27 +115,7 @@ class HrmisLeaveFormController(http.Controller):
                         Allocation._ensure_one_time_allocation(Emp, lt_ctx)
             except Exception:
                 pass
-            try:
-                if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                    return float(lt_ctx.max_leaves or 0.0)
-            except Exception:
-                pass
-            try:
-                if hasattr(lt_ctx, "get_days"):
-                    days = lt_ctx.get_days(employee.id)
-                    info = days.get(employee.id) if isinstance(days, dict) else None
-                    if isinstance(info, dict):
-                        total = info.get("max_leaves")
-                        if total is None:
-                            total = (
-                                info.get("allocated_leaves")
-                                if info.get("allocated_leaves") is not None
-                                else info.get("total_allocated_leaves")
-                            )
-                        return float(total or 0.0)
-            except Exception:
-                pass
-            return 0.0
+            return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
 
         def _allowed(lt):
             if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):

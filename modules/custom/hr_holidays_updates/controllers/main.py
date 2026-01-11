@@ -413,6 +413,9 @@ def _allocation_types_for_employee(employee, date_from=None):
     # Allocation request tab should show only allocation-based types when available.
     if "requires_allocation" in recs._fields:
         recs = recs.filtered(lambda lt: lt.requires_allocation == "yes")
+    # And exclude policy auto-allocated types (those should not be requested manually).
+    if "auto_allocate" in recs._fields:
+        recs = recs.filtered(lambda lt: not bool(getattr(lt, "auto_allocate", False)))
     return recs
 
 
@@ -590,6 +593,21 @@ class HrmisLeaveFrontendController(http.Controller):
         Allocation = request.env["hr.leave.allocation"].sudo()
         Emp = request.env["hr.employee"].browse(employee.id)
 
+        # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
+        alloc_totals = {}
+        try:
+            groups = Allocation.read_group(
+                [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
+                ["number_of_days:sum", "holiday_status_id"],
+                ["holiday_status_id"],
+            )
+            for g in groups or []:
+                hid = (g.get("holiday_status_id") or [False])[0]
+                if hid:
+                    alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+        except Exception:
+            alloc_totals = {}
+
         def _total_allocated_days(lt):
             lt_ctx = lt.with_context(
                 employee_id=employee.id,
@@ -636,8 +654,13 @@ class HrmisLeaveFrontendController(http.Controller):
 
         def _leave_type_allowed_for_leave_request(lt):
             try:
+                # Gender eligibility (keep consistent with hr.leave onchange rules):
+                # - 'all'/False => everyone
+                # - 'male'/'female' => only that gender (and if employee gender is missing, hide it)
                 if "allowed_gender" in lt._fields:
-                    if (lt.allowed_gender or "all") not in ("all", False):
+                    allowed = lt.allowed_gender or "all"
+                    emp_gender = employee.gender if employee and "gender" in employee._fields else False
+                    if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
                         return False
                 if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
                     return True
@@ -697,10 +720,29 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         d_from = _safe_date(kw.get("date_from"))
-        leave_types = _dedupe_leave_types_for_ui(_leave_types_for_employee(employee, request_date_from=d_from))
+        # Include allocation-based types too so approved allocations appear dynamically.
+        leave_types = _dedupe_leave_types_for_ui(
+            _leave_types_for_employee(employee, request_date_from=d_from)
+            | _allocation_types_for_employee(employee, date_from=d_from)
+        )
 
         Allocation = request.env["hr.leave.allocation"].sudo()
         Emp = request.env["hr.employee"].browse(employee.id)
+
+        # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
+        alloc_totals = {}
+        try:
+            groups = Allocation.read_group(
+                [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
+                ["number_of_days:sum", "holiday_status_id"],
+                ["holiday_status_id"],
+            )
+            for g in groups or []:
+                hid = (g.get("holiday_status_id") or [False])[0]
+                if hid:
+                    alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
+        except Exception:
+            alloc_totals = {}
 
         def _total_allocated_days(lt):
             lt_ctx = lt.with_context(
@@ -721,6 +763,7 @@ class HrmisLeaveFrontendController(http.Controller):
                         Allocation._ensure_one_time_allocation(Emp, lt_ctx)
             except Exception:
                 pass
+            # Prefer Odoo's own leave balance engine (handles hours-based types too).
             try:
                 if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
                     return float(lt_ctx.max_leaves or 0.0)
@@ -741,11 +784,16 @@ class HrmisLeaveFrontendController(http.Controller):
                         return float(total or 0.0)
             except Exception:
                 pass
-            return 0.0
+            # Fallback: sum of validated allocations in days.
+            return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
 
         def _allowed(lt):
-            if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
-                return False
+            # Gender eligibility (keep consistent with hr.leave onchange rules).
+            if "allowed_gender" in lt._fields:
+                allowed = lt.allowed_gender or "all"
+                emp_gender = employee.gender if employee and "gender" in employee._fields else False
+                if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
+                    return False
             if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
                 return True
             return _total_allocated_days(lt) > 0.0
@@ -968,8 +1016,12 @@ class HrmisLeaveFrontendController(http.Controller):
                 return 0.0
 
             def _allowed(lt):
-                if "allowed_gender" in lt._fields and (lt.allowed_gender or "all") not in ("all", False):
-                    return False
+                # Gender eligibility (keep consistent with hr.leave onchange rules).
+                if "allowed_gender" in lt._fields:
+                    allowed = lt.allowed_gender or "all"
+                    emp_gender = employee.gender if employee and "gender" in employee._fields else False
+                    if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
+                        return False
                 if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
                     return True
                 return _total_allocated_days(lt) > 0.0
@@ -987,7 +1039,22 @@ class HrmisLeaveFrontendController(http.Controller):
                 )
 
             # Supporting document handling for the custom UI
-            uploaded = request.httprequest.files.get("support_document")
+            # Robustly fetch the uploaded file (some deployments rename the field).
+            files = getattr(request.httprequest, "files", None)
+            uploaded = files.get("support_document") if files else None
+            if not uploaded and files:
+                for key in ("support_document[]", "supporting_document", "support_document_file", "attachment", "file"):
+                    uploaded = files.get(key)
+                    if uploaded:
+                        break
+            if not uploaded and files:
+                # If the browser sent exactly one file under an unexpected key, accept it.
+                try:
+                    keys = list(files.keys())
+                    if len(keys) == 1:
+                        uploaded = files.get(keys[0])
+                except Exception:
+                    uploaded = None
             if leave_type.support_document and not uploaded:
                 msg = quote_plus(leave_type.support_document_note or "Supporting document is required.")
                 return request.redirect(
@@ -1021,7 +1088,16 @@ class HrmisLeaveFrontendController(http.Controller):
                 leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
 
                 if uploaded:
-                    data = uploaded.read()
+                    # Some deployments/proxies can yield an empty stream on first read.
+                    # Try to rewind, then read once (best-effort).
+                    try:
+                        uploaded.stream.seek(0)
+                    except Exception:
+                        pass
+                    data = uploaded.read() or b""
+                    if not data and getattr(uploaded, "filename", ""):
+                        # Raise inside savepoint so the draft leave is rolled back.
+                        raise ValidationError("Uploaded document could not be read. Please re-upload the file")
                     if data:
                         att = request.env["ir.attachment"].sudo().create(
                             {
@@ -1035,8 +1111,17 @@ class HrmisLeaveFrontendController(http.Controller):
                         )
                         # Link it to the standard support-document field if present,
                         # so it also shows up in the native Odoo form view.
+                        link_vals = {}
                         if "supported_attachment_ids" in leave._fields:
-                            leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+                            link_vals["supported_attachment_ids"] = [(4, att.id)]
+                        # Also set the main attachment when available (helps visibility in chatter/UIs).
+                        if "message_main_attachment_id" in leave._fields and not getattr(leave, "message_main_attachment_id", False):
+                            link_vals["message_main_attachment_id"] = att.id
+                        if link_vals:
+                            leave.sudo().write(link_vals)
+                        # Flush attachment insert before confirming; confirm-time constraints
+                        # may query attachments immediately.
+                        request.env.cr.flush()
 
                 if hasattr(leave, "action_confirm"):
                     leave.action_confirm()
@@ -1100,9 +1185,14 @@ class HrmisLeaveFrontendController(http.Controller):
                 # Standard field on most Odoo builds
                 "allocation_type": "regular",
             }
-            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
-            if hasattr(alloc, "action_confirm"):
-                alloc.action_confirm()
+            # IMPORTANT: force flush inside a savepoint so any constraints (e.g. 24-day ACL cap)
+            # raised at flush/commit time are caught here and the record is rolled back.
+            with request.env.cr.savepoint():
+                alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
+                if hasattr(alloc, "action_confirm"):
+                    alloc.action_confirm()
+                # Ensure any pending constraints trigger here.
+                request.env.cr.flush()
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
