@@ -1073,7 +1073,17 @@ class HrmisLeaveFrontendController(http.Controller):
                 leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
 
                 if uploaded:
-                    data = uploaded.read()
+                    # Some deployments/proxies can yield an empty stream on first read.
+                    # Try to rewind, then read once (best-effort).
+                    try:
+                        uploaded.stream.seek(0)
+                    except Exception:
+                        pass
+                    data = uploaded.read() or b""
+                    if not data and getattr(uploaded, "filename", ""):
+                        return request.redirect(
+                            f"/hrmis/staff/{employee.id}/leave?tab=new&error=Uploaded+document+could+not+be+read.+Please+re-upload+the+file"
+                        )
                     if data:
                         att = request.env["ir.attachment"].sudo().create(
                             {
@@ -1089,6 +1099,9 @@ class HrmisLeaveFrontendController(http.Controller):
                         # so it also shows up in the native Odoo form view.
                         if "supported_attachment_ids" in leave._fields:
                             leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+                        # Flush attachment insert before confirming; confirm-time constraints
+                        # may query attachments immediately.
+                        request.env.cr.flush()
 
                 if hasattr(leave, "action_confirm"):
                     leave.action_confirm()
