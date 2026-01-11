@@ -151,22 +151,34 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
-            # Execute with elevated rights (Section Officers usually don't have
-            # HR leave manager rights), while still enforcing our own "managed
-            # employee" rule above.
+            # IMPORTANT:
+            # - Do NOT sudo() the approval action; otherwise the leave approval
+            #   engine may run as Administrator and can trigger unexpected ORM
+            #   side-effects (including accidental deletes of related records).
+            # - We already enforce the Section Officer "managed employee" rule above.
             #
-            # Also bypass the custom sequential approval engine when this approval
-            # is coming from the Section Officer "Manage Requests" screen.
-            rec = lv.sudo().with_context(
+            # Run approval as the logged-in user, using the custom sequential
+            # approval engine when available.
+            user = request.env.user
+            rec = lv.with_user(user).with_context(
                 hrmis_manager_approve=True,
-                hrmis_actor_user_id=request.env.user.id,
+                hrmis_actor_user_id=user.id,
             )
-            if hasattr(rec, "action_approve"):
+
+            comment = (post.get("comment") or "").strip()
+
+            # Some deployments use OpenHRMS multi-level approval where final
+            # approval happens via action_validate() from validate1.
+            if rec.state == "validate1" and hasattr(rec, "action_validate"):
+                rec.action_validate()
+            elif hasattr(rec, "action_approve_by_user"):
+                rec.action_approve_by_user(comment=comment or None)
+            elif hasattr(rec, "action_approve"):
                 rec.action_approve()
             elif hasattr(rec, "action_validate"):
                 rec.action_validate()
             else:
-                lv.sudo().write({"state": "validate"})
+                rec.write({"state": "validate"})
         except Exception:
             return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
 
