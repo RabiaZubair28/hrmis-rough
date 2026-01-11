@@ -730,10 +730,21 @@ class HrLeave(models.Model):
         return res
 
     def _init_approval_flow(self):
+        Status = self.env["hr.leave.approval.status"].sudo()
+        Flow = self.env["hr.leave.approval.flow"].sudo()
         for leave in self:
-            leave.approval_status_ids.unlink()
+            # IMPORTANT:
+            # Do NOT unlink() approval status rows.
+            #
+            # Some deployments attach other records/history to these rows, and
+            # hard-deleting them can trigger Odoo's "another model requires the
+            # record being deleted (archive it instead)" error during approvals.
+            existing_statuses = leave.approval_status_ids.sudo()
+            # Only reset approvals when the leave is just submitted and nothing
+            # has been approved yet.
+            reset = bool(leave.state == "confirm" and not any(existing_statuses.mapped("approved")))
 
-            flows = self.env["hr.leave.approval.flow"].search(
+            flows = Flow.search(
                 [("leave_type_id", "=", leave.holiday_status_id.id)],
                 order="sequence",
             )
@@ -771,31 +782,88 @@ class HrLeave(models.Model):
 
             leave.approval_step = flows[0].sequence
 
+            # Build the desired (flow_id, user_id) -> values map.
+            desired = {}
             for flow in flows:
                 # Prefer explicit ordering when configured.
                 if flow.approver_line_ids:
                     ordered = flow._ordered_approver_lines()
                     leave._ensure_sequential_approver_group(ordered.mapped("user_id"))
                     for line in ordered:
-                        self.env["hr.leave.approval.status"].sudo().create({
+                        if not line.user_id:
+                            continue
+                        desired[(flow.id, line.user_id.id)] = {
                             "leave_id": leave.id,
                             "flow_id": flow.id,
                             "user_id": line.user_id.id,
                             "sequence": line.sequence,
                             "sequence_type": line.sequence_type or (flow.mode or "sequential"),
-                        })
+                        }
                     continue
 
                 # Backward compatible fallback (deterministic by user id).
                 fallback_users = flow.approver_ids.sorted(lambda u: u.id)
                 for idx, user in enumerate(fallback_users, start=1):
-                    self.env["hr.leave.approval.status"].sudo().create({
+                    desired[(flow.id, user.id)] = {
                         "leave_id": leave.id,
                         "flow_id": flow.id,
                         "user_id": user.id,
                         "sequence": idx * 10,
                         "sequence_type": (flow.mode or "sequential"),
-                    })
+                    }
+
+            desired_keys = set(desired.keys())
+
+            # Index existing statuses by key, de-duplicate by keeping newest.
+            existing_by_key = {}
+            for st in existing_statuses:
+                key = (st.flow_id.id, st.user_id.id)
+                existing_by_key[key] = existing_by_key.get(key, Status.browse()) | st
+
+            for key, recs in list(existing_by_key.items()):
+                if len(recs) <= 1:
+                    existing_by_key[key] = recs
+                    continue
+                keep = recs.sorted("id")[-1]
+                (recs - keep).sudo().write({"approved": True})
+                existing_by_key[key] = keep
+
+            # Upsert desired statuses (no hard deletes).
+            for key, vals in desired.items():
+                st = existing_by_key.get(key)
+                if st:
+                    write_vals = {
+                        "sequence": vals["sequence"],
+                        "sequence_type": vals["sequence_type"],
+                    }
+                    if reset:
+                        write_vals.update(
+                            {
+                                "approved": False,
+                                "approved_on": False,
+                                "comment": False,
+                                "commented_on": False,
+                            }
+                        )
+                    st.sudo().write(write_vals)
+                else:
+                    create_vals = {
+                        "leave_id": vals["leave_id"],
+                        "flow_id": vals["flow_id"],
+                        "user_id": vals["user_id"],
+                        "sequence": vals["sequence"],
+                        "sequence_type": vals["sequence_type"],
+                        "approved": False,
+                        "approved_on": False,
+                        "comment": False,
+                        "commented_on": False,
+                    }
+                    Status.create(create_vals)
+
+            # Any leftover (stale) statuses should not block approvals.
+            stale = existing_statuses.filtered(lambda s: (s.flow_id.id, s.user_id.id) not in desired_keys)
+            if stale:
+                stale.sudo().write({"approved": True})
 
     def _ensure_custom_approval_initialized(self):
         """
