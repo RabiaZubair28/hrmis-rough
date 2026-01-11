@@ -172,7 +172,12 @@ class HrLeave(models.Model):
     def _compute_pending_approver_ids(self):
         Flow = self.env["hr.leave.approval.flow"]
         for leave in self:
-            if leave.state != "confirm" or not leave.holiday_status_id:
+            # IMPORTANT:
+            # - Custom approval flow uses "confirm" until final validate.
+            # - OpenHRMS multi-level flow transitions to "validate1" before final validate.
+            # We must keep pending approvers computed for BOTH states, otherwise
+            # record rules will block second-stage approvals.
+            if leave.state not in ("confirm", "validate1") or not leave.holiday_status_id:
                 leave.pending_approver_ids = False
                 continue
 
