@@ -918,14 +918,17 @@ class HrmisLeaveFrontendController(http.Controller):
         return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
 
     @http.route(
-        ["/hrmis/staff/<int:employee_id>/leave/submit"],
+        # NOTE: legacy submit route kept for backward compatibility.
+        # The canonical HRMIS submit handlers live in `routes_leave_submit.py`.
+        # Keeping the same URL in two controllers causes non-deterministic behavior.
+        ["/hrmis/staff/<int:employee_id>/leave/submit_legacy"],
         type="http",
         auth="user",
         website=True,
         methods=["POST"],
         csrf=True,
     )
-    def hrmis_leave_submit(self, employee_id: int, **post):
+    def hrmis_leave_submit_legacy(self, employee_id: int, **post):
         employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
         if not employee:
             return request.not_found()
@@ -1139,14 +1142,16 @@ class HrmisLeaveFrontendController(http.Controller):
         )
 
     @http.route(
-        ["/hrmis/staff/<int:employee_id>/allocation/submit"],
+        # NOTE: legacy allocation submit route kept for backward compatibility.
+        # Canonical handler lives in `routes_leave_submit.py`.
+        ["/hrmis/staff/<int:employee_id>/allocation/submit_legacy"],
         type="http",
         auth="user",
         website=True,
         methods=["POST"],
         csrf=True,
     )
-    def hrmis_allocation_submit(self, employee_id: int, **post):
+    def hrmis_allocation_submit_legacy(self, employee_id: int, **post):
         employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
         if not employee:
             return request.not_found()
