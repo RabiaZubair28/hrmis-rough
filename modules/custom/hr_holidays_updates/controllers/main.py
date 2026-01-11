@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+import logging
 import re
 import json
 import base64
@@ -10,6 +11,8 @@ from urllib.parse import quote_plus
 from odoo import http, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
+
+_logger = logging.getLogger(__name__)
 
 
 def _safe_int(v, default=None):
@@ -21,6 +24,8 @@ def _safe_int(v, default=None):
 
 _DATE_DMY_RE = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$")
 _OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
+_OVERLAP_FRIENDLY_MSG = "Leave already taken for this duration"
+_EXISTING_DAY_MSG = "You cannot take existing day's leave"
 
 
 def _safe_date(v, default=None):
@@ -76,11 +81,11 @@ def _friendly_leave_error(e: Exception) -> str:
     # Requested by business: replace the "started leave reset" errors with a single message.
     # Message wording varies by Odoo version/translation ("officer" vs "manager").
     if "reset a started leave" in msg or "reset the started leave" in msg:
-        return "You cannot take existing day's leave"
+        return _EXISTING_DAY_MSG
 
     # Normalize common overlap messages to a single friendly one.
     if _OVERLAP_ERR_RE.search(msg):
-        return "You cannot take existing day's leave"
+        return _OVERLAP_FRIENDLY_MSG
 
     # Avoid leaking internal access errors.
     if isinstance(e, AccessError):
@@ -448,6 +453,24 @@ def _dedupe_leave_types_for_ui(leave_types):
 
 
 class HrmisLeaveFrontendController(http.Controller):
+    def _wants_json(self) -> bool:
+        """
+        The leave form can be submitted via AJAX to avoid page navigation.
+        """
+        try:
+            accept = request.httprequest.headers.get("Accept", "") or ""
+            xrw = request.httprequest.headers.get("X-Requested-With", "") or ""
+            return ("application/json" in accept.lower()) or (xrw.lower() == "xmlhttprequest")
+        except Exception:
+            return False
+
+    def _json(self, payload: dict, status: int = 200):
+        return request.make_response(
+            json.dumps(payload),
+            headers=[("Content-Type", "application/json")],
+            status=status,
+        )
+
     # -------------------------------------------------------------------------
     # Odoo Time Off default URLs (override to render the custom UI)
     # -------------------------------------------------------------------------
@@ -931,6 +954,9 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.not_found()
 
         if not _can_manage_employee_leave(employee):
+            msg = "You are not allowed to submit this leave request"
+            if self._wants_json():
+                return self._json({"ok": False, "error": msg}, status=403)
             return request.redirect("/hrmis/services?error=not_allowed")
 
         dt_from = (post.get("date_from") or "").strip()
@@ -939,33 +965,40 @@ class HrmisLeaveFrontendController(http.Controller):
         remarks = (post.get("remarks") or "").strip()
 
         if not dt_from or not dt_to or not leave_type_id or not remarks:
-            return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields"
-            )
+            msg = "Please fill all required fields"
+            if self._wants_json():
+                return self._json({"ok": False, "error": msg}, status=400)
+            return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
         try:
-            friendly_existing_day_msg = "You cannot take existing day's leave"
+            friendly_past_msg = _EXISTING_DAY_MSG
+            friendly_existing_day_msg = _EXISTING_DAY_MSG
+            friendly_overlap_msg = _OVERLAP_FRIENDLY_MSG
 
             # Validate dates early to avoid creating a record and then failing later.
             d_from = fields.Date.to_date(dt_from)
             d_to = fields.Date.to_date(dt_to)
             if not d_from or not d_to:
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+date+format"
-                )
+                msg = "Invalid date format"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             if d_to < d_from:
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date"
-                )
+                msg = "End date cannot be before start date"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # Block past days explicitly (business requirement).
             today = fields.Date.context_today(request.env.user)
             # Allow "today" (backend may still reject based on started-leave rules);
             # only block backdated requests here.
             if d_from < today or d_to < today:
+                if self._wants_json():
+                    return self._json({"ok": False, "error": friendly_past_msg}, status=400)
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_past_msg)}"
                 )
 
             allowed_types = _dedupe_leave_types_for_ui(
@@ -1028,15 +1061,17 @@ class HrmisLeaveFrontendController(http.Controller):
 
             allowed_types = allowed_types.filtered(_allowed)
             if leave_type_id not in set(allowed_types.ids):
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed"
-                )
+                msg = "Selected leave type is not allowed"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
             if not leave_type:
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type"
-                )
+                msg = "Invalid leave type"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # Supporting document handling for the custom UI
             # Robustly fetch the uploaded file (some deployments rename the field).
@@ -1056,10 +1091,10 @@ class HrmisLeaveFrontendController(http.Controller):
                 except Exception:
                     uploaded = None
             if leave_type.support_document and not uploaded:
-                msg = quote_plus(leave_type.support_document_note or "Supporting document is required.")
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}"
-                )
+                msg = leave_type.support_document_note or "Supporting document is required."
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # Prevent creating leave over existing leave days.
             Leave = request.env["hr.leave"].sudo()
@@ -1072,9 +1107,15 @@ class HrmisLeaveFrontendController(http.Controller):
                     ("date_to", ">=", fields.Datetime.to_datetime(d_from)),
                 ]
             if Leave.search(overlap_domain, limit=1):
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                # If the overlap includes today, use the existing-day message.
+                msg = (
+                    friendly_existing_day_msg
+                    if (d_from <= today <= d_to)
+                    else friendly_overlap_msg
                 )
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # IMPORTANT: use a savepoint so partial creates are rolled back on any error.
             with request.env.cr.savepoint():
@@ -1130,13 +1171,25 @@ class HrmisLeaveFrontendController(http.Controller):
                 request.env.cr.flush()
 
         except (ValidationError, UserError, AccessError, Exception) as e:
-            return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}"
-            )
+            msg = _friendly_leave_error(e)
+            # If this is an overlap and it includes today, force the existing-day message.
+            try:
+                if msg == _OVERLAP_FRIENDLY_MSG:
+                    d_from = fields.Date.to_date((post.get("date_from") or "").strip())
+                    d_to = fields.Date.to_date((post.get("date_to") or "").strip())
+                    today = fields.Date.context_today(request.env.user)
+                    if d_from and d_to and d_from <= today <= d_to:
+                        msg = _EXISTING_DAY_MSG
+            except Exception:
+                pass
+            if self._wants_json():
+                return self._json({"ok": False, "error": msg}, status=400)
+            return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
-        return request.redirect(
-            f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted"
-        )
+        redirect_url = f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted"
+        if self._wants_json():
+            return self._json({"ok": True, "redirect": redirect_url})
+        return request.redirect(redirect_url)
 
     @http.route(
         ["/hrmis/staff/<int:employee_id>/allocation/submit"],
@@ -1264,21 +1317,29 @@ class HrmisLeaveFrontendController(http.Controller):
 
         try:
             # OpenHRMS multi-level approval overrides action_approve and only allows it from "confirm".
-            if leave.state == "validate1" and hasattr(leave.with_user(request.env.user), "action_validate"):
+            rec = leave.with_user(request.env.user).with_context(hr_leave_approval_no_user_unlink=True)
+            if rec.state == "validate1" and hasattr(rec, "action_validate"):
                 # Best-effort: persist comment on the validator line (if available) and in chatter.
-                if comment and hasattr(leave, "validation_status_ids"):
-                    st = leave.validation_status_ids.filtered(lambda s: s.user_id.id == request.env.user.id)[:1]
+                if comment and hasattr(rec, "validation_status_ids"):
+                    st = rec.validation_status_ids.filtered(lambda s: s.user_id.id == request.env.user.id)[:1]
                     if st:
                         st.sudo().write({"leave_comments": comment})
-                    leave.sudo().message_post(
+                    rec.sudo().message_post(
                         body=f"Approval comment by {request.env.user.name}:<br/>{comment}",
                         author_id=getattr(request.env.user, "partner_id", False) and request.env.user.partner_id.id or False,
                     )
-                leave.with_user(request.env.user).action_validate()
+                # Use sudo(user) so the actual actor remains in env.user while
+                # bypassing access rules that may block final validation.
+                rec.sudo(request.env.user.id).action_validate()
             else:
                 # Use our custom sequential approval, capturing optional comment.
-                leave.with_user(request.env.user).action_approve_by_user(comment=comment or None)
+                rec.action_approve_by_user(comment=comment or None)
         except Exception:
+            _logger.exception(
+                "HRMIS leave approve failed; leave_id=%s user_id=%s",
+                leave_id,
+                request.env.user.id,
+            )
             return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
 
         return request.redirect("/hrmis/manage/requests?tab=leave&success=approved")

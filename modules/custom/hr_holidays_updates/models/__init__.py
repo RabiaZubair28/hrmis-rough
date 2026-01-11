@@ -14,7 +14,7 @@ from . import hr_leave_constraints
 from . import hr_leave_date_guards
 from . import hr_leave_approval_runtime
 from . import hr_leave_notifications
-
+from . import res_users_safe_unlink
 from . import hr_leave_allocation
 from . import hrmis_notification
 from . import res_users_hrmis_notifications

@@ -59,13 +59,13 @@
   display: grid;
   grid-template-columns: 44px auto; /* avatar width + meta */
   column-gap: 12px;
-  row-gap: 6px;
+  row-gap: 0;
   width: fit-content; /* prevent overlap with the bell */
   min-width: 0;
   max-width: 100%;
 }
 .hrmis-user-stack > .hrmis-user-link {
-  grid-column: 1 / -1; /* take full width for avatar+meta row */
+   grid-column: 2; /* take full width for avatar+meta row */
   justify-self: end; /* align the whole row to the right */
 }
 .hrmis-logout {
@@ -257,7 +257,8 @@
   opacity: 0.9;
 }
 .hrmis-notif-item__meta {
-  font-size: 12px;
+  font-size: 18px;
+  font-weight: 700;
   opacity: 0.75;
   margin-top: 6px;
 }

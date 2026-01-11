@@ -23,8 +23,10 @@ class HrLeaveApprovalRuntime(models.Model):
             # Best-effort fallback: mimic "confirm" transition.
             self.write({"state": "confirm"})
             res = True
-
-        self._init_approval_flow()
+        # NOTE:
+        # `hr_leave.py` (loaded later in this module) also overrides action_confirm()
+        # and initializes the approval flow. Doing it here as well can lead to
+        # duplicate initialization and (previously) double-unlink issues.
         return res
 
     def _init_approval_flow(self):
@@ -39,7 +41,12 @@ class HrLeaveApprovalRuntime(models.Model):
             # Approval flows are configuration records typically restricted to HR.
             # Website/employee submissions should still work, so we use sudo() for
             # flow lookup and status row creation after the leave itself is confirmed.
-            leave.approval_status_ids.sudo().unlink()
+            # IMPORTANT:
+            # Avoid unlink() here: some deployments attach audit/history to these
+            # rows and hard-deleting can trigger Odoo's "archive instead" error.
+            # Mark any existing rows as approved so they won't block the engine.
+            if leave.approval_status_ids:
+                leave.approval_status_ids.sudo().write({"approved": True})
             flows = self.env["hr.leave.approval.flow"].sudo().search(
                 [("leave_type_id", "=", leave.holiday_status_id.id)],
                 order="sequence",

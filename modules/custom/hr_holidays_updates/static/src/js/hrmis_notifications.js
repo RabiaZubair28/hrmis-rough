@@ -38,7 +38,7 @@ function _renderNotificationItem(n) {
   const btn = document.createElement("button");
   btn.className = "hrmis-notif-item__dismiss js-hrmis-notif-dismiss";
   btn.type = "button";
-  btn.textContent = n.is_read ? "Read" : "Dismiss";
+  btn.textContent = n.is_read ? "Read" : "Mark As Read";
   btn.disabled = !!n.is_read;
   actions.appendChild(btn);
 

@@ -93,16 +93,25 @@ class HrLeave(models.Model):
             "- Parallel: the next consecutive parallel approvers can act/see it together."
         ),
     )
+    # NOTE:
+    # We intentionally do NOT store the "all approvers" set in a dedicated M2M
+    # relation table anymore. A stored relation created a hard dependency on the
+    # table `hr_leave_approver_user_rel`, and some deployments have buggy approval
+    # code paths that accidentally attempt to delete `res.users`, tripping the
+    # FK `hr_leave_approver_user_rel_user_id_fkey`.
+    #
+    # For visibility/approval we rely on:
+    # - `pending_approver_ids` (stored) for "who can act now"
+    # - `approval_status_ids` / `validation_status_ids` for history / audit
+    #
+    # This field is kept only as a non-stored computed convenience for UI/debug.
     approver_user_ids = fields.Many2many(
         "res.users",
         string="All Approvers",
-        relation="hr_leave_approver_user_rel",
-        column1="leave_id",
-        column2="user_id",
         compute="_compute_approver_user_ids",
-        store=True,
+        store=False,
         compute_sudo=True,
-        help="All users who are part of this leave's approval chain (used for visibility rules).",
+        help="All users who are part of this leave's approval chain (non-stored).",
     )
 
     @api.depends(
@@ -163,7 +172,12 @@ class HrLeave(models.Model):
     def _compute_pending_approver_ids(self):
         Flow = self.env["hr.leave.approval.flow"]
         for leave in self:
-            if leave.state != "confirm" or not leave.holiday_status_id:
+            # IMPORTANT:
+            # - Custom approval flow uses "confirm" until final validate.
+            # - OpenHRMS multi-level flow transitions to "validate1" before final validate.
+            # We must keep pending approvers computed for BOTH states, otherwise
+            # record rules will block second-stage approvals.
+            if leave.state not in ("confirm", "validate1") or not leave.holiday_status_id:
                 leave.pending_approver_ids = False
                 continue
 
@@ -716,10 +730,21 @@ class HrLeave(models.Model):
         return res
 
     def _init_approval_flow(self):
+        Status = self.env["hr.leave.approval.status"].sudo()
+        Flow = self.env["hr.leave.approval.flow"].sudo()
         for leave in self:
-            leave.approval_status_ids.unlink()
+            # IMPORTANT:
+            # Do NOT unlink() approval status rows.
+            #
+            # Some deployments attach other records/history to these rows, and
+            # hard-deleting them can trigger Odoo's "another model requires the
+            # record being deleted (archive it instead)" error during approvals.
+            existing_statuses = leave.approval_status_ids.sudo()
+            # Only reset approvals when the leave is just submitted and nothing
+            # has been approved yet.
+            reset = bool(leave.state == "confirm" and not any(existing_statuses.mapped("approved")))
 
-            flows = self.env["hr.leave.approval.flow"].search(
+            flows = Flow.search(
                 [("leave_type_id", "=", leave.holiday_status_id.id)],
                 order="sequence",
             )
@@ -757,31 +782,88 @@ class HrLeave(models.Model):
 
             leave.approval_step = flows[0].sequence
 
+            # Build the desired (flow_id, user_id) -> values map.
+            desired = {}
             for flow in flows:
                 # Prefer explicit ordering when configured.
                 if flow.approver_line_ids:
                     ordered = flow._ordered_approver_lines()
                     leave._ensure_sequential_approver_group(ordered.mapped("user_id"))
                     for line in ordered:
-                        self.env["hr.leave.approval.status"].sudo().create({
+                        if not line.user_id:
+                            continue
+                        desired[(flow.id, line.user_id.id)] = {
                             "leave_id": leave.id,
                             "flow_id": flow.id,
                             "user_id": line.user_id.id,
                             "sequence": line.sequence,
                             "sequence_type": line.sequence_type or (flow.mode or "sequential"),
-                        })
+                        }
                     continue
 
                 # Backward compatible fallback (deterministic by user id).
                 fallback_users = flow.approver_ids.sorted(lambda u: u.id)
                 for idx, user in enumerate(fallback_users, start=1):
-                    self.env["hr.leave.approval.status"].sudo().create({
+                    desired[(flow.id, user.id)] = {
                         "leave_id": leave.id,
                         "flow_id": flow.id,
                         "user_id": user.id,
                         "sequence": idx * 10,
                         "sequence_type": (flow.mode or "sequential"),
-                    })
+                    }
+
+            desired_keys = set(desired.keys())
+
+            # Index existing statuses by key, de-duplicate by keeping newest.
+            existing_by_key = {}
+            for st in existing_statuses:
+                key = (st.flow_id.id, st.user_id.id)
+                existing_by_key[key] = existing_by_key.get(key, Status.browse()) | st
+
+            for key, recs in list(existing_by_key.items()):
+                if len(recs) <= 1:
+                    existing_by_key[key] = recs
+                    continue
+                keep = recs.sorted("id")[-1]
+                (recs - keep).sudo().write({"approved": True})
+                existing_by_key[key] = keep
+
+            # Upsert desired statuses (no hard deletes).
+            for key, vals in desired.items():
+                st = existing_by_key.get(key)
+                if st:
+                    write_vals = {
+                        "sequence": vals["sequence"],
+                        "sequence_type": vals["sequence_type"],
+                    }
+                    if reset:
+                        write_vals.update(
+                            {
+                                "approved": False,
+                                "approved_on": False,
+                                "comment": False,
+                                "commented_on": False,
+                            }
+                        )
+                    st.sudo().write(write_vals)
+                else:
+                    create_vals = {
+                        "leave_id": vals["leave_id"],
+                        "flow_id": vals["flow_id"],
+                        "user_id": vals["user_id"],
+                        "sequence": vals["sequence"],
+                        "sequence_type": vals["sequence_type"],
+                        "approved": False,
+                        "approved_on": False,
+                        "comment": False,
+                        "commented_on": False,
+                    }
+                    Status.create(create_vals)
+
+            # Any leftover (stale) statuses should not block approvals.
+            stale = existing_statuses.filtered(lambda s: (s.flow_id.id, s.user_id.id) not in desired_keys)
+            if stale:
+                stale.sudo().write({"approved": True})
 
     def _ensure_custom_approval_initialized(self):
         """
@@ -865,6 +947,9 @@ class HrLeave(models.Model):
          - Sequential: only the next approver can see/approve the leave at that time.
         - Parallel: the next consecutive parallel approvers can see/approve together.
         """
+        # Safety guard: prevent any buggy codepath from deleting res.users while approving.
+        # (e.g. accidental `leave.approver_user_ids.unlink()` somewhere in the chain)
+        self = self.with_context(hr_leave_approval_no_user_unlink=True)
         now = fields.Datetime.now()
         for leave in self:
             user = leave.env.user

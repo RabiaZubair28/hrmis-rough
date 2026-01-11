@@ -151,16 +151,35 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
-            # Run with elevated rights but keep the acting user for audit/logging.
-            # Also bypass the custom sequential approval engine when this approval
-            # is coming from the Section Officer "Manage Requests" screen.
-            rec = lv.sudo(request.env.user).with_context(hrmis_manager_approve=True)
-            if hasattr(rec, "action_approve"):
+            # IMPORTANT:
+            # - Do NOT sudo() the approval action; otherwise the leave approval
+            #   engine may run as Administrator and can trigger unexpected ORM
+            #   side-effects (including accidental deletes of related records).
+            # - We already enforce the Section Officer "managed employee" rule above.
+            #
+            # Run approval as the logged-in user, using the custom sequential
+            # approval engine when available.
+            user = request.env.user
+            rec = lv.with_user(user).with_context(
+                hrmis_manager_approve=True,
+                hrmis_actor_user_id=user.id,
+                hr_leave_approval_no_user_unlink=True,
+            )
+
+            comment = (post.get("comment") or "").strip()
+
+            # Some deployments use OpenHRMS multi-level approval where final
+            # approval happens via action_validate() from validate1.
+            if rec.state == "validate1" and hasattr(rec, "action_validate"):
+                rec.action_validate()
+            elif hasattr(rec, "action_approve_by_user"):
+                rec.action_approve_by_user(comment=comment or None)
+            elif hasattr(rec, "action_approve"):
                 rec.action_approve()
             elif hasattr(rec, "action_validate"):
                 rec.action_validate()
             else:
-                lv.sudo().write({"state": "validate"})
+                rec.write({"state": "validate"})
         except Exception:
             return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
 
@@ -202,7 +221,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         try:
             # "Dismiss" for section officers means "do not approve".
             # Standard hr.leave does not have a "dismissed" state; use refusal.
-            rec = lv.sudo(request.env.user).with_context(hrmis_dismiss=True)
+            rec = lv.sudo().with_context(
+                hrmis_dismiss=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_refuse"):
                 rec.action_refuse()
             elif hasattr(rec, "action_reject"):
@@ -279,7 +301,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
-            rec = alloc.sudo(request.env.user)
+            rec = alloc.sudo().with_context(hrmis_actor_user_id=request.env.user.id)
             if hasattr(rec, "action_approve"):
                 rec.action_approve()
             elif hasattr(rec, "action_validate"):
@@ -309,7 +331,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
-            rec = alloc.sudo(request.env.user).with_context(hrmis_dismiss=True)
+            rec = alloc.sudo().with_context(
+                hrmis_dismiss=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_refuse"):
                 rec.action_refuse()
             elif hasattr(rec, "action_reject"):
@@ -350,7 +375,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         try:
             # Standard hr.leave.allocation does not have a "dismissed" state; use refusal.
-            rec = alloc.sudo(request.env.user).with_context(hrmis_dismiss=True)
+            rec = alloc.sudo().with_context(
+                hrmis_dismiss=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_refuse"):
                 rec.action_refuse()
             elif hasattr(rec, "action_reject"):

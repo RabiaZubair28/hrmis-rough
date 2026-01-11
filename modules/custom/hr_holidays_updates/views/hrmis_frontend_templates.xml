@@ -42,11 +42,12 @@
                                 </div>
                             </div>
                         </div>
+                         <div class="hrmis-user__avatar"></div>
                         <t t-if="current_employee">
                             <div class="hrmis-user-stack">
                                 <a class="hrmis-user-link" t-att-href="'/hrmis/staff/%s' % current_employee.id">
                                     <div class="hrmis-user">
-                                        <div class="hrmis-user__avatar"></div>
+                                       
                                         <div class="hrmis-user__meta">
                                             <div class="hrmis-user__label">Username</div>
                                             <div class="hrmis-user__value">
