@@ -92,7 +92,18 @@ class HrmisLeaveSubmitController(http.Controller):
             if not leave_type:
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type")
 
-            uploaded = request.httprequest.files.get("support_document")
+            # Be tolerant: some clients/proxies submit file fields with slightly
+            # different keys (e.g. "support_document[]"). If exactly one file is
+            # present, accept it as the supporting document.
+            files = getattr(request, "httprequest", None) and request.httprequest.files or None
+            uploaded = (files and (files.get("support_document") or files.get("support_document[]"))) or None
+            if not uploaded and files:
+                try:
+                    vals = list(files.values())
+                    if len(vals) == 1:
+                        uploaded = vals[0]
+                except Exception:
+                    uploaded = None
             if getattr(leave_type, "support_document", False) and not uploaded:
                 msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")

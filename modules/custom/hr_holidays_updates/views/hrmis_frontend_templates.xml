@@ -594,7 +594,8 @@
                                         <div class="hrmis-help js-hrmis-support-doc-note"></div>
                                         <input class="hrmis-input js-hrmis-support-doc-file"
                                                type="file"
-                                               name="support_document"/>
+                                               name="support_document"
+                                               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"/>
                                     </div>
                                 </div>
 
