@@ -660,6 +660,7 @@
                             <div class="hrmis-table">
                                 <div class="hrmis-table__head">
                                     <div>Leave type</div>
+                                    <div>Submitted on</div>
                                     <div>From</div>
                                     <div>To</div>
                                     <div>Status</div>
@@ -667,6 +668,7 @@
                                 <t t-foreach="history" t-as="lv">
                                     <div class="hrmis-table__row">
                                         <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                        <div><t t-esc="lv.create_date"/></div>
                                         <div><t t-esc="lv.request_date_from"/></div>
                                         <div><t t-esc="lv.request_date_to"/></div>
                                         <div>

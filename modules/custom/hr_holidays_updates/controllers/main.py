@@ -697,9 +697,10 @@ class HrmisLeaveFrontendController(http.Controller):
             _allocation_types_for_employee(employee, date_from=dt_alloc)
         )
 
+        # History tab: show in ascending order by submission/creation date.
         history = request.env["hr.leave"].sudo().search(
             [("employee_id", "=", employee.id)],
-            order="request_date_from desc, id desc",
+            order="create_date asc, id asc",
             limit=20,
         )
 
