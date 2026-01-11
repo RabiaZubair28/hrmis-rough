@@ -151,10 +151,16 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         try:
-            # Run with elevated rights but keep the acting user for audit/logging.
+            # Execute with elevated rights (Section Officers usually don't have
+            # HR leave manager rights), while still enforcing our own "managed
+            # employee" rule above.
+            #
             # Also bypass the custom sequential approval engine when this approval
             # is coming from the Section Officer "Manage Requests" screen.
-            rec = lv.sudo(request.env.user).with_context(hrmis_manager_approve=True)
+            rec = lv.sudo().with_context(
+                hrmis_manager_approve=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_approve"):
                 rec.action_approve()
             elif hasattr(rec, "action_validate"):
@@ -202,7 +208,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         try:
             # "Dismiss" for section officers means "do not approve".
             # Standard hr.leave does not have a "dismissed" state; use refusal.
-            rec = lv.sudo(request.env.user).with_context(hrmis_dismiss=True)
+            rec = lv.sudo().with_context(
+                hrmis_dismiss=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_refuse"):
                 rec.action_refuse()
             elif hasattr(rec, "action_reject"):
@@ -279,7 +288,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
-            rec = alloc.sudo(request.env.user)
+            rec = alloc.sudo().with_context(hrmis_actor_user_id=request.env.user.id)
             if hasattr(rec, "action_approve"):
                 rec.action_approve()
             elif hasattr(rec, "action_validate"):
@@ -309,7 +318,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
-            rec = alloc.sudo(request.env.user).with_context(hrmis_dismiss=True)
+            rec = alloc.sudo().with_context(
+                hrmis_dismiss=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_refuse"):
                 rec.action_refuse()
             elif hasattr(rec, "action_reject"):
@@ -350,7 +362,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         try:
             # Standard hr.leave.allocation does not have a "dismissed" state; use refusal.
-            rec = alloc.sudo(request.env.user).with_context(hrmis_dismiss=True)
+            rec = alloc.sudo().with_context(
+                hrmis_dismiss=True,
+                hrmis_actor_user_id=request.env.user.id,
+            )
             if hasattr(rec, "action_refuse"):
                 rec.action_refuse()
             elif hasattr(rec, "action_reject"):
