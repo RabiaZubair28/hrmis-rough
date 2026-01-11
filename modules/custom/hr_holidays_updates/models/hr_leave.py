@@ -534,11 +534,26 @@ class HrLeave(models.Model):
                 continue
 
             # Otherwise, verify there is at least one persisted attachment linked to this leave.
-            count = self.env['ir.attachment'].sudo().search_count([
-                ('res_model', '=', 'hr.leave'),
-                ('res_id', '=', leave.id),
-            ])
-            if count <= 0:
+            # IMPORTANT: depending on the UI/widget, attachments may be linked via x2many fields
+            # (e.g. `supported_attachment_ids`) without `res_model/res_id` being set immediately.
+            leave_sudo = leave.sudo()
+            has_any = False
+            if "supported_attachment_ids" in leave_sudo._fields and leave_sudo.supported_attachment_ids:
+                has_any = True
+            elif "attachment_ids" in leave_sudo._fields and leave_sudo.attachment_ids:
+                has_any = True
+            elif "message_main_attachment_id" in leave_sudo._fields and leave_sudo.message_main_attachment_id:
+                has_any = True
+            else:
+                count = self.env["ir.attachment"].sudo().search_count(
+                    [
+                        ("res_model", "=", "hr.leave"),
+                        ("res_id", "=", leave.id),
+                    ]
+                )
+                has_any = count > 0
+
+            if not has_any:
                 note = (leave.holiday_status_id.support_document_note or "").strip()
                 # Requirement: mandatory with its configured label/note.
                 raise ValidationError(note or "Supporting document is required for this Time Off Type.")
