@@ -93,16 +93,25 @@ class HrLeave(models.Model):
             "- Parallel: the next consecutive parallel approvers can act/see it together."
         ),
     )
+    # NOTE:
+    # We intentionally do NOT store the "all approvers" set in a dedicated M2M
+    # relation table anymore. A stored relation created a hard dependency on the
+    # table `hr_leave_approver_user_rel`, and some deployments have buggy approval
+    # code paths that accidentally attempt to delete `res.users`, tripping the
+    # FK `hr_leave_approver_user_rel_user_id_fkey`.
+    #
+    # For visibility/approval we rely on:
+    # - `pending_approver_ids` (stored) for "who can act now"
+    # - `approval_status_ids` / `validation_status_ids` for history / audit
+    #
+    # This field is kept only as a non-stored computed convenience for UI/debug.
     approver_user_ids = fields.Many2many(
         "res.users",
         string="All Approvers",
-        relation="hr_leave_approver_user_rel",
-        column1="leave_id",
-        column2="user_id",
         compute="_compute_approver_user_ids",
-        store=True,
+        store=False,
         compute_sudo=True,
-        help="All users who are part of this leave's approval chain (used for visibility rules).",
+        help="All users who are part of this leave's approval chain (non-stored).",
     )
 
     @api.depends(
