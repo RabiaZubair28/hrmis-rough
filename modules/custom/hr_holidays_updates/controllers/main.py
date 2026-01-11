@@ -472,8 +472,10 @@ class HrmisLeaveFrontendController(http.Controller):
                 "hr_holidays_updates.hrmis_services",
                 _base_ctx("My Time Off", "services"),
             )
-        # Default to history tab (matches "My Time Off")
-        return self.hrmis_leave_form(emp.id, tab="history", **kw)
+        # Landing page: user profile (NOT the leave form).
+        # This endpoint is used as the default post-login redirect, so it should
+        # always land on the staff profile page.
+        return request.redirect(f"/hrmis/staff/{emp.id}")
 
     @http.route(
         ["/odoo/my-time-off/new"], type="http", auth="user", website=True
