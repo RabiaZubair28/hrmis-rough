@@ -38,6 +38,54 @@ def _friendly_leave_error(e: Exception) -> str:
     return msg or "Could not submit leave request"
 
 
+def _has_real_uploaded_file(fs) -> bool:
+    """
+    Werkzeug `FileStorage` can exist but represent "no file selected"
+    (e.g. empty filename). Treat that as not uploaded.
+    """
+    if not fs:
+        return False
+    name = (getattr(fs, "filename", None) or "").strip()
+    return bool(name)
+
+
+def _get_uploaded_support_document():
+    """
+    Best-effort extraction of the uploaded supporting document from the request,
+    tolerant to field-name variations and empty placeholder uploads.
+    """
+    files = getattr(request.httprequest, "files", None)
+    if not files:
+        return None
+
+    # Prefer the canonical field name used by our HRMIS form.
+    candidates = []
+    try:
+        candidates.append(files.get("support_document"))
+    except Exception:
+        candidates.append(None)
+
+    # Known alternate names seen in some deployments.
+    for key in ("support_document[]", "supporting_document", "support_document_file", "attachment", "file"):
+        try:
+            candidates.append(files.get(key))
+        except Exception:
+            candidates.append(None)
+
+    # If the browser posted exactly one file under an unexpected key, accept it.
+    try:
+        keys = list(files.keys())
+        if len(keys) == 1:
+            candidates.append(files.get(keys[0]))
+    except Exception:
+        pass
+
+    for fs in candidates:
+        if _has_real_uploaded_file(fs):
+            return fs
+    return None
+
+
 class HrmisLeaveSubmitController(http.Controller):
     @http.route(
         ["/hrmis/staff/<int:employee_id>/leave/submit"],
@@ -92,23 +140,8 @@ class HrmisLeaveSubmitController(http.Controller):
             if not leave_type:
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type")
 
-            # Robustly fetch the uploaded file (some deployments rename the field).
-            files = getattr(request.httprequest, "files", None)
-            uploaded = files.get("support_document") if files else None
-            if not uploaded and files:
-                for key in ("support_document[]", "supporting_document", "support_document_file", "attachment", "file"):
-                    uploaded = files.get(key)
-                    if uploaded:
-                        break
-            if not uploaded and files:
-                # If the browser sent exactly one file under an unexpected key, accept it.
-                try:
-                    keys = list(files.keys())
-                    if len(keys) == 1:
-                        uploaded = files.get(keys[0])
-                except Exception:
-                    uploaded = None
-            if getattr(leave_type, "support_document", False) and not uploaded:
+            uploaded = _get_uploaded_support_document()
+            if getattr(leave_type, "support_document", False) and not _has_real_uploaded_file(uploaded):
                 msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
 
@@ -126,7 +159,7 @@ class HrmisLeaveSubmitController(http.Controller):
                     }
                 )
 
-                if uploaded:
+                if _has_real_uploaded_file(uploaded):
                     # Some deployments/proxies can yield an empty stream on first read.
                     # Try to rewind, then read once (best-effort).
                     try:
@@ -139,19 +172,27 @@ class HrmisLeaveSubmitController(http.Controller):
                         # Raise inside savepoint so the draft leave is rolled back.
                         raise ValidationError("Uploaded document could not be read. Please re-upload the file")
                     if data:
-                        att = request.env["ir.attachment"].sudo().create(
-                            {
-                                "name": getattr(uploaded, "filename", None) or "supporting_document",
-                                "res_model": "hr.leave",
-                                "res_id": leave.id,
-                                "type": "binary",
-                                "datas": base64.b64encode(data),
-                                "mimetype": getattr(uploaded, "mimetype", None),
-                            }
-                        )
+                        Attachment = request.env["ir.attachment"].sudo()
+                        att_vals = {
+                            "name": getattr(uploaded, "filename", None) or "supporting_document",
+                            "res_model": "hr.leave",
+                            "res_id": leave.id,
+                            "type": "binary",
+                            "datas": base64.b64encode(data),
+                            "mimetype": getattr(uploaded, "mimetype", None),
+                        }
+                        # Improve visibility/compat across deployments when fields exist.
+                        if "datas_fname" in Attachment._fields and getattr(uploaded, "filename", None):
+                            att_vals["datas_fname"] = getattr(uploaded, "filename", None)
+                        if "company_id" in Attachment._fields and "company_id" in leave._fields and getattr(leave, "company_id", False):
+                            att_vals["company_id"] = leave.company_id.id
+                        att = Attachment.create(att_vals)
                         link_vals = {}
                         if "supported_attachment_ids" in leave._fields:
                             link_vals["supported_attachment_ids"] = [(4, att.id)]
+                        if "attachment_ids" in leave._fields:
+                            link_vals.setdefault("attachment_ids", [])
+                            link_vals["attachment_ids"].append((4, att.id))
                         # Also set the main attachment when available (helps visibility in chatter/UIs).
                         if "message_main_attachment_id" in leave._fields and not getattr(leave, "message_main_attachment_id", False):
                             link_vals["message_main_attachment_id"] = att.id
