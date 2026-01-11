@@ -330,6 +330,15 @@
   border: 2px solid #064526;
   background: radial-gradient(circle at 35% 35%, rgba(13, 91, 102, 0.15), transparent 60%);
 }
+.hrmis-brand__seal img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  object-fit: contain; /* logo, not photo */
+  padding: 8px; /* keep it nicely inside the circle */
+  background: #fff;
+}
 .hrmis-brand__title {
   font-weight: 700;
   color: #064526;

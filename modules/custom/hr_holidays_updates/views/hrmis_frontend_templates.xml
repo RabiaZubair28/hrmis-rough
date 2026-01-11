@@ -96,7 +96,9 @@
                 <div class="hrmis-body">
                     <aside class="hrmis-sidebar">
                         <div class="hrmis-brand">
-                            <div class="hrmis-brand__seal"></div>
+                            <div class="hrmis-brand__seal">
+                                <img src="/custom_login/static/src/img/logo.png" alt="HRMIS Logo"/>
+                            </div>
                             <div class="hrmis-brand__text">
                                 <div class="hrmis-brand__title">SINDH<br/>HUMAN RESOURCE<br/>MANAGEMENT<br/>INFORMATION SYSTEM</div>
                             </div>
