@@ -93,16 +93,25 @@ class HrLeave(models.Model):
             "- Parallel: the next consecutive parallel approvers can act/see it together."
         ),
     )
+    # NOTE:
+    # We intentionally do NOT store the "all approvers" set in a dedicated M2M
+    # relation table anymore. A stored relation created a hard dependency on the
+    # table `hr_leave_approver_user_rel`, and some deployments have buggy approval
+    # code paths that accidentally attempt to delete `res.users`, tripping the
+    # FK `hr_leave_approver_user_rel_user_id_fkey`.
+    #
+    # For visibility/approval we rely on:
+    # - `pending_approver_ids` (stored) for "who can act now"
+    # - `approval_status_ids` / `validation_status_ids` for history / audit
+    #
+    # This field is kept only as a non-stored computed convenience for UI/debug.
     approver_user_ids = fields.Many2many(
         "res.users",
         string="All Approvers",
-        relation="hr_leave_approver_user_rel",
-        column1="leave_id",
-        column2="user_id",
         compute="_compute_approver_user_ids",
-        store=True,
+        store=False,
         compute_sudo=True,
-        help="All users who are part of this leave's approval chain (used for visibility rules).",
+        help="All users who are part of this leave's approval chain (non-stored).",
     )
 
     @api.depends(
@@ -163,7 +172,12 @@ class HrLeave(models.Model):
     def _compute_pending_approver_ids(self):
         Flow = self.env["hr.leave.approval.flow"]
         for leave in self:
-            if leave.state != "confirm" or not leave.holiday_status_id:
+            # IMPORTANT:
+            # - Custom approval flow uses "confirm" until final validate.
+            # - OpenHRMS multi-level flow transitions to "validate1" before final validate.
+            # We must keep pending approvers computed for BOTH states, otherwise
+            # record rules will block second-stage approvals.
+            if leave.state not in ("confirm", "validate1") or not leave.holiday_status_id:
                 leave.pending_approver_ids = False
                 continue
 
@@ -865,6 +879,9 @@ class HrLeave(models.Model):
          - Sequential: only the next approver can see/approve the leave at that time.
         - Parallel: the next consecutive parallel approvers can see/approve together.
         """
+        # Safety guard: prevent any buggy codepath from deleting res.users while approving.
+        # (e.g. accidental `leave.approver_user_ids.unlink()` somewhere in the chain)
+        self = self.with_context(hr_leave_approval_no_user_unlink=True)
         now = fields.Datetime.now()
         for leave in self:
             user = leave.env.user

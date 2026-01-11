@@ -18,6 +18,7 @@ from . import hr_leave_notifications
 from . import hr_leave_allocation
 from . import hrmis_notification
 from . import res_users_hrmis_notifications
+from . import res_users_safe_unlink
 from . import hr_leave_allocation_auto_utils
 from . import hr_leave_allocation_auto_ensure
 from . import hr_leave_allocation_auto_cron

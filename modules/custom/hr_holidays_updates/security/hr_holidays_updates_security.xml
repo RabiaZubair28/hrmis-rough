@@ -10,9 +10,7 @@
         '|','|',
           ('employee_id.user_id', '=', user.id),
           ('create_uid', '=', user.id),
-          '|',
-            ('approver_user_ids', 'not in', [user.id]),
-            ('pending_approver_ids', 'in', [user.id])
+          ('pending_approver_ids', 'in', [user.id])
       ]
     </field>
   </record>
@@ -27,9 +25,7 @@
         '|','|',
           ('leave_id.employee_id.user_id', '=', user.id),
           ('leave_id.create_uid', '=', user.id),
-          '|',
-            ('leave_id.approver_user_ids', 'not in', [user.id]),
-            ('leave_id.pending_approver_ids', 'in', [user.id])
+          ('leave_id.pending_approver_ids', 'in', [user.id])
       ]
     </field>
   </record>

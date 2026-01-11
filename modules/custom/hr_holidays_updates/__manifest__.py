@@ -39,6 +39,8 @@
             'hr_holidays_updates/static/src/js/hrmis_notifications.js',
         ],
     },
+    # Ensure DB-level constraint does not block approvals in buggy deployments.
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'license': 'LGPL-3',
