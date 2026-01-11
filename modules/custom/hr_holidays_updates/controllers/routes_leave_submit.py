@@ -17,6 +17,7 @@ from .utils import can_manage_employee_leave, safe_int
 
 
 _OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
+_OVERLAP_FRIENDLY_MSG = "Leave already taken for this duration"
 
 
 def _friendly_leave_error(e: Exception) -> str:
@@ -29,7 +30,7 @@ def _friendly_leave_error(e: Exception) -> str:
 
     # Normalize common "leave already taken/overlap" errors to match other website errors.
     if _OVERLAP_ERR_RE.search(msg):
-        return "Leave already taken for the selected dates"
+        return _OVERLAP_FRIENDLY_MSG
 
     # Avoid leaking internal access errors in a scary way.
     if isinstance(e, AccessError):
@@ -39,6 +40,26 @@ def _friendly_leave_error(e: Exception) -> str:
 
 
 class HrmisLeaveSubmitController(http.Controller):
+    def _wants_json(self) -> bool:
+        """
+        The leave form can be submitted via AJAX to avoid page navigation.
+        """
+        try:
+            accept = request.httprequest.headers.get("Accept", "") or ""
+            xrw = request.httprequest.headers.get("X-Requested-With", "") or ""
+            return ("application/json" in accept.lower()) or (xrw.lower() == "xmlhttprequest")
+        except Exception:
+            return False
+
+    def _json(self, payload: dict, status: int = 200):
+        import json
+
+        return request.make_response(
+            json.dumps(payload),
+            headers=[("Content-Type", "application/json")],
+            status=status,
+        )
+
     @http.route(
         ["/hrmis/staff/<int:employee_id>/leave/submit"],
         type="http",
@@ -50,14 +71,18 @@ class HrmisLeaveSubmitController(http.Controller):
     def hrmis_leave_submit(self, employee_id: int, **post):
         try:
             if request.httprequest.method != "POST":
-                return request.redirect(
-                    f"/hrmis/staff/{employee_id}/leave?tab=new&error=Please+use+the+form+to+submit+a+leave+request"
-                )
+                msg = "Please use the form to submit a leave request"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=405)
+                return request.redirect(f"/hrmis/staff/{employee_id}/leave?tab=new&error={quote_plus(msg)}")
 
             employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
             if not employee:
                 return request.not_found()
             if not can_manage_employee_leave(employee):
+                msg = "You are not allowed to submit this leave request"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=403)
                 return request.redirect("/hrmis/services?error=not_allowed")
 
             dt_from = (post.get("date_from") or "").strip()
@@ -65,32 +90,48 @@ class HrmisLeaveSubmitController(http.Controller):
             leave_type_id = safe_int(post.get("leave_type_id"))
             remarks = (post.get("remarks") or "").strip()
             if not dt_from or not dt_to or not leave_type_id or not remarks:
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Please+fill+all+required+fields")
+                msg = "Please fill all required fields"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # Guard against backdated requests (UI can be bypassed).
             d_from = fields.Date.to_date(dt_from)
             d_to = fields.Date.to_date(dt_to)
             if not d_from or not d_to:
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+date+format")
+                msg = "Invalid date format"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             today = fields.Date.context_today(request.env.user)
             if d_from < today:
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error=You+cannot+request+leave+for+past+dates"
-                )
+                msg = "You cannot request leave for past dates"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
             if d_to < d_from:
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=End+date+cannot+be+before+start+date")
+                msg = "End date cannot be before start date"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             allowed_types = dedupe_leave_types_for_ui(
                 leave_types_for_employee(employee, request_date_from=dt_from)
                 | allocation_types_for_employee(employee, date_from=dt_from)
             )
             if leave_type_id not in set(allowed_types.ids):
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Selected+leave+type+is+not+allowed")
+                msg = "Selected leave type is not allowed"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
             if not leave_type:
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error=Invalid+leave+type")
+                msg = "Invalid leave type"
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # Robustly fetch the uploaded file (some deployments rename the field).
             files = getattr(request.httprequest, "files", None)
@@ -109,8 +150,10 @@ class HrmisLeaveSubmitController(http.Controller):
                 except Exception:
                     uploaded = None
             if getattr(leave_type, "support_document", False) and not uploaded:
-                msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
+                msg = getattr(leave_type, "support_document_note", "") or "Supporting document is required."
+                if self._wants_json():
+                    return self._json({"ok": False, "error": msg}, status=400)
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # IMPORTANT: force flush inside a savepoint so any constraints (e.g. overlap)
             # raised at flush/commit time are caught here and shown in the HRMIS UI,
@@ -176,9 +219,16 @@ class HrmisLeaveSubmitController(http.Controller):
                     target_emp_id = locals()["employee"].id
             except Exception:
                 pass
-            return request.redirect(f"/hrmis/staff/{target_emp_id}/leave?tab=new&error={quote_plus(_friendly_leave_error(e))}")
+            msg = _friendly_leave_error(e)
+            if self._wants_json():
+                # Overlap should not navigate away; show the error inline.
+                return self._json({"ok": False, "error": msg}, status=400)
+            return request.redirect(f"/hrmis/staff/{target_emp_id}/leave?tab=new&error={quote_plus(msg)}")
 
-        return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted")
+        redirect_url = f"/hrmis/staff/{employee.id}/leave?tab=history&success=Leave+request+submitted"
+        if self._wants_json():
+            return self._json({"ok": True, "redirect": redirect_url})
+        return request.redirect(redirect_url)
 
     @http.route(
         ["/hrmis/staff/<int:employee_id>/allocation/submit"],

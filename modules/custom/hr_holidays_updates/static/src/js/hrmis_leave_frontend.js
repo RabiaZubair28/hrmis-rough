@@ -96,6 +96,39 @@ function _renderApproverSteps(panelEl, steps) {
   stepsEl.innerHTML = html.join("");
 }
 
+function _ensureInlineAlert(formEl, kind) {
+  const cls =
+    kind === "success" ? "hrmis-alert--success" : "hrmis-alert--error";
+  const existing = formEl?.querySelector(`.hrmis-alert.${cls}`);
+  if (existing) return existing;
+
+  // Prefer inserting inside the form so it stays visible without relying on URL params.
+  const el = document.createElement("div");
+  el.className = `hrmis-alert ${cls} js-hrmis-inline-alert`;
+  el.style.display = "none";
+  const grid = formEl.querySelector(".hrmis-form__grid");
+  if (grid) {
+    formEl.insertBefore(el, grid);
+  } else {
+    formEl.prepend(el);
+  }
+  return el;
+}
+
+function _showInlineAlert(formEl, kind, msg) {
+  const el = _ensureInlineAlert(formEl, kind);
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.display = msg ? "" : "none";
+  if (msg) {
+    try {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {
+      // ignore
+    }
+  }
+}
+
 async function _refreshApprovers(formEl) {
   const url = formEl?.dataset?.leaveApproversUrl;
   const employeeId = formEl?.dataset?.employeeId;
@@ -192,6 +225,48 @@ function _updateSupportDocUI(formEl) {
 function _init() {
   const formEl = document.querySelector(".hrmis-leave-request-form");
   if (!formEl) return;
+
+  // Submit via AJAX so validation errors (especially overlaps) do not navigate away.
+  formEl.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+
+    _showInlineAlert(formEl, "error", "");
+    _showInlineAlert(formEl, "success", "");
+
+    const submitBtn = formEl.querySelector('button[type="submit"]');
+    const prevBtnText = submitBtn?.textContent;
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const fd = new FormData(formEl);
+      const resp = await fetch(formEl.action, {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data || data.ok === false) {
+        const msg = data?.error || "Could not submit leave request";
+        _showInlineAlert(formEl, "error", msg);
+        return;
+      }
+
+      const redirect = data?.redirect;
+      if (redirect) {
+        window.location.href = redirect;
+      } else {
+        _showInlineAlert(formEl, "success", "Leave request submitted");
+      }
+    } catch {
+      _showInlineAlert(formEl, "error", "Could not submit leave request");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        if (typeof prevBtnText === "string") submitBtn.textContent = prevBtnText;
+      }
+    }
+  });
 
   const dateFromEl = _qs(formEl, ".js-hrmis-date-from");
   if (dateFromEl) {
