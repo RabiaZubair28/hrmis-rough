@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from odoo import http
 from odoo.http import request
 
@@ -12,6 +14,8 @@ from odoo.addons.hr_holidays_updates.controllers.leave_data import (
     pending_leave_requests_for_user,
 )
 from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_manage_allocations
+
+_logger = logging.getLogger(__name__)
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
@@ -171,16 +175,23 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             # Some deployments use OpenHRMS multi-level approval where final
             # approval happens via action_validate() from validate1.
             if rec.state == "validate1" and hasattr(rec, "action_validate"):
-                rec.action_validate()
+                # Use sudo(user) so the real actor remains the section officer
+                # but access rules don't block the final validation step.
+                rec.sudo(user.id).action_validate()
             elif hasattr(rec, "action_approve_by_user"):
                 rec.action_approve_by_user(comment=comment or None)
             elif hasattr(rec, "action_approve"):
                 rec.action_approve()
             elif hasattr(rec, "action_validate"):
-                rec.action_validate()
+                rec.sudo(user.id).action_validate()
             else:
                 rec.write({"state": "validate"})
         except Exception:
+            _logger.exception(
+                "Section officer leave approve failed; leave_id=%s user_id=%s",
+                leave_id,
+                request.env.user.id,
+            )
             return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
 
         return request.redirect("/hrmis/manage/requests?tab=leave&success=approved")

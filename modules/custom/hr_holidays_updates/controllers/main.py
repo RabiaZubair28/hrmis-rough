@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+import logging
 import re
 import json
 import base64
@@ -10,6 +11,8 @@ from urllib.parse import quote_plus
 from odoo import http, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
+
+_logger = logging.getLogger(__name__)
 
 
 def _safe_int(v, default=None):
@@ -1275,11 +1278,18 @@ class HrmisLeaveFrontendController(http.Controller):
                         body=f"Approval comment by {request.env.user.name}:<br/>{comment}",
                         author_id=getattr(request.env.user, "partner_id", False) and request.env.user.partner_id.id or False,
                     )
-                rec.action_validate()
+                # Use sudo(user) so the actual actor remains in env.user while
+                # bypassing access rules that may block final validation.
+                rec.sudo(request.env.user.id).action_validate()
             else:
                 # Use our custom sequential approval, capturing optional comment.
                 rec.action_approve_by_user(comment=comment or None)
         except Exception:
+            _logger.exception(
+                "HRMIS leave approve failed; leave_id=%s user_id=%s",
+                leave_id,
+                request.env.user.id,
+            )
             return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
 
         return request.redirect("/hrmis/manage/requests?tab=leave&success=approved")
