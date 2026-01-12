@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <template id="hrmis_leave_view_history" name="HRMIS Leave View History">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">Leave Details</div>
+                </div>
+
+                <div class="hrmis-panel__body">
+                    <div class="hrmis-kv">
+
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">Staff</div>
+                            <div class="hrmis-kv__v">
+                                <t t-esc="leave.employee_id.name"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">Leave Type</div>
+                            <div class="hrmis-kv__v">
+                                <t t-esc="leave.holiday_status_id.name"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">From</div>
+                            <div class="hrmis-kv__v">
+                                <t t-esc="leave.request_date_from"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">To</div>
+                            <div class="hrmis-kv__v">
+                                <t t-esc="leave.request_date_to"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">Status</div>
+                            <div class="hrmis-kv__v">
+                                <t t-if="leave.state in ('confirm','validate1')">Awaiting</t>
+                                <t t-elif="leave.state in ('validate','validate2')">Approved</t>
+                                <t t-elif="leave.state == 'refuse'">Rejected</t>
+                                <t t-elif="leave.state == 'cancel'">Cancelled</t>
+                                <t t-elif="leave.state == 'draft'">Draft</t>
+                                <t t-else="1">
+                                    <t t-esc="leave.state"/>
+                                </t>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">Pending With</div>
+                            <div class="hrmis-kv__v">
+                                <t t-esc="pending_names"/>
+                            </div>
+                        </div>
+                        <div class="hrmis-kv__row">
+                            <div class="hrmis-kv__k">Comments</div>
+                            <div class="hrmis-kv__v">
+                                <t t-foreach="leave.message_ids" t-as="m">
+                                    <div>
+                                        <t t-esc="m.author_id.name"/>:
+                                        <t t-esc="m.body"/>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="hrmis-form__actions">
+                        <a class="hrmis-btn hrmis-btn--outline" t-att-href="back_url">
+                            Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </t>
+    </template>
+
+</odoo>

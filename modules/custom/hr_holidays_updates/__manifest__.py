@@ -9,15 +9,12 @@
         'website',
         'hr',
         'hr_holidays',
-        # Provides `hr.cadre` used by `cadre_id` on employee/public.
-        'custom_approvals_odoo18',
         'hrmis_user_profiles_updates',
         'ohrms_holidays_approval',
+        'hr_holidays_multilevel_hierarchy',
     ],  # Important: extend the built-in module
     'data': [
-        'security/hrmis_notification_rules.xml',
-        'data/leave_type_data.xml',  # optional
-        'security/ir.model.access.csv',
+        'data/leave_type_data.xml',
         'data/support_document_rules.xml',
         'data/auto_allocation_cron.xml',
         'views/hr_holidays_views.xml',
@@ -26,11 +23,10 @@
         "views/hrmis_profile_request_views.xml",
         "views/hrmis_profile_approvals.xml",
         "views/hrmis_profile_request_templates.xml",
-        "views/hr_leave_approval_flow_views.xml",
-        "views/hr_leave_views.xml",
-        "views/hr_leave_approval_wizard_views.xml",
         'views/hr_leave_type_views.xml',
-        'views/hr_holidays_updates_security.xml',
+        'views/hrmis_leave_view_history.xml',
+        'views/hrmis_user_profile_update_requests_view.xml',
+        'views/hrmis_user_profile_update_requests_detailed_view.xml',
     ],
     'assets': {
         'web.assets_frontend': [
@@ -39,8 +35,6 @@
             'hr_holidays_updates/static/src/js/hrmis_notifications.js',
         ],
     },
-    # Ensure DB-level constraint does not block approvals in buggy deployments.
-    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'license': 'LGPL-3',

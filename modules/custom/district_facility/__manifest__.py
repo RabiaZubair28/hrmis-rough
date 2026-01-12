@@ -9,7 +9,6 @@
         'views/tehsil_views.xml',
         'security/ir.model.access.csv',
         "data/districts.xml",
-        "data/tehsils.xml",
         "data/facilities.xml",
     ],
     'installable': True,

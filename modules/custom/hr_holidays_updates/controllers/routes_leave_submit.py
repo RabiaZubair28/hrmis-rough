@@ -134,27 +134,10 @@ class HrmisLeaveSubmitController(http.Controller):
                     return self._json({"ok": False, "error": msg}, status=400)
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
-            # Robustly fetch the uploaded file (some deployments rename the field).
-            files = getattr(request.httprequest, "files", None)
-            uploaded = files.get("support_document") if files else None
-            if not uploaded and files:
-                for key in ("support_document[]", "supporting_document", "support_document_file", "attachment", "file"):
-                    uploaded = files.get(key)
-                    if uploaded:
-                        break
-            if not uploaded and files:
-                # If the browser sent exactly one file under an unexpected key, accept it.
-                try:
-                    keys = list(files.keys())
-                    if len(keys) == 1:
-                        uploaded = files.get(keys[0])
-                except Exception:
-                    uploaded = None
+            uploaded = request.httprequest.files.get("support_document")
             if getattr(leave_type, "support_document", False) and not uploaded:
-                msg = getattr(leave_type, "support_document_note", "") or "Supporting document is required."
-                if self._wants_json():
-                    return self._json({"ok": False, "error": msg}, status=400)
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
+                msg = quote_plus(getattr(leave_type, "support_document_note", "") or "Supporting document is required.")
+                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}")
 
             # IMPORTANT: force flush inside a savepoint so any constraints (e.g. overlap)
             # raised at flush/commit time are caught here and shown in the HRMIS UI,
@@ -171,17 +154,7 @@ class HrmisLeaveSubmitController(http.Controller):
                 )
 
                 if uploaded:
-                    # Some deployments/proxies can yield an empty stream on first read.
-                    # Try to rewind, then read once (best-effort).
-                    try:
-                        uploaded.stream.seek(0)
-                    except Exception:
-                        pass
-                    data = uploaded.read() or b""
-                    if not data and getattr(uploaded, "filename", ""):
-                        # If a filename exists but bytes are empty, tell the user explicitly.
-                        # Raise inside savepoint so the draft leave is rolled back.
-                        raise ValidationError("Uploaded document could not be read. Please re-upload the file")
+                    data = uploaded.read()
                     if data:
                         att = request.env["ir.attachment"].sudo().create(
                             {
@@ -193,17 +166,8 @@ class HrmisLeaveSubmitController(http.Controller):
                                 "mimetype": getattr(uploaded, "mimetype", None),
                             }
                         )
-                        link_vals = {}
                         if "supported_attachment_ids" in leave._fields:
-                            link_vals["supported_attachment_ids"] = [(4, att.id)]
-                        # Also set the main attachment when available (helps visibility in chatter/UIs).
-                        if "message_main_attachment_id" in leave._fields and not getattr(leave, "message_main_attachment_id", False):
-                            link_vals["message_main_attachment_id"] = att.id
-                        if link_vals:
-                            leave.sudo().write(link_vals)
-                        # Flush attachment insert before confirming; confirm-time constraints
-                        # may query attachments immediately.
-                        request.env.cr.flush()
+                            leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
 
                 if hasattr(leave, "action_confirm"):
                     leave.action_confirm()
@@ -279,22 +243,17 @@ class HrmisLeaveSubmitController(http.Controller):
             if leave_type_id not in set(allowed_types.ids):
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Selected+leave+type+is+not+allowed")
 
-            # IMPORTANT: force flush inside a savepoint so any constraints (e.g. 24-day ACL cap)
-            # raised at flush/commit time are caught here and the record is rolled back.
-            with request.env.cr.savepoint():
-                alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(
-                    {
-                        "employee_id": employee.id,
-                        "holiday_status_id": leave_type_id,
-                        "number_of_days": number_of_days,
-                        "name": reason or "Allocation request",
-                        "allocation_type": "regular",
-                    }
-                )
-                if hasattr(alloc, "action_confirm"):
-                    alloc.action_confirm()
-                # Ensure any pending constraints trigger here.
-                request.env.cr.flush()
+            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(
+                {
+                    "employee_id": employee.id,
+                    "holiday_status_id": leave_type_id,
+                    "number_of_days": number_of_days,
+                    "name": reason or "Allocation request",
+                    "allocation_type": "regular",
+                }
+            )
+            if hasattr(alloc, "action_confirm"):
+                alloc.action_confirm()
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"

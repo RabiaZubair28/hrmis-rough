@@ -1,0 +1,76 @@
+<odoo>
+    <template id="hrmis_profile_update_requests" name="Profile Update Requests">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+
+            <div class="hrmis-panel">
+                <!-- Header -->
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">Profile Update Requests</div>
+                </div>
+
+                <!-- Body -->
+                <div class="hrmis-panel__body">
+
+                    <t t-if="profile_update_requests">
+                        <!-- Table Header -->
+                        <div class="hrmis-table__head">
+                            <div>Employee</div>
+                            <div>Changes</div>
+                            <div>Status</div>
+                            <div>Created On</div>
+                            <div>Action</div>
+                        </div>
+
+                        <!-- Table Rows -->
+                        <t t-foreach="profile_update_requests" t-as="req">
+                            <div class="hrmis-table__row">
+                                <!-- Employee Name -->
+                                <div class="strong">
+                                    <t t-esc="req['employee_name']"/>
+                                </div>
+
+                                <!-- Changes -->
+                                <div class="hrmis-comments">
+                                    <t t-foreach="req['changes']" t-as="c">
+                                        <div class="hrmis-comment"><t t-esc="c"/></div>
+                                    </t>
+                                </div>
+
+                                <!-- Status -->
+                                <div>
+                                    <span t-attf-class="hrmis-badge 
+                                        #{'hrmis-badge--success' if req['state']=='approved' 
+                                        else 'hrmis-badge--warning' if req['state']=='submitted' 
+                                        else 'hrmis-badge--danger'}">
+                                        <t t-esc="req['state'].capitalize()"/>
+                                    </span>
+                                </div>
+
+                                <!-- Created On -->
+                                <div class="sub">
+                                    <t t-esc="req['create_date']"/>
+                                </div>
+
+                                <!-- Action -->
+                                <div class="hrmis-leave-row__actions">
+                                    <a t-att-href="'/hrmis/profile/request/view/%s' % req['id']"
+                                       class="hrmis-btn hrmis-btn--sm hrmis-btn--primary">
+                                        View
+                                    </a>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+
+                    <t t-if="not profile_update_requests">
+                        <div class="hrmis-alert hrmis-alert--info">
+                            No profile update requests found.
+                        </div>
+                    </t>
+
+                </div>
+            </div>
+
+        </t>
+    </template>
+</odoo>

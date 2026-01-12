@@ -6,61 +6,76 @@ from odoo.http import request
 from .utils import safe_date
 
 
+
 def pending_leave_requests_for_user(user_id: int):
     Leave = request.env["hr.leave"].sudo()
+    FlowLine = request.env["hr.leave.approval.flow.line"].sudo()
 
-    domains = []
+    # --------------------------------------------
+    # Modern sequential approval (preferred path)
+    # --------------------------------------------
+    if "pending_approver_ids" in Leave._fields:
+        domain = [
+            ("pending_approver_ids", "in", [user_id]),
+            ("state", "in", ("confirm", "validate1")),
+        ]
 
-    # Custom approval flow (hr_holidays_updates): safe superset, then filter by step.
-    has_custom_flow = "approval_status_ids" in Leave._fields and "approval_step" in Leave._fields
-    if has_custom_flow:
-        domains.append(
-            [
-                ("state", "in", ("confirm", "validate1")),
-                ("approval_status_ids.user_id", "=", user_id),
-                ("approval_status_ids.approved", "=", False),
-            ]
+        leaves = Leave.search(
+            domain,
+            order="request_date_from desc, id desc",
+            limit=200,
         )
 
-    # OpenHRMS multi-level approval: show only requests where current user is a validator
-    # and has NOT yet approved.
-    if "validation_status_ids" in Leave._fields:
-        domains.append(
-            [
-                ("state", "=", "confirm"),
-                ("validation_status_ids.user_id", "=", user_id),
-                ("validation_status_ids.validation_status", "=", False),
-            ]
+        # --------------------------------------------
+        # BPS FILTER (minimal & safe)
+        # --------------------------------------------
+        def _bps_allowed(leave):
+            emp = leave.employee_id
+            if not emp or emp.hrmis_bps is None:
+                return False
+
+            flow_lines = FlowLine.search([
+                ("flow_id.leave_type_id", "=", leave.holiday_status_id.id),
+                ("user_id", "=", user_id),
+                ("bps_from", "<=", emp.hrmis_bps),
+                ("bps_to", ">=", emp.hrmis_bps),
+            ])
+
+            return bool(flow_lines)
+
+        leaves = leaves.filtered(_bps_allowed)
+        return leaves
+
+    # --------------------------------------------
+    # Legacy fallback (older DBs / modules)
+    # --------------------------------------------
+    if "approval_status_ids" in Leave._fields:
+        domain = [
+            ("approval_status_ids.user_id", "=", user_id),
+            ("state", "in", ("confirm", "validate1")),
+        ]
+
+        leaves = Leave.search(
+            domain,
+            order="request_date_from desc, id desc",
+            limit=200,
         )
 
-    # Standard Odoo manager approval fallback
-    if "employee_id" in Leave._fields:
-        domains.append([("state", "=", "confirm"), ("employee_id.parent_id.user_id", "=", user_id)])
-
-    # HR users: include confirm + validate1 (matches backend "To Approve")
-    if (
-        request.env.user
-        and (
-            request.env.user.has_group("hr_holidays.group_hr_holidays_user")
-            or request.env.user.has_group("hr_holidays.group_hr_holidays_manager")
+        leaves = leaves.filtered(
+            lambda l: l.is_pending_for_user(request.env.user)
+            and l.employee_id
+            and l.employee_id.hrmis_bps is not None
+            and FlowLine.search_count([
+                ("flow_id.leave_type_id", "=", l.holiday_status_id.id),
+                ("user_id", "=", user_id),
+                ("bps_from", "<=", l.employee_id.hrmis_bps),
+                ("bps_to", ">=", l.employee_id.hrmis_bps),
+            ]) > 0
         )
-    ):
-        domains.append([("state", "in", ("confirm", "validate1"))])
 
-    if not domains:
-        return Leave.browse([])
+        return leaves
 
-    if len(domains) == 1:
-        leaves = Leave.search(domains[0], order="request_date_from desc, id desc", limit=200)
-    else:
-        domain = ["|"] + domains[0] + domains[1]
-        for extra in domains[2:]:
-            domain = ["|"] + domain + extra
-        leaves = Leave.search(domain, order="request_date_from desc, id desc", limit=200)
-
-    if has_custom_flow and hasattr(leaves, "is_pending_for_user"):
-        leaves = leaves.filtered(lambda lv: lv.is_pending_for_user(request.env.user))
-    return leaves
+    return Leave.browse([])
 
 
 def leave_pending_for_current_user(leave) -> bool:

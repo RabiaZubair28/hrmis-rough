@@ -130,7 +130,7 @@
                             <!-- Posting -->
                             <div class="hrmis-field">
                                 <label>District<span class="req">*</span></label>
-                                <select class="hrmis-input" name="district_id" required="required">
+                                <select class="hrmis-input js-hrmis-district" name="district_id" required="required">
                                     <option value="">Select</option>
                                     <t t-foreach="districts" t-as="d">
                                         <option t-att-value="d.id"
@@ -143,10 +143,11 @@
 
                             <div class="hrmis-field">
                                 <label>Facility<span class="req">*</span></label>
-                                <select class="hrmis-input" name="facility_id" required="required">
+                                <select class="hrmis-input js-hrmis-facility" name="facility_id" required="required">
                                     <option value="">Select</option>
                                     <t t-foreach="facilities" t-as="f">
                                         <option t-att-value="f.id"
+                                                t-att-data-district-id="f.district_id.id if f.district_id else ''"
                                                 t-att-selected="(req.facility_id and req.facility_id.id == f.id) or (current_employee.facility_id and current_employee.facility_id.id == f.id)">
                                             <t t-esc="f.name"/>
                                         </option>

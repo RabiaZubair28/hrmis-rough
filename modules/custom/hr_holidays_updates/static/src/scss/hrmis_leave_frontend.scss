@@ -22,6 +22,12 @@
   }
 }
 
+.hrmis-app {
+  min-height: 100vh;
+  background: #e9eef0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", Arial, sans-serif;
+}
+
 .hrmis-topbar {
   height: 92px;
   background: linear-gradient(180deg, #064526 0%, #064526 100%);
@@ -56,7 +62,13 @@
   min-width: 0;
   max-width: 100%;
 }
+.hrmis-user-stack > .hrmis-user-link {
+  grid-column: 1 / -1; /* take full width for avatar+meta row */
+  justify-self: end; /* align the whole row to the right */
+}
 .hrmis-logout {
+  grid-column: 2;
+  justify-self: start; /* align with the meta column */
   line-height: 1;
 }
 
@@ -294,7 +306,6 @@
   border: 2px solid #064526;
   font-weight: 900;
   color: #064526;
- 
 }
 .hrmis-notif-page-actions {
   display: flex;
@@ -542,7 +553,7 @@
 }
 
 .hrmis-split--leave-request {
-  grid-template-columns: 1fr 380px;
+  // grid-template-columns: 1fr 380px;
   align-items: start;
 }
 
@@ -550,6 +561,7 @@
   position: sticky;
   top: 18px;
   height: fit-content;
+  width: 280px
 }
 
 .hrmis-approver-step + .hrmis-approver-step {
@@ -661,6 +673,10 @@
   color: #fff;
 }
 
+.hrmis-tabs--profile .hrmis-tab--profile.is-active {
+  background: #064526 !important;
+  color: #fff !important;
+}
 /* Leave page: 3 tabs should fit and wrap */
 .hrmis-panel__header--tabs--leave {
   width: 100%;
@@ -697,23 +713,29 @@
   border-right: none;
 }
 
-/* Staff profile page: 4 tabs should fit and wrap */
-.hrmis-panel__header--tabs--profile {
-  width: 100%;
+
+.hrmis-panel .hrmis-kv__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
 }
-.hrmis-panel__header--tabs--profile .hrmis-tab {
-  flex: 1 1 0;
-  width: auto;
-  min-width: 0;
-  white-space: normal;
-  text-align: center;
-  line-height: 1.15;
-  font-size: 16px;
-  padding: 12px 10px;
+
+/* Label column */
+.hrmis-panel .hrmis-kv__k {
+    flex: 0 0 160px;   /* fixed label width */
+    // max-width: 160px;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
 }
-.hrmis-panel__header--tabs--profile .hrmis-tab:last-child {
-  border-right: none;
+
+/* Value column */
+.hrmis-panel .hrmis-kv__v {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
 }
+
 
 .hrmis-form__grid {
   display: grid;
@@ -760,28 +782,42 @@
   background: #e8f7ee;
 }
 
+
 .hrmis-table__head,
 .hrmis-table__row {
-  display: grid;
-  grid-template-columns: 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr;
-  gap: 12px;
-  padding: 12px 10px;
-  border-bottom: 1px solid #cfd7da;
-  font-size: 15px;
+    display: grid;
+    grid-template-columns:
+       0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr;
+    column-gap: 12px;
+    align-items: center;
+    margin: 8px auto;
 }
+
+/* Prevent column overflow */
+.hrmis-table__row > div,
+.hrmis-table__head > div {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hrmis-table__row > div:nth-child(5) {
+    white-space: normal;
+    word-break: break-word;
+}
+
 .hrmis-table__head {
   font-weight: 900;
   background: #f2f6f7;
-  font-size: 15px;
 }
 
 .hrmis-leave-row {
   display: grid;
-  grid-template-columns: 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr;
+  grid-template-columns: 90px 1.6fr 1fr 1.2fr 240px;
   gap: 16px;
   padding: 16px 10px;
   border-bottom: 2px solid #2a2f31;
-  font-size: 15px;
 }
 .hrmis-leave-row__actions {
   display: flex;
@@ -822,6 +858,53 @@
 .hrmis-kv--grid .hrmis-kv__item:nth-child(odd) {
   border-right: 1px solid #cfd7da;
 }
+
+.hrmis-comments {
+    max-height: 80px;
+    overflow-y: auto;
+    padding: 6px;
+    background: #f8f9fb;
+    border: 1px solid #e0e4e8;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.hrmis-comment {
+    margin-bottom: 4px;
+}
+
+.hrmis-comment strong {
+    color: #2c3e50;
+}
+/* === HRMIS DETAIL VIEW FIX (NON-DESTRUCTIVE) === */
+
+.hrmis-kv-row-fix {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: start;
+}
+
+.hrmis-kv-key-fix {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.hrmis-kv-val-fix {
+    min-width: 0;
+    word-break: break-word;
+}
+@media (max-width: 768px) {
+    .hrmis-kv-row-fix {
+        grid-template-columns: 1fr;
+        row-gap: 4px;
+    }
+
+    .hrmis-kv-key-fix {
+        opacity: 0.75;
+    }
+}
+
 
 @media (max-width: 1200px) {
   .hrmis-topbar {

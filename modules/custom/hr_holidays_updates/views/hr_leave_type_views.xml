@@ -16,7 +16,7 @@
                                 <field name="sequence"/>
                                 <field name="user_id"/>
                                 <field name="sequence_type" required="1"/>
-                                <field name="action_type"/>
+                                <!-- <field name="action_type"/> -->
                             </list>
                         </field>
 

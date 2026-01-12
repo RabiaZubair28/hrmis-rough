@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_leave_approval_flow,leave.approval.flow,model_hr_leave_approval_flow,hr.group_hr_manager,1,1,1,1
+access_leave_approval_status,leave.approval.status,model_hr_leave_approval_status,hr.group_hr_manager,1,0,0,0
+access_leave_approval_flow_user,leave.approval.flow user,model_hr_leave_approval_flow,base.group_user,1,0,0,0
+access_leave_approval_flow_line,leave.approval.flow.line,model_hr_leave_approval_flow_line,hr.group_hr_manager,1,1,1,1
+access_leave_approval_flow_line_user,leave.approval.flow.line user,model_hr_leave_approval_flow_line,base.group_user,1,0,0,0
+access_leave_approval_status_user,leave.approval.status user,model_hr_leave_approval_status,base.group_user,1,0,0,0
+
+access_hr_leave_approval_wizard_user,leave.approval.wizard user,model_hr_leave_approval_wizard,base.group_user,1,1,1,0
+
+hr_holidays_user_request,Time Off / Officer: Manage all requests,model_hr_leave,hr_holidays.group_hr_holidays_user,1,1,1,0
+hr_holidays_employee_request,Time Off / Internal User,model_hr_leave,base.group_user,1,1,1,0

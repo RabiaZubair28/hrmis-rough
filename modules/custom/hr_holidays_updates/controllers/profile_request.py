@@ -7,8 +7,7 @@ class HRMISProfileRequest(http.Controller):
     @http.route('/hrmis/profile/request', type='http', auth='user', website=True)
     def profile_request_form(self):
         user = request.env.user
-        # `user.employee_id` may be `hr.employee.public` for non-HR users; resolve the real employee via sudo.
-        employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
+        employee = user.employee_id
 
         if not employee:
             return request.render(
@@ -91,7 +90,7 @@ class HRMISProfileRequest(http.Controller):
     )
     def submit_profile_request(self, **post):
         user = request.env.user
-        employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
+        employee = user.employee_id
         req = request.env['hrmis.employee.profile.request'].sudo().browse(
             int(post.get('request_id'))
         )
@@ -155,3 +154,4 @@ class HRMISProfileRequest(http.Controller):
                 'success': success,
             }
         )
+

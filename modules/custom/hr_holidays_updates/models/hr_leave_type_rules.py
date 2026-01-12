@@ -6,27 +6,21 @@ class HrLeaveTypeRules(models.Model):
 
     @api.model
     def apply_support_document_rules(self):
-        # Keep in sync with hr_leave_type_model.apply_support_document_rules().
-        try:
-            self.search([]).write({"support_document": False, "support_document_note": ""})
-        except Exception:
-            return
-
-        required = {
-            "Leave Without Pay (EOL)": "Written request",
-            "Leave Without Pay": "Written request",
-            "EOL": "Written request",
-            "Ex-Pakistan Leave": "Govt. permission letter",
-            "Special Leave (Accident/Injury)": "Medical certificate",
-            "Special Leave (Accident / Injury)": "Medical certificate",
-            "Special Leave (Quarantine)": "Quarantine order",
-            "Study Leave": "Admission letter / course details",
-            "Medical Leave (Long-term)": "Medical certificate",
-            "Medical Leave (Long Term)": "Medical certificate",
-            "Fitness To Resume Duty": "Fitness certificate",
+        rules = {
+            "Leave Without Pay (EOL)": "Written request would be attached.",
+            "Leave Without Pay": "Written request would be attached.",
+            "Maternity Leave": "Medical Certificate.",
+            "Ex-Pakistan Leave": "Govt. Permission Letter.",
+            "Special Leave (Accident/Injury)": "Medical Certificate.",
+            "Special Leave (Accident / Injury)": "Medical Certificate.",
+            "Study Leave": "Admission Letter / Course Details.",
+            "Medical Leave (Long Term)": "Medical Certificate.",
+            "Fitness To Resume Duty": "Fitness Certificate.",
+            "Special Leave (Quarantine)": "Quarantine order.",
+            "Leave Preparatory to Retirement (LPR)": "Fitness Certificate.",
+            "LPR": "Fitness Certificate.",
         }
-
-        for leave_type_name, note in required.items():
+        for leave_type_name, note in rules.items():
             leave_types = self.search([("name", "ilike", leave_type_name)])
             if leave_types:
                 leave_types.write({"support_document": True, "support_document_note": note})

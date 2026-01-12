@@ -1,143 +1,32 @@
 <odoo>
-    <data noupdate="1">
-        <!-- Badin facilities -->
-        <record id="facility_dho_badin" model="x_facility.type">
-            <field name="name">District Health Officer Badin</field>
-            <field name="district_id" ref="district_badin"/>
-            <field name="category">hospital</field>
-            <field name="capacity">0</field>
-            <field name="active">1</field>
-            <field name="description">District Health Officer office for Badin.</field>
-        </record>
+    <!-- Badin facilities -->
+    <record id="facility_dho_badin" model="x_facility.type">
+        <field name="name">DISTRICT HEALTH OFFICER BADIN</field>
+        <field name="district_id" ref="district_badin"/>
+        <field name="category">hospital</field>
+        <field name="capacity">0</field>
+        <field name="active">True</field>
+        <field name="description">DISTRICT HEALTH OFFICER BADIN</field>
+    </record>
 
-        <record id="facility_civil_hospital_badin" model="x_facility.type">
-            <field name="name">Civil Hospital Badin</field>
-            <field name="district_id" ref="district_badin"/>
-            <field name="category">hospital</field>
-            <field name="capacity">150</field>
-            <field name="active">1</field>
-            <field name="description">Civil Hospital, Badin.</field>
-        </record>
+    <record id="facility_blood_transfusion_badin" model="x_facility.type">
+        <field name="name">BLOOD TRANSFUSION (EDO HEALTH) BADIN</field>
+        <field name="district_id" ref="district_badin"/>
+        <field name="category">hospital</field>
+        <field name="capacity">0</field>
+        <field name="active">True</field>
+        <field name="description">BLOOD TRANSFUSION (EDO HEALTH) BADIN</field>
+    </record>
 
-        <record id="facility_rhc_matli" model="x_facility.type">
-            <field name="name">RHC Matli</field>
-            <field name="district_id" ref="district_badin"/>
-            <field name="category">clinic</field>
-            <field name="capacity">20</field>
-            <field name="active">1</field>
-            <field name="description">Rural Health Center Matli.</field>
-        </record>
+    <!-- Dadu facilities -->
+    <record id="facility_dho_dadu" model="x_facility.type">
+        <field name="name">DISTRICT HEALTH OFFICER DADU</field>
+        <field name="district_id" ref="district_dadu"/>
+        <field name="category">hospital</field>
+        <field name="capacity">0</field>
+        <field name="active">True</field>
+        <field name="description">DISTRICT HEALTH OFFICER DADU</field>
+    </record>
 
-        <!-- Dadu facilities -->
-        <record id="facility_dho_dadu" model="x_facility.type">
-            <field name="name">District Health Officer Dadu</field>
-            <field name="district_id" ref="district_dadu"/>
-            <field name="category">hospital</field>
-            <field name="capacity">0</field>
-            <field name="active">1</field>
-            <field name="description">District Health Officer office for Dadu.</field>
-        </record>
-
-        <record id="facility_civil_hospital_dadu" model="x_facility.type">
-            <field name="name">Civil Hospital Dadu</field>
-            <field name="district_id" ref="district_dadu"/>
-            <field name="category">hospital</field>
-            <field name="capacity">200</field>
-            <field name="active">1</field>
-            <field name="description">Civil Hospital, Dadu.</field>
-        </record>
-
-        <record id="facility_thq_johi" model="x_facility.type">
-            <field name="name">THQ Hospital Johi</field>
-            <field name="district_id" ref="district_dadu"/>
-            <field name="category">hospital</field>
-            <field name="capacity">80</field>
-            <field name="active">1</field>
-            <field name="description">Taluka Headquarters Hospital Johi.</field>
-        </record>
-
-        <!-- Karachi facilities -->
-        <record id="facility_dho_karachi" model="x_facility.type">
-            <field name="name">District Health Office Karachi</field>
-            <field name="district_id" ref="district_karachi"/>
-            <field name="category">other</field>
-            <field name="capacity">0</field>
-            <field name="active">1</field>
-            <field name="description">District health administration for Karachi.</field>
-        </record>
-
-        <record id="facility_civil_hospital_karachi" model="x_facility.type">
-            <field name="name">Civil Hospital Karachi</field>
-            <field name="district_id" ref="district_karachi"/>
-            <field name="category">hospital</field>
-            <field name="capacity">800</field>
-            <field name="active">1</field>
-            <field name="description">Civil Hospital, Karachi.</field>
-        </record>
-
-        <record id="facility_clinic_gulshan" model="x_facility.type">
-            <field name="name">Urban Health Clinic Gulshan</field>
-            <field name="district_id" ref="district_karachi"/>
-            <field name="category">clinic</field>
-            <field name="capacity">30</field>
-            <field name="active">1</field>
-            <field name="description">Primary care clinic in Gulshan-e-Iqbal.</field>
-        </record>
-
-        <!-- Hyderabad facilities -->
-        <record id="facility_dho_hyderabad" model="x_facility.type">
-            <field name="name">District Health Officer Hyderabad</field>
-            <field name="district_id" ref="district_hyderabad"/>
-            <field name="category">other</field>
-            <field name="capacity">0</field>
-            <field name="active">1</field>
-            <field name="description">District Health Officer office for Hyderabad.</field>
-        </record>
-
-        <record id="facility_civil_hospital_hyderabad" model="x_facility.type">
-            <field name="name">Civil Hospital Hyderabad</field>
-            <field name="district_id" ref="district_hyderabad"/>
-            <field name="category">hospital</field>
-            <field name="capacity">400</field>
-            <field name="active">1</field>
-            <field name="description">Civil Hospital, Hyderabad.</field>
-        </record>
-
-        <record id="facility_rhc_latifabad" model="x_facility.type">
-            <field name="name">RHC Latifabad</field>
-            <field name="district_id" ref="district_hyderabad"/>
-            <field name="category">clinic</field>
-            <field name="capacity">25</field>
-            <field name="active">1</field>
-            <field name="description">Rural/Community health facility in Latifabad.</field>
-        </record>
-
-        <!-- Sukkur facilities -->
-        <record id="facility_dho_sukkur" model="x_facility.type">
-            <field name="name">District Health Officer Sukkur</field>
-            <field name="district_id" ref="district_sukkur"/>
-            <field name="category">other</field>
-            <field name="capacity">0</field>
-            <field name="active">1</field>
-            <field name="description">District Health Officer office for Sukkur.</field>
-        </record>
-
-        <record id="facility_civil_hospital_sukkur" model="x_facility.type">
-            <field name="name">Civil Hospital Sukkur</field>
-            <field name="district_id" ref="district_sukkur"/>
-            <field name="category">hospital</field>
-            <field name="capacity">250</field>
-            <field name="active">1</field>
-            <field name="description">Civil Hospital, Sukkur.</field>
-        </record>
-
-        <record id="facility_clinic_rohri" model="x_facility.type">
-            <field name="name">Basic Health Unit Rohri</field>
-            <field name="district_id" ref="district_sukkur"/>
-            <field name="category">clinic</field>
-            <field name="capacity">15</field>
-            <field name="active">1</field>
-            <field name="description">Basic Health Unit serving Rohri.</field>
-        </record>
-    </data>
+    <!-- Repeat for all facilities -->
 </odoo>

@@ -27,6 +27,19 @@
         </xpath>
     </template>
 
-    
+    <!-- Show Staff Search ONLY if NOT Section Officer -->
+    <template id="hrmis_show_staff_search_non_section_officer"
+              inherit_id="hr_holidays_updates.hrmis_staff_profile">
+        <xpath expr="//div[contains(@class,'hrmis-panel__body')]" position="inside">
+            <t t-if="not request.env.user.has_group('custom_login.group_section_officer')">
+                <div class="hrmis-panel__tools mb-3">
+                    <a class="hrmis-btn hrmis-btn--secondary"
+                       t-att-href="'/hrmis/staff'">
+                        Staff Search
+                    </a>
+                </div>
+            </t>
+        </xpath>
+    </template>
 
 </odoo>

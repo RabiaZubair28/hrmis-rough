@@ -424,42 +424,36 @@ class HrLeaveType(models.Model):
     @api.model
     def apply_support_document_rules(self):
         """
-        Ensure supporting-document requirements match the policy table.
+        Ensure the listed leave types require a supporting document.
         This is safe to run on every module upgrade.
         """
-        # Per requirement: if not explicitly listed as mandatory below, it must be optional.
-        try:
-            self.search([]).write({"support_document": False, "support_document_note": ""})
-        except Exception:
-            # If a deployment lacks these fields, don't break module upgrades.
-            return
-
-        # Mandatory docs (per the provided rules table).
-        required = {
-            # Leave Without Pay (EOL): Written request
-            "Leave Without Pay (EOL)": "Written request",
-            "Leave Without Pay": "Written request",
-            "EOL": "Written request",
-            # Ex-Pakistan: Govt permission letter
-            "Ex-Pakistan Leave": "Govt. permission letter",
-            # Special Leave: Accident / Injury -> Medical certificate
-            "Special Leave (Accident/Injury)": "Medical certificate",
-            "Special Leave (Accident / Injury)": "Medical certificate",
-            # Special Leave: Quarantine -> Quarantine order
-            "Special Leave (Quarantine)": "Quarantine order",
-            # Study: admission letter, course details
-            "Study Leave": "Admission letter / course details",
-            # Medical (long-term): medical certificate
-            "Medical Leave (Long-term)": "Medical certificate",
-            "Medical Leave (Long Term)": "Medical certificate",
-            # Fitness To Resume Duty: fitness certificate
-            "Fitness To Resume Duty": "Fitness certificate",
+        rules = {
+            # User-requested rules
+            "Leave Without Pay (EOL)": "Written request would be attached.",
+            "Leave Without Pay": "Written request would be attached.",
+            "Maternity Leave": "Medical Certificate.",
+            "Ex-Pakistan Leave": "Govt. Permission Letter.",
+            "Special Leave (Accident/Injury)": "Medical Certificate.",
+            "Special Leave (Accident / Injury)": "Medical Certificate.",
+            "Study Leave": "Admission Letter / Course Details.",
+            "Medical Leave (Long Term)": "Medical Certificate.",
+            "Fitness To Resume Duty": "Fitness Certificate.",
+            # Keep existing (not mentioned in latest request, but harmless)
+            "Special Leave (Quarantine)": "Quarantine order.",
+            "Leave Preparatory to Retirement (LPR)": "Fitness Certificate.",
+            "LPR": "Fitness Certificate.",
         }
 
-        for leave_type_name, note in required.items():
+        for leave_type_name, note in rules.items():
             leave_types = self.search([("name", "ilike", leave_type_name)])
-            if leave_types:
-                leave_types.write({"support_document": True, "support_document_note": note})
+            if not leave_types:
+                continue
+            leave_types.write(
+                {
+                    "support_document": True,
+                    "support_document_note": note,
+                }
+            )
 
     @api.model
     def apply_service_eligibility_rules(self):
@@ -584,47 +578,6 @@ class HrLeaveType(models.Model):
 
             res = []
             Allocation = self.env["hr.leave.allocation"].sudo()
-            Leave = self.env["hr.leave"].sudo()
-
-            # Fast path: precompute validated allocations and taken days per leave type.
-            # This is used as a fallback when Odoo's balance engine returns 0 for
-            # allocation-based leave types that *do* have validated allocations.
-            alloc_by_type = {}
-            taken_by_type = {}
-            try:
-                groups = Allocation.read_group(
-                    [
-                        ("employee_id", "=", employee_id),
-                        ("holiday_status_id", "in", self.ids),
-                        ("state", "in", ("validate", "validate1")),
-                    ],
-                    ["number_of_days:sum", "holiday_status_id"],
-                    ["holiday_status_id"],
-                )
-                for g in groups or []:
-                    hid = (g.get("holiday_status_id") or [False])[0]
-                    if hid:
-                        alloc_by_type[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
-            except Exception:
-                alloc_by_type = {}
-
-            try:
-                groups = Leave.read_group(
-                    [
-                        ("employee_id", "=", employee_id),
-                        ("holiday_status_id", "in", self.ids),
-                        ("state", "in", ("confirm", "validate1", "validate")),
-                    ],
-                    ["number_of_days:sum", "holiday_status_id"],
-                    ["holiday_status_id"],
-                )
-                for g in groups or []:
-                    hid = (g.get("holiday_status_id") or [False])[0]
-                    if hid:
-                        taken_by_type[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
-            except Exception:
-                taken_by_type = {}
-
             for lt in self:
                 base = lt.name or ""
                 label = base
@@ -730,17 +683,6 @@ class HrLeaveType(models.Model):
                     except Exception:
                         remaining = 0.0
                         total = 0.0
-
-                # Final fallback for allocation-based leave types: if Odoo's balance
-                # engine still reports 0/0, but validated allocations exist, show
-                # "X remaining out of Y" based on validated allocations minus taken.
-                if float(total or 0.0) == 0.0:
-                    alloc_total = float(alloc_by_type.get(int(lt.id), 0.0) or 0.0)
-                    if alloc_total > 0.0:
-                        total = alloc_total
-                        if float(remaining or 0.0) <= 0.0:
-                            taken = float(taken_by_type.get(int(lt.id), 0.0) or 0.0)
-                            remaining = max(0.0, total - taken)
 
                 if float(total or 0.0) == 0.0:
                     label = _replace_requires_allocation(f"{base} (0 remaining out of 0 days)")

@@ -26,13 +26,12 @@
 
             <!-- Make supporting document mandatory when required by leave type -->
             <xpath expr="//field[@name='supported_attachment_ids']" position="attributes">
-                <!-- Odoo 17+: use JSON modifiers (attrs/states removed) -->
-                <attribute name="modifiers">{"required":[["leave_type_support_document","=",true]]}</attribute>
+                <!-- TEMPORARILY DISABLED (per request): do not block save/submit -->
+                <attribute name="required">0</attribute>
             </xpath>
             <xpath expr="//field[@name='supported_attachment_ids']" position="before">
-                <field name="support_document_note"
-                       readonly="1"
-                       modifiers="{&quot;invisible&quot;:[[&quot;leave_type_support_document&quot;,&quot;=&quot;,false]]}"/>
+                <field name="support_document_note" readonly="1"
+                       invisible="not leave_type_support_document or state not in ('confirm','validate1')"/>
             </xpath>
         </field>
     </record>
@@ -72,7 +71,7 @@
                 <field name="allowed_gender"/>
                 <field name="support_document"/>
                 <field name="support_document_note"
-                       modifiers="{&quot;invisible&quot;:[[&quot;support_document&quot;,&quot;=&quot;,false]]}"
+                       invisible="not support_document"
                        placeholder="e.g. Medical Certificate / Government Permission Letter"/>
                 <field name="min_service_months"/>
                 <field name="max_days_per_request"/>

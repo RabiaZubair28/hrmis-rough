@@ -191,7 +191,7 @@ async function _refreshLeaveTypes(formEl) {
     if (!data || !data.ok) return;
     _setSelectOptions(selectEl, data.leave_types || [], true);
     _updateSupportDocUI(formEl);
-    _refreshApprovers(formEl);
+    // _refreshApprovers(formEl);
   } catch {
     // Ignore - keep UX stable if endpoint isn't reachable
   }
@@ -222,8 +222,47 @@ function _updateSupportDocUI(formEl) {
   fileEl.required = !!required;
 }
 
+function _syncProfileTabsActiveClass() {
+  // The user profile page uses Bootstrap tabs which toggle `.active`.
+  // Requirement: the active tab must also carry `.is-active` (HRMIS styling hook).
+  const root = document;
+  const tabs = [...root.querySelectorAll(".hrmis-tabs--profile .hrmis-tab")];
+  if (!tabs.length) return;
+
+  const setActive = (activeEl) => {
+    for (const t of tabs) t.classList.remove("is-active");
+    if (activeEl) activeEl.classList.add("is-active");
+  };
+
+  // Initial state (page load)
+  setActive(root.querySelector(".hrmis-tabs--profile .hrmis-tab.active"));
+
+  // Bootstrap event (preferred)
+  root.addEventListener("shown.bs.tab", (ev) => {
+    const target = ev?.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.closest(".hrmis-tabs--profile")) return;
+    if (!target.classList.contains("hrmis-tab")) return;
+    setActive(target);
+  });
+
+  // Fallback for pages without Bootstrap JS (best-effort).
+  root.addEventListener("click", (ev) => {
+    const target = ev?.target instanceof Element ? ev.target : null;
+    const btn = target?.closest?.(".hrmis-tabs--profile .hrmis-tab");
+    if (!(btn instanceof HTMLElement)) return;
+    // Bootstrap applies `.active` after click; defer to next tick.
+    setTimeout(() => {
+      setActive(
+        root.querySelector(".hrmis-tabs--profile .hrmis-tab.active") || btn
+      );
+    }, 0);
+  });
+}
+
 function _init() {
   const formEl = document.querySelector(".hrmis-leave-request-form");
+  _syncProfileTabsActiveClass();
   if (!formEl) return;
 
   // Submit via AJAX so validation errors (especially overlaps) do not navigate away.
@@ -277,14 +316,11 @@ function _init() {
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
   if (leaveTypeEl) {
-    leaveTypeEl.addEventListener("change", () => {
-      _updateSupportDocUI(formEl);
-      _refreshApprovers(formEl);
-    });
+    leaveTypeEl.addEventListener("change", () => _updateSupportDocUI(formEl));
   }
 
   _updateSupportDocUI(formEl);
-  _refreshApprovers(formEl);
+  // _refreshApprovers(formEl);
   // Ensure the leave-type dropdown reflects newly approved allocations
   // even when the user navigates back to this page (BFCache) or doesn't
   // change the date field after approvals.
@@ -303,5 +339,5 @@ window.addEventListener("pageshow", () => {
   const formEl = document.querySelector(".hrmis-leave-request-form");
   if (!formEl) return;
   _refreshLeaveTypes(formEl);
-  _refreshApprovers(formEl);
+  
 });

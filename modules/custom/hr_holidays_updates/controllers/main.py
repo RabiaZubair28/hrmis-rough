@@ -14,7 +14,6 @@ from odoo.http import request
 
 _logger = logging.getLogger(__name__)
 
-
 def _safe_int(v, default=None):
     try:
         return int(v)
@@ -165,7 +164,8 @@ def _pending_leave_requests_for_user(user_id: int):
     # Prefer the custom sequential/parallel visibility engine when available.
     # This ensures only the *current* pending approver(s) see the request.
     if "pending_approver_ids" in Leave._fields:
-        domains.append([("state", "=", "confirm"), ("pending_approver_ids", "in", [user_id])])
+        # Some deployments use 'validate1' as an intermediate "still pending final approval" state.
+        domains.append([("state", "in", ("confirm", "validate1")), ("pending_approver_ids", "in", [user_id])])
     # OpenHRMS multi-level approval: show only requests where current user is a validator
     # and has NOT yet approved.
     if "validation_status_ids" in Leave._fields and "pending_approver_ids" not in Leave._fields:
@@ -234,14 +234,23 @@ def _allocation_pending_for_current_user(allocation) -> bool:
 def _pending_allocation_requests_for_user(user_id: int):
     """
     Best-effort: pending allocations that likely need current user's action.
-    We do NOT have the multi-level validator list for allocations in this codebase,
-    so we approximate with standard "manager/hr" logic.
+    In this deployment, leave types can be configured with multi-level validators
+    (`holiday_status_id.validator_ids`). Users expect those validators to approve
+    *allocations* as well (not only leave requests), so include that routing here.
     """
     Allocation = request.env["hr.leave.allocation"].sudo()
-
+    LeaveType = request.env["hr.leave.type"].sudo()
     domains = []
     has_validation_status_ids = "validation_status_ids" in Allocation._fields
 
+    # Leave-type validators (OpenHRMS): treat configured validators as allocation approvers too.
+    # This is the missing piece that causes "allocated to 4 approvers but nobody sees it".
+    if "validator_ids" in LeaveType._fields:
+        lt_domain = [("holiday_status_id.validator_ids.user_id", "=", user_id)]
+        # If the leave type supports explicit validation mode, restrict to multi-level.
+        if "leave_validation_type" in LeaveType._fields:
+            lt_domain.append(("holiday_status_id.leave_validation_type", "=", "multi"))
+        domains.append([("state", "in", ("confirm", "validate1"))] + lt_domain)
     # OpenHRMS-style multi-level approval: show only allocations where current user
     # is a validator and has NOT yet approved.
     if has_validation_status_ids:
@@ -493,7 +502,7 @@ class HrmisLeaveFrontendController(http.Controller):
                 _base_ctx("My Time Off", "services"),
             )
         # Default to history tab (matches "My Time Off")
-        return self.hrmis_leave_form(emp.id, tab="history", **kw)
+        return request.redirect(f"/hrmis/staff/{emp.id}")
 
     @http.route(
         ["/odoo/my-time-off/new"], type="http", auth="user", website=True
@@ -703,7 +712,7 @@ class HrmisLeaveFrontendController(http.Controller):
 
         history = request.env["hr.leave"].sudo().search(
             [("employee_id", "=", employee.id)],
-             order="create_date asc, id asc",
+             order="create_date desc, id desc",
             limit=20,
         )
 
@@ -902,6 +911,8 @@ class HrmisLeaveFrontendController(http.Controller):
                             {
                                 "sequence": line.sequence,
                                 "sequence_type": line.sequence_type or (flow.mode or "sequential"),
+                                "bps_from": getattr(line, "bps_from", 0),
+                                "bps_to": getattr(line, "bps_to", 999),
                                 **_user_info(u),
                             }
                         )
@@ -930,7 +941,9 @@ class HrmisLeaveFrontendController(http.Controller):
                     {
                         "sequence": getattr(v, "sequence", 10),
                         "sequence_type": getattr(v, "sequence_type", False) or "sequential",
-                        "action_type": getattr(v, "action_type", False) or "approve",
+                        "bps_from": getattr(v, "bps_from", 6),
+                        "bps_to": getattr(v, "bps_to", 22),
+                        # "action_type": getattr(v, "action_type", False) or "approve",
                         **_user_info(u),
                     }
                 )
@@ -1078,27 +1091,12 @@ class HrmisLeaveFrontendController(http.Controller):
                 return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # Supporting document handling for the custom UI
-            # Robustly fetch the uploaded file (some deployments rename the field).
-            files = getattr(request.httprequest, "files", None)
-            uploaded = files.get("support_document") if files else None
-            if not uploaded and files:
-                for key in ("support_document[]", "supporting_document", "support_document_file", "attachment", "file"):
-                    uploaded = files.get(key)
-                    if uploaded:
-                        break
-            if not uploaded and files:
-                # If the browser sent exactly one file under an unexpected key, accept it.
-                try:
-                    keys = list(files.keys())
-                    if len(keys) == 1:
-                        uploaded = files.get(keys[0])
-                except Exception:
-                    uploaded = None
+            uploaded = request.httprequest.files.get("support_document")
             if leave_type.support_document and not uploaded:
-                msg = leave_type.support_document_note or "Supporting document is required."
-                if self._wants_json():
-                    return self._json({"ok": False, "error": msg}, status=400)
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
+                msg = quote_plus(leave_type.support_document_note or "Supporting document is required.")
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}"
+                )
 
             # Prevent creating leave over existing leave days.
             Leave = request.env["hr.leave"].sudo()
@@ -1111,15 +1109,9 @@ class HrmisLeaveFrontendController(http.Controller):
                     ("date_to", ">=", fields.Datetime.to_datetime(d_from)),
                 ]
             if Leave.search(overlap_domain, limit=1):
-                # If the overlap includes today, use the existing-day message.
-                msg = (
-                    friendly_existing_day_msg
-                    if (d_from <= today <= d_to)
-                    else friendly_overlap_msg
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
                 )
-                if self._wants_json():
-                    return self._json({"ok": False, "error": msg}, status=400)
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
 
             # IMPORTANT: use a savepoint so partial creates are rolled back on any error.
             with request.env.cr.savepoint():
@@ -1132,41 +1124,23 @@ class HrmisLeaveFrontendController(http.Controller):
                 }
                 leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
 
-                if uploaded:
-                    # Some deployments/proxies can yield an empty stream on first read.
-                    # Try to rewind, then read once (best-effort).
-                    try:
-                        uploaded.stream.seek(0)
-                    except Exception:
-                        pass
-                    data = uploaded.read() or b""
-                    if not data and getattr(uploaded, "filename", ""):
-                        # Raise inside savepoint so the draft leave is rolled back.
-                        raise ValidationError("Uploaded document could not be read. Please re-upload the file")
-                    if data:
-                        att = request.env["ir.attachment"].sudo().create(
-                            {
-                                "name": getattr(uploaded, "filename", None) or "supporting_document",
-                                "res_model": "hr.leave",
-                                "res_id": leave.id,
-                                "type": "binary",
-                                "datas": base64.b64encode(data),
-                                "mimetype": getattr(uploaded, "mimetype", None),
-                            }
-                        )
-                        # Link it to the standard support-document field if present,
-                        # so it also shows up in the native Odoo form view.
-                        link_vals = {}
-                        if "supported_attachment_ids" in leave._fields:
-                            link_vals["supported_attachment_ids"] = [(4, att.id)]
-                        # Also set the main attachment when available (helps visibility in chatter/UIs).
-                        if "message_main_attachment_id" in leave._fields and not getattr(leave, "message_main_attachment_id", False):
-                            link_vals["message_main_attachment_id"] = att.id
-                        if link_vals:
-                            leave.sudo().write(link_vals)
-                        # Flush attachment insert before confirming; confirm-time constraints
-                        # may query attachments immediately.
-                        request.env.cr.flush()
+            if uploaded:
+                data = uploaded.read()
+                if data:
+                    att = request.env["ir.attachment"].sudo().create(
+                        {
+                            "name": getattr(uploaded, "filename", None) or "supporting_document",
+                            "res_model": "hr.leave",
+                            "res_id": leave.id,
+                            "type": "binary",
+                            "datas": base64.b64encode(data),
+                            "mimetype": getattr(uploaded, "mimetype", None),
+                        }
+                    )
+                    # Link it to the standard support-document field if present,
+                    # so it also shows up in the native Odoo form view.
+                    if "supported_attachment_ids" in leave._fields:
+                        leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
 
                 if hasattr(leave, "action_confirm"):
                     leave.action_confirm()
@@ -1242,14 +1216,9 @@ class HrmisLeaveFrontendController(http.Controller):
                 # Standard field on most Odoo builds
                 "allocation_type": "regular",
             }
-            # IMPORTANT: force flush inside a savepoint so any constraints (e.g. 24-day ACL cap)
-            # raised at flush/commit time are caught here and the record is rolled back.
-            with request.env.cr.savepoint():
-                alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
-                if hasattr(alloc, "action_confirm"):
-                    alloc.action_confirm()
-                # Ensure any pending constraints trigger here.
-                request.env.cr.flush()
+            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
+            if hasattr(alloc, "action_confirm"):
+                alloc.action_confirm()
         except Exception as e:
             return request.redirect(
                 f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
@@ -1329,12 +1298,10 @@ class HrmisLeaveFrontendController(http.Controller):
                     if st:
                         st.sudo().write({"leave_comments": comment})
                     rec.sudo().message_post(
-                        body=f"Approval comment by {request.env.user.name}:<br/>{comment}",
+                        body=f"Approval comment by {request.env.user.name}: {comment}",
                         author_id=getattr(request.env.user, "partner_id", False) and request.env.user.partner_id.id or False,
                     )
-                # Use sudo(user) so the actual actor remains in env.user while
-                # bypassing access rules that may block final validation.
-                rec.sudo(request.env.user.id).action_validate()
+                rec.action_validate()
             else:
                 # Use our custom sequential approval, capturing optional comment.
                 rec.action_approve_by_user(comment=comment or None)
@@ -1611,3 +1578,84 @@ class HrmisProfileRequestController(http.Controller):
                 success="Profile update request submitted successfully.",
             ),
         )
+
+class HrmisProfileUpdateRequests(http.Controller):
+
+    @http.route('/hrmis/profile-update-requests', type='http', auth='user', website=True)
+    def profile_update_requests(self, **kwargs):
+        # Only admin and HR Manager can access
+        if not request.env.user.has_group('hr.group_hr_manager') and not request.env.user.has_group('base.group_system'):
+            return request.render('hrmis_ui.access_denied')  # optional page
+
+        # Fetch profile update requests
+        ProfileRequest = request.env['hrmis.employee.profile.request'].sudo()
+        requests = ProfileRequest.search([], order='create_date desc')
+
+        # Prepare display data (only changed / important fields)
+        requests_for_display = []
+        for req in requests:
+            changes = []
+            if req.hrmis_employee_id != (req.employee_id.hrmis_employee_id or ''):
+                changes.append(f"Employee ID: {req.hrmis_employee_id}")
+            if req.hrmis_cnic != (req.employee_id.hrmis_cnic or ''):
+                changes.append(f"CNIC: {req.hrmis_cnic}")
+            if req.hrmis_father_name != (req.employee_id.hrmis_father_name or ''):
+                changes.append(f"Father Name: {req.hrmis_father_name}")
+            if req.hrmis_bps != (req.employee_id.hrmis_bps or 0):
+                changes.append(f"BPS: {req.hrmis_bps}")
+            if req.hrmis_designation != (req.employee_id.hrmis_designation or ''):
+                changes.append(f"Designation: {req.hrmis_designation}")
+            # Add more fields as needed
+
+            requests_for_display.append({
+                'id': req.id,
+                'employee_name': req.employee_id.name,
+                'state': req.state,
+                'create_date': req.create_date,
+                'changes': changes,
+            })
+
+        return request.render('hr_holidays_updates.hrmis_profile_update_requests', {
+            'profile_update_requests': requests_for_display
+        })
+
+    @http.route(
+        '/hrmis/profile/request/view/<int:request_id>',
+        type='http',
+        auth='user',
+        website=True
+    )
+    def profile_update_request_view(self, request_id, **kw):
+
+        req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
+
+        if not req.exists():
+            return request.not_found()
+
+        # Access control
+        if not (
+            request.env.user.has_group('hr.group_hr_manager')
+            or request.env.user == req.user_id
+        ):
+            return request.not_found()
+
+        return request.render(
+            'hr_holidays_updates.hrmis_profile_update_request_view',
+            {
+                'req': req,
+                'back_url': '/hrmis/profile-update-requests',
+            }
+        )
+    
+    @http.route('/hrmis/profile/request/approve/<int:request_id>', type='http', auth='user', website=True)
+    def profile_request_approve(self, request_id):
+        req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
+        req.action_approve()
+        return request.redirect('/hrmis/profile-update-requests')
+
+
+    @http.route('/hrmis/profile/request/reject/<int:request_id>', type='http', auth='user', website=True)
+    def profile_request_reject(self, request_id):
+        req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
+        req.action_reject()
+        return request.redirect('/hrmis/profile-update-requests')

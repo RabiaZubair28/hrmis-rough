@@ -1,7 +1,7 @@
 from datetime import date as pydate
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 
 class HrLeave(models.Model):
@@ -29,13 +29,6 @@ class HrLeave(models.Model):
     support_document_note = fields.Char(
         related="holiday_status_id.support_document_note",
         string="Supporting Document Requirement",
-        readonly=True,
-    )
-
-    # Used by form view + server-side enforcement at submit time.
-    leave_type_support_document = fields.Boolean(
-        related="holiday_status_id.support_document",
-        string="Supporting Document Required",
         readonly=True,
     )
 
@@ -72,162 +65,8 @@ class HrLeave(models.Model):
         help="Available balance for Leave Without Pay (EOL), computed using Odoo's leave balance engine.",
     )
 
-    approval_status_ids = fields.One2many(
-        "hr.leave.approval.status",
-        "leave_id",
-        readonly=True,
-    )
-
-    approval_step = fields.Integer(default=1, readonly=True)
-
-    current_validation_sequence = fields.Integer(default=1)
-    pending_approver_ids = fields.Many2many(
-        "res.users",
-        string="Pending Approvers",
-        compute="_compute_pending_approver_ids",
-         store=True,
-        compute_sudo=True,
-        help=(
-            "Users allowed to approve this leave at the current step.\n"
-            "- Sequential: only the next approver can act/see it.\n"
-            "- Parallel: the next consecutive parallel approvers can act/see it together."
-        ),
-    )
-    # NOTE:
-    # We intentionally do NOT store the "all approvers" set in a dedicated M2M
-    # relation table anymore. A stored relation created a hard dependency on the
-    # table `hr_leave_approver_user_rel`, and some deployments have buggy approval
-    # code paths that accidentally attempt to delete `res.users`, tripping the
-    # FK `hr_leave_approver_user_rel_user_id_fkey`.
-    #
-    # For visibility/approval we rely on:
-    # - `pending_approver_ids` (stored) for "who can act now"
-    # - `approval_status_ids` / `validation_status_ids` for history / audit
-    #
-    # This field is kept only as a non-stored computed convenience for UI/debug.
-    approver_user_ids = fields.Many2many(
-        "res.users",
-        string="All Approvers",
-        compute="_compute_approver_user_ids",
-        store=False,
-        compute_sudo=True,
-        help="All users who are part of this leave's approval chain (non-stored).",
-    )
-
-    @api.depends(
-        "state",
-        "holiday_status_id",
-        "holiday_status_id.validator_ids",
-        "holiday_status_id.validator_ids.user_id",
-        "approval_status_ids",
-        "approval_status_ids.user_id",
-        "validation_status_ids",
-        "validation_status_ids.user_id",
-        "user_ids",
-    )
-    def _compute_approver_user_ids(self):
-        """
-        Stored union of all approver users for this leave.
-        This avoids complex record-rule domains over x2many relations.
-        """
-        Users = self.env["res.users"]
-        for leave in self:
-            users = Users.browse()
-
-            # Our custom approval engine statuses (preferred).
-            if "approval_status_ids" in leave._fields:
-                users |= leave.approval_status_ids.mapped("user_id")
-
-            # OpenHRMS validation status rows (if present on this DB).
-            if "validation_status_ids" in leave._fields and getattr(leave, "validation_status_ids", False):
-                users |= leave.validation_status_ids.mapped("user_id")
-
-            # Leave type configured validators list.
-            if leave.holiday_status_id and getattr(leave.holiday_status_id, "validator_ids", False):
-                users |= leave.holiday_status_id.validator_ids.mapped("user_id")
-
-            # Some builds keep a direct m2m of validators on the leave.
-            if "user_ids" in leave._fields and getattr(leave, "user_ids", False):
-                users |= leave.user_ids
-
-            leave.approver_user_ids = users
-
-    @api.depends(
-        "state",
-        "holiday_status_id",
-        "holiday_status_id.leave_validation_type",
-        "holiday_status_id.validator_ids",
-        "holiday_status_id.validator_ids.user_id",
-        "holiday_status_id.validator_ids.sequence",
-        "approval_step",
-        "approval_status_ids.approved",
-        "approval_status_ids.sequence",
-        "approval_status_ids.sequence_type",
-        "approval_status_ids.flow_id",
-        "approval_status_ids.user_id",
-        "validation_status_ids",
-        "validation_status_ids.user_id",
-        "validation_status_ids.validation_status",
-    )
-    def _compute_pending_approver_ids(self):
-        Flow = self.env["hr.leave.approval.flow"]
-        for leave in self:
-            # IMPORTANT:
-            # - Custom approval flow uses "confirm" until final validate.
-            # - OpenHRMS multi-level flow transitions to "validate1" before final validate.
-            # We must keep pending approvers computed for BOTH states, otherwise
-            # record rules will block second-stage approvals.
-            if leave.state not in ("confirm", "validate1") or not leave.holiday_status_id:
-                leave.pending_approver_ids = False
-                continue
-
-            current_flows = Flow.search([
-                ("leave_type_id", "=", leave.holiday_status_id.id),
-                ("sequence", "=", leave.approval_step),
-            ])
-
-            users = self.env["res.users"].browse()
-            for flow in current_flows:
-                active = leave._active_pending_statuses_for_flow(flow)
-                if active:
-                    users |= active.mapped("user_id")
-            
-            # Fallback: if no statuses/flows are initialized yet, derive the
-            # "next approver" from the ohrms_holidays_approval validator list.
-            if not users and getattr(leave.holiday_status_id, "leave_validation_type", False) == "multi":
-                validators = getattr(leave.holiday_status_id, "validator_ids", self.env["hr.holidays.validators"].browse())
-                validators = validators.sorted(lambda v: (getattr(v, "sequence", 10), v.id))
-                if validators:
-                    # Prefer the real per-leave approval flags from leave.validation.status
-                    # when available.
-                    status_map = {}
-                    for st in getattr(leave, "validation_status_ids", self.env["leave.validation.status"].browse()):
-                        if st.user_id:
-                            status_map[st.user_id.id] = bool(getattr(st, "validation_status", False))
-
-                    next_user = None
-                    for v in validators:
-                        if not v.user_id:
-                            continue
-                        if not status_map.get(v.user_id.id, False):
-                            next_user = v.user_id
-                            break
-                    if next_user:
-                        users |= next_user
-            leave.pending_approver_ids = users
-
-
-    def _ensure_sequential_approver_group(self, users):
-        """
-        Ensure validators can be restricted by record rules even if they have
-        broad Time Off access (e.g. they see "All Time Off").
-        """
-        group = self.env.ref("hr_holidays_updates.group_leave_sequential_approver", raise_if_not_found=False)
-        if not group:
-            return
-        users = users.exists()
-        if users:
-            users.sudo().write({"groups_id": [(4, group.id)]})
+    # Note: multilevel approval "hierarchy" logic was extracted into the
+    # `hr_holidays_multilevel_hierarchy` module.
 
     @api.depends('employee_id', 'employee_id.gender')
     def _compute_employee_gender(self):
@@ -533,12 +372,13 @@ class HrLeave(models.Model):
         Implemented as a post create/write check to avoid timing issues with
         many2many_binary uploads (common with PDFs).
         """
+        # TEMPORARILY DISABLED (per request): supporting documents enforcement
+        # to allow testing of other eligibility rules without being blocked.
+        return
         for leave in self:
             if not leave.holiday_status_id:
                 continue
-            # Do not block saving drafts: many flows create a draft first, then
-            # attach documents, then submit (confirm). Enforce at submit time.
-            if leave.state in ("draft", "cancel", "refuse"):
+            if leave.state in ('cancel', 'refuse'):
                 continue
             if not leave.holiday_status_id.support_document:
                 continue
@@ -548,29 +388,15 @@ class HrLeave(models.Model):
                 continue
 
             # Otherwise, verify there is at least one persisted attachment linked to this leave.
-            # IMPORTANT: depending on the UI/widget, attachments may be linked via x2many fields
-            # (e.g. `supported_attachment_ids`) without `res_model/res_id` being set immediately.
-            leave_sudo = leave.sudo()
-            has_any = False
-            if "supported_attachment_ids" in leave_sudo._fields and leave_sudo.supported_attachment_ids:
-                has_any = True
-            elif "attachment_ids" in leave_sudo._fields and leave_sudo.attachment_ids:
-                has_any = True
-            elif "message_main_attachment_id" in leave_sudo._fields and leave_sudo.message_main_attachment_id:
-                has_any = True
-            else:
-                count = self.env["ir.attachment"].sudo().search_count(
-                    [
-                        ("res_model", "=", "hr.leave"),
-                        ("res_id", "=", leave.id),
-                    ]
+            count = self.env['ir.attachment'].sudo().search_count([
+                ('res_model', '=', 'hr.leave'),
+                ('res_id', '=', leave.id),
+            ])
+            if count <= 0:
+                raise ValidationError(
+                    "A supporting document is required for this Time Off Type. "
+                    "Please attach the required document before submitting."
                 )
-                has_any = count > 0
-
-            if not has_any:
-                note = (leave.holiday_status_id.support_document_note or "").strip()
-                # Requirement: mandatory with its configured label/note.
-                raise ValidationError(note or "Supporting document is required for this Time Off Type.")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -619,27 +445,13 @@ class HrLeave(models.Model):
                 continue
 
         leaves = super().create(vals_list)
-        # Do not enforce on create: most UIs create draft records first and
-        # upload attachments afterwards. Enforcement happens on submit/confirm.
-
-         # Robustness: if a leave is created directly in confirm state (some
-        # portal/API flows do this), ensure status rows exist.
-        confirm_leaves = leaves.filtered(lambda l: l.state == "confirm" and not l.approval_status_ids)
-        if confirm_leaves:
-            confirm_leaves.sudo()._init_approval_flow()
+        for leave, vals in zip(leaves, vals_list):
+            leave._enforce_supporting_documents_required(vals)
         return leaves
 
     def write(self, vals):
         res = super().write(vals)
-        # Enforce only when a leave is submitted/approved (not while drafting).
-        if vals.get("state") in ("confirm", "validate1", "validate", "validate2"):
-            self._enforce_supporting_documents_required(vals)
-        # Robustness: if state is moved to confirm via write (bypassing
-        # action_confirm), ensure status rows exist.
-        if vals.get("state") == "confirm":
-            confirm_leaves = self.filtered(lambda l: l.state == "confirm" and not l.approval_status_ids)
-            if confirm_leaves:
-                confirm_leaves.sudo()._init_approval_flow()
+        self._enforce_supporting_documents_required(vals)
         return res
 
     def _period_bounds(self, ref_date, period):
@@ -717,359 +529,3 @@ class HrLeave(models.Model):
                         f"Maximum duration for this Time Off Type is {lt.max_days_per_year} day(s) per year."
                     )
 
-
-    # ----------------------------
-    # INIT FLOW ON SUBMIT
-    # ----------------------------
-    def action_confirm(self):
-        # Enforce mandatory supporting documents at submit time.
-        # (Attachments are expected to be uploaded before confirming.)
-        self._enforce_supporting_documents_required()
-        res = super().action_confirm()
-        self._init_approval_flow()
-        return res
-
-    def _init_approval_flow(self):
-        Status = self.env["hr.leave.approval.status"].sudo()
-        Flow = self.env["hr.leave.approval.flow"].sudo()
-        for leave in self:
-            # IMPORTANT:
-            # Do NOT unlink() approval status rows.
-            #
-            # Some deployments attach other records/history to these rows, and
-            # hard-deleting them can trigger Odoo's "another model requires the
-            # record being deleted (archive it instead)" error during approvals.
-            existing_statuses = leave.approval_status_ids.sudo()
-            # Only reset approvals when the leave is just submitted and nothing
-            # has been approved yet.
-            reset = bool(leave.state == "confirm" and not any(existing_statuses.mapped("approved")))
-
-            flows = Flow.search(
-                [("leave_type_id", "=", leave.holiday_status_id.id)],
-                order="sequence",
-            )
-            # Ignore misconfigured flows with no approvers; otherwise we'd skip
-            # auto-generation and end up with no per-leave status rows.
-            flows = flows.filtered(lambda f: f.approver_line_ids or f.approver_ids)
-
-            # If no custom flow is configured but the leave type is configured for
-            # multi-level approval (from `ohrms_holidays_approval`), auto-generate
-            # a sequential flow using the validators list. This preserves your
-            # existing configuration UI while enabling sequential visibility.
-            if not flows:
-                lt = leave.holiday_status_id
-                if getattr(lt, "leave_validation_type", False) == "multi" and getattr(lt, "validator_ids", False):
-                    validators = lt.validator_ids.sorted(lambda v: (getattr(v, "sequence", 10), v.id))
-                    if validators:
-                        flow = self.env["hr.leave.approval.flow"].sudo().create({
-                            "leave_type_id": lt.id,
-                            "sequence": 1,
-                            "mode": "sequential",
-                        })
-                        for val in validators:
-                            if not val.user_id:
-                                continue
-                            self.env["hr.leave.approval.flow.line"].sudo().create({
-                                "flow_id": flow.id,
-                                "sequence": getattr(val, "sequence", 10),
-                                "user_id": val.user_id.id,
-                                 "sequence_type": getattr(val, "sequence_type", False) or "sequential",
-                            })
-                        flows = flow
-
-            if not flows:
-                continue
-
-            leave.approval_step = flows[0].sequence
-
-            # Build the desired (flow_id, user_id) -> values map.
-            desired = {}
-            for flow in flows:
-                # Prefer explicit ordering when configured.
-                if flow.approver_line_ids:
-                    ordered = flow._ordered_approver_lines()
-                    leave._ensure_sequential_approver_group(ordered.mapped("user_id"))
-                    for line in ordered:
-                        if not line.user_id:
-                            continue
-                        desired[(flow.id, line.user_id.id)] = {
-                            "leave_id": leave.id,
-                            "flow_id": flow.id,
-                            "user_id": line.user_id.id,
-                            "sequence": line.sequence,
-                            "sequence_type": line.sequence_type or (flow.mode or "sequential"),
-                        }
-                    continue
-
-                # Backward compatible fallback (deterministic by user id).
-                fallback_users = flow.approver_ids.sorted(lambda u: u.id)
-                for idx, user in enumerate(fallback_users, start=1):
-                    desired[(flow.id, user.id)] = {
-                        "leave_id": leave.id,
-                        "flow_id": flow.id,
-                        "user_id": user.id,
-                        "sequence": idx * 10,
-                        "sequence_type": (flow.mode or "sequential"),
-                    }
-
-            desired_keys = set(desired.keys())
-
-            # Index existing statuses by key, de-duplicate by keeping newest.
-            existing_by_key = {}
-            for st in existing_statuses:
-                key = (st.flow_id.id, st.user_id.id)
-                existing_by_key[key] = existing_by_key.get(key, Status.browse()) | st
-
-            for key, recs in list(existing_by_key.items()):
-                if len(recs) <= 1:
-                    existing_by_key[key] = recs
-                    continue
-                keep = recs.sorted("id")[-1]
-                (recs - keep).sudo().write({"approved": True})
-                existing_by_key[key] = keep
-
-            # Upsert desired statuses (no hard deletes).
-            for key, vals in desired.items():
-                st = existing_by_key.get(key)
-                if st:
-                    write_vals = {
-                        "sequence": vals["sequence"],
-                        "sequence_type": vals["sequence_type"],
-                    }
-                    if reset:
-                        write_vals.update(
-                            {
-                                "approved": False,
-                                "approved_on": False,
-                                "comment": False,
-                                "commented_on": False,
-                            }
-                        )
-                    st.sudo().write(write_vals)
-                else:
-                    create_vals = {
-                        "leave_id": vals["leave_id"],
-                        "flow_id": vals["flow_id"],
-                        "user_id": vals["user_id"],
-                        "sequence": vals["sequence"],
-                        "sequence_type": vals["sequence_type"],
-                        "approved": False,
-                        "approved_on": False,
-                        "comment": False,
-                        "commented_on": False,
-                    }
-                    Status.create(create_vals)
-
-            # Any leftover (stale) statuses should not block approvals.
-            stale = existing_statuses.filtered(lambda s: (s.flow_id.id, s.user_id.id) not in desired_keys)
-            if stale:
-                stale.sudo().write({"approved": True})
-
-    def _ensure_custom_approval_initialized(self):
-        """
-        Ensure our custom approval statuses exist for this leave.
-        This is called on-demand from approval entrypoints, because some flows
-        (website/HRMIS routes) may bypass parts of the backend UI and we still
-        want the approval_status_ids list + comments to work.
-        """
-        for leave in self:
-            if leave.state != "confirm" or not leave.holiday_status_id:
-                continue
-            if leave.approval_status_ids:
-                continue
-            # Build status rows with sudo (validators can be any users).
-            leave.sudo()._init_approval_flow()
-
-    def _pending_statuses_for_flow(self, flow):
-        self.ensure_one()
-         # Use sudo to avoid record-rule visibility issues for future approvers.
-        Status = self.env["hr.leave.approval.status"].sudo()
-        return Status.search(
-            [("leave_id", "=", self.id), ("flow_id", "=", flow.id), ("approved", "=", False)],
-            order="sequence, id",
-        )
-
-    def _active_pending_statuses_for_flow(self, flow):
-        """
-        Return the *currently active* pending approval statuses for a flow.
-
-        The active set is determined from the first not-yet-approved row:
-        - If it is sequential: only that one approver is active.
-        - If it is parallel: that approver and the next *consecutive* parallel approvers
-          are active together (stop at the first sequential row).
-        """
-        self.ensure_one()
-        pending = self._pending_statuses_for_flow(flow)
-        if not pending:
-            return pending
-
-        first = pending[0]
-        first_type = first.sequence_type or (flow.mode or "sequential")
-        if first_type != "parallel":
-            return first
-
-        active = self.env["hr.leave.approval.status"].browse()
-        for st in pending:
-            st_type = st.sequence_type or (flow.mode or "sequential")
-            if st_type != "parallel":
-                break
-            active |= st
-        return active
-
-    def _is_user_pending_in_flow(self, flow, user):
-        """
-        Return True if this leave is pending for `user` for the given flow.
-        - Sequential: only the next pending approver can act/see it
-        - Parallel: next consecutive parallel approvers can act/see it together
-        """
-        self.ensure_one()
-        active = self._active_pending_statuses_for_flow(flow)
-        return bool(active.filtered(lambda s: s.user_id == user))
-    
-    def is_pending_for_user(self, user):
-        self.ensure_one()
-
-        current_flows = self.env["hr.leave.approval.flow"].search([
-            ("leave_type_id", "=", self.holiday_status_id.id),
-            ("sequence", "=", self.approval_step),
-        ])
-
-        return any(self._is_user_pending_in_flow(flow, user) for flow in current_flows)
-
-    # ----------------------------
-    # APPROVE ACTION
-    # ----------------------------
-    def action_approve_by_user(self, comment=None):
-        """
-        Approve using the custom flow engine.
-
-        Key behavior (your requirement):
-         - Sequential: only the next approver can see/approve the leave at that time.
-        - Parallel: the next consecutive parallel approvers can see/approve together.
-        """
-        # Safety guard: prevent any buggy codepath from deleting res.users while approving.
-        # (e.g. accidental `leave.approver_user_ids.unlink()` somewhere in the chain)
-        self = self.with_context(hr_leave_approval_no_user_unlink=True)
-        now = fields.Datetime.now()
-        for leave in self:
-            user = leave.env.user
-
-            if leave.state == "validate":
-                raise UserError("This leave request is already approved.")
-
-            # Make sure the custom flow/status rows exist so the approval status
-            # table and comment history work reliably.
-            leave._ensure_custom_approval_initialized()
-
-            # If no custom flow is configured for this leave type, fall back to
-            # the standard Odoo approve behavior.
-            flows_all = leave.env["hr.leave.approval.flow"].search(
-                [("leave_type_id", "=", leave.holiday_status_id.id)],
-                order="sequence",
-            )
-            if not flows_all:
-                return super(HrLeave, leave).action_approve()
-
-            current_flows = flows_all.filtered(lambda f: f.sequence == leave.approval_step)
-            if not current_flows:
-                # In case approval_step is stale, reset to first step.
-                leave.approval_step = flows_all[0].sequence
-                current_flows = flows_all.filtered(lambda f: f.sequence == leave.approval_step)
-
-            # Figure out which status(es) this user is allowed to approve right now.
-            to_approve = leave.env["hr.leave.approval.status"].browse()
-            for flow in current_flows:
-                active = leave._active_pending_statuses_for_flow(flow)
-                if active:
-                    to_approve |= active.filtered(lambda s: s.user_id == user)
-
-            if not to_approve:
-                raise UserError("You are not authorized to approve this request at this stage.")
-
-            # Mark approved (use sudo so validators can be arbitrary users).
-            vals = {"approved": True, "approved_on": now}
-            if comment:
-                vals.update({"comment": comment, "commented_on": now})
-            
-            to_approve.sudo().write(vals)
-
-            if comment:
-                # Some deployments restrict mail.message creation for non-admin users.
-                # Keep the audit trail without blocking the approval.
-                leave.sudo().message_post(
-                    body=f"Approval comment by {user.name}:<br/>{comment}",
-                    author_id=getattr(user, "partner_id", False) and user.partner_id.id or False,
-                )
-
-            # Check if the whole current step is completed.
-            for flow in current_flows:
-                if leave._pending_statuses_for_flow(flow):
-                    # Still waiting for approvals in this step.
-                    break
-            else:
-                # Step is complete: move to next step or validate leave.
-                next_flow = flows_all.filtered(lambda f: f.sequence > leave.approval_step)[:1]
-                if next_flow:
-                    leave.sudo().write({"approval_step": next_flow.sequence})
-                else:
-                    # Final approval: validate the leave (sudo so last validator can complete it).
-                    leave.sudo().action_validate()
-
-        return True
-
-    def action_open_approval_wizard(self):
-        """
-        Open a small wizard so the approver can optionally add a comment before approving.
-        """
-        self.ensure_one()
-        self._ensure_custom_approval_initialized()
-        if self.state != "confirm" or not self.is_pending_for_user(self.env.user):
-            raise UserError("You are not authorized to approve this request at this stage.")
-
-        return {
-            "type": "ir.actions.act_window",
-            "name": "Approve Leave",
-            "res_model": "hr.leave.approval.wizard",
-            "view_mode": "form",
-            "target": "new",
-            "context": {
-                "default_leave_id": self.id,
-            },
-        }
-
-    def action_approve(self):
-        """
-        Keep any external callers (list view mass approve, RPCs, etc.) aligned with
-        the custom sequential approval flow.
-        """
-        return self.action_approve_by_user()
-    
-    def _get_approval_requests(self):
-        """
-        Used by the existing "Approval Requests" menu server action (from
-        `ohrms_holidays_approval`). We override it so the menu shows leaves
-        **only** to the current approver (sequential visibility).
-        """
-        current_uid = self.env.uid
-        Status = self.env["hr.leave.approval.status"].sudo()
-
-        # Start from pending status rows for this user, then apply sequential logic.
-        pending_statuses = Status.search([
-            ("user_id", "=", current_uid),
-            ("approved", "=", False),
-        ])
-        leaves = pending_statuses.mapped("leave_id").filtered(
-            lambda l: l.state == "confirm" and l.is_pending_for_user(self.env.user)
-        )
-
-        return {
-            "domain": str([("id", "in", leaves.ids)]),
-            "view_mode": "list,form",
-            "res_model": "hr.leave",
-            "view_id": False,
-            "type": "ir.actions.act_window",
-            "name": "Approvals",
-            "target": "current",
-            "create": False,
-            "edit": False,
-        }

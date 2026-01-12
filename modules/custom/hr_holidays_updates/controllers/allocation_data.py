@@ -7,10 +7,20 @@ from .utils import can_manage_allocations
 
 def pending_allocation_requests_for_user(user_id: int):
     Allocation = request.env["hr.leave.allocation"].sudo()
+    LeaveType = request.env["hr.leave.type"].sudo()
 
     domains = []
     has_validation_status_ids = "validation_status_ids" in Allocation._fields
 
+    # Leave-type validators (OpenHRMS): include allocations for configured validators too.
+    # This fixes the common case: leave type has 4 validators, but allocations were only
+    # visible to managers/HR before.
+    if "validator_ids" in LeaveType._fields:
+        lt_domain = [("holiday_status_id.validator_ids.user_id", "=", user_id)]
+        if "leave_validation_type" in LeaveType._fields:
+            lt_domain.append(("holiday_status_id.leave_validation_type", "=", "multi"))
+        domains.append([("state", "in", ("confirm", "validate1"))] + lt_domain)
+        
     if has_validation_status_ids:
         domains.append(
             [

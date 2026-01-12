@@ -27,11 +27,14 @@ class HrmisManageRequestsController(http.Controller):
             return request.not_found()
 
         if not can_manage_allocations():
-            if not (
+            is_manager = bool(
                 alloc.employee_id
                 and alloc.employee_id.parent_id
                 and alloc.employee_id.parent_id.user_id.id == request.env.user.id
-            ):
+            )
+            # Also allow configured validators (multi-level approvers) to view.
+            is_pending_validator = allocation_pending_for_current_user(alloc)
+            if not (is_manager or is_pending_validator):
                 return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         return request.render(
@@ -56,12 +59,11 @@ class HrmisManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
-            if hasattr(alloc.with_user(request.env.user), "action_approve"):
-                alloc.with_user(request.env.user).action_approve()
-            elif hasattr(alloc.with_user(request.env.user), "action_validate"):
-                alloc.with_user(request.env.user).action_validate()
-            else:
-                alloc.sudo().write({"state": "validate"})
+            # Use sudo(user) so non-HR validators can approve without HR rights.
+            if hasattr(alloc, "action_approve"):
+                alloc.sudo(request.env.user).action_approve()
+            elif hasattr(alloc, "action_validate"):
+                alloc.sudo(request.env.user).action_validate()
         except Exception:
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=approve_failed")
 
@@ -84,10 +86,10 @@ class HrmisManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
 
         try:
-            if hasattr(alloc.with_user(request.env.user), "action_refuse"):
-                alloc.with_user(request.env.user).action_refuse()
-            elif hasattr(alloc.with_user(request.env.user), "action_reject"):
-                alloc.with_user(request.env.user).action_reject()
+            if hasattr(alloc, "action_refuse"):
+                alloc.sudo(request.env.user).action_refuse()
+            elif hasattr(alloc, "action_reject"):
+                alloc.sudo(request.env.user).action_reject()
             else:
                 alloc.sudo().write({"state": "refuse"})
         except Exception:

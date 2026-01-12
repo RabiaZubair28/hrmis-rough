@@ -1,0 +1,171 @@
+<odoo>
+    <template id="hrmis_profile_update_request_view"
+              name="Profile Update Request View">
+
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+
+            <div class="hrmis-panel">
+
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">
+                        Profile Update Request
+                    </div>
+                </div>
+
+                <div class="hrmis-panel__body">
+
+                    <div class="hrmis-kv">
+
+                        <!-- BASIC INFO -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Employee</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.employee_id.name"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Requested By</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.user_id.name"/>
+                            </div>
+                        </div>
+
+                        <!-- IDENTIFICATION -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Employee ID / Service No</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_employee_id"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">CNIC</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_cnic"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Father's Name</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_father_name"/>
+                            </div>
+                        </div>
+
+                        <!-- PERSONAL -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Gender</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.gender"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Joining Date</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_joining_date"/>
+                            </div>
+                        </div>
+
+                        <!-- JOB -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Cadre</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_cadre"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Designation</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_designation"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">BPS Grade</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_bps"/>
+                            </div>
+                        </div>
+
+                        <!-- LOCATION -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">District</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.district_id.name"/>
+                            </div>
+                        </div>
+
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Facility</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.facility_id.name"/>
+                            </div>
+                        </div>
+
+                        <!-- CONTACT -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Contact Info</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <t t-esc="req.hrmis_contact_info"/>
+                            </div>
+                        </div>
+
+                        <!-- STATUS -->
+                        <div class="hrmis-kv__row hrmis-kv-row-fix">
+                            <div class="hrmis-kv__k hrmis-kv-key-fix">Status</div>
+                            <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                <span t-attf-class="hrmis-badge
+                                    #{'hrmis-badge--success' if req.state=='approved'
+                                    else 'hrmis-badge--warning' if req.state=='submitted'
+                                    else 'hrmis-badge--danger'}">
+                                    <t t-esc="req.state.capitalize()"/>
+                                </span>
+                            </div>
+                        </div>
+
+                        <t t-if="req.approved_by">
+                            <div class="hrmis-kv__row hrmis-kv-row-fix">
+                                <div class="hrmis-kv__k hrmis-kv-key-fix">Approved By</div>
+                                <div class="hrmis-kv__v hrmis-kv-val-fix">
+                                    <t t-esc="req.approved_by.name"/>
+                                </div>
+                            </div>
+                        </t>
+
+                    </div>
+
+                    <!-- ACTIONS -->
+                    <div class="hrmis-form__actions">
+
+                        <a class="hrmis-btn hrmis-btn--outline"
+                           t-att-href="back_url">
+                            Back
+                        </a>
+
+                        <t t-if="req.state == 'submitted'
+                                 and request.env.user.has_group('hr.group_hr_manager')
+                                 and request.env.user != req.user_id">
+
+                            <a t-att-href="'/hrmis/profile/request/approve/%s' % req.id"
+                               class="hrmis-btn hrmis-btn--primary">
+                                Approve
+                            </a>
+
+                            <a t-att-href="'/hrmis/profile/request/reject/%s' % req.id"
+                               class="hrmis-btn hrmis-btn--danger">
+                                Reject
+                            </a>
+
+                        </t>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </t>
+    </template>
+</odoo>

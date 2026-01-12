@@ -48,13 +48,10 @@ class HrLeaveAttachments(models.Model):
         """
         Enforce supporting documents for leave types that require them.
 
-        IMPORTANT:
-        Do NOT disable this at the model layer. Supporting-document enforcement is
-        implemented in other hr.leave mixins (and/or Odoo core) and is expected to
-        run at submit/confirm time. If we return early here, we can accidentally
-        override the real implementation depending on model MRO/load order.
+        NOTE: currently disabled (kept for later enablement).
         """
-        return super()._enforce_supporting_documents_required(incoming_vals=incoming_vals)
+        # TEMPORARILY DISABLED (per request): supporting documents enforcement
+        return
 
     @api.model_create_multi
     def create(self, vals_list):
