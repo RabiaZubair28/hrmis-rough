@@ -1,14 +1,38 @@
 <odoo>
-    <record id="district_badin" model="x_district.master">
-    <field name="name">Badin</field>
-    <field name="code">BDN</field>
-    <field name="region">south</field>
-</record>
+    <data noupdate="1">
+        <record id="district_badin" model="x_district.master">
+            <field name="name">Badin</field>
+            <field name="code">BDN</field>
+            <field name="region">south</field>
+            <field name="active">1</field>
+        </record>
 
-<record id="district_dadu" model="x_district.master">
-    <field name="name">Dadu</field>
-    <field name="code">DAD</field>
-    <field name="region">north</field>
-</record>
+        <record id="district_dadu" model="x_district.master">
+            <field name="name">Dadu</field>
+            <field name="code">DAD</field>
+            <field name="region">north</field>
+            <field name="active">1</field>
+        </record>
 
+        <record id="district_karachi" model="x_district.master">
+            <field name="name">Karachi</field>
+            <field name="code">KHI</field>
+            <field name="region">east</field>
+            <field name="active">1</field>
+        </record>
+
+        <record id="district_hyderabad" model="x_district.master">
+            <field name="name">Hyderabad</field>
+            <field name="code">HDD</field>
+            <field name="region">south</field>
+            <field name="active">1</field>
+        </record>
+
+        <record id="district_sukkur" model="x_district.master">
+            <field name="name">Sukkur</field>
+            <field name="code">SKR</field>
+            <field name="region">north</field>
+            <field name="active">1</field>
+        </record>
+    </data>
 </odoo>

@@ -1,0 +1,63 @@
+<odoo>
+    <data noupdate="1">
+        <!-- Badin tehsils -->
+        <record id="tehsil_badin_badin" model="x_tehsil.master">
+            <field name="name">Badin</field>
+            <field name="code">BDN-01</field>
+            <field name="district_id" ref="district_badin"/>
+        </record>
+        <record id="tehsil_badin_matli" model="x_tehsil.master">
+            <field name="name">Matli</field>
+            <field name="code">BDN-02</field>
+            <field name="district_id" ref="district_badin"/>
+        </record>
+
+        <!-- Dadu tehsils -->
+        <record id="tehsil_dadu_dadu" model="x_tehsil.master">
+            <field name="name">Dadu</field>
+            <field name="code">DAD-01</field>
+            <field name="district_id" ref="district_dadu"/>
+        </record>
+        <record id="tehsil_dadu_johi" model="x_tehsil.master">
+            <field name="name">Johi</field>
+            <field name="code">DAD-02</field>
+            <field name="district_id" ref="district_dadu"/>
+        </record>
+
+        <!-- Karachi tehsils -->
+        <record id="tehsil_karachi_saddar" model="x_tehsil.master">
+            <field name="name">Saddar</field>
+            <field name="code">KHI-01</field>
+            <field name="district_id" ref="district_karachi"/>
+        </record>
+        <record id="tehsil_karachi_gulshan" model="x_tehsil.master">
+            <field name="name">Gulshan-e-Iqbal</field>
+            <field name="code">KHI-02</field>
+            <field name="district_id" ref="district_karachi"/>
+        </record>
+
+        <!-- Hyderabad tehsils -->
+        <record id="tehsil_hyderabad_city" model="x_tehsil.master">
+            <field name="name">Hyderabad City</field>
+            <field name="code">HDD-01</field>
+            <field name="district_id" ref="district_hyderabad"/>
+        </record>
+        <record id="tehsil_hyderabad_latifabad" model="x_tehsil.master">
+            <field name="name">Latifabad</field>
+            <field name="code">HDD-02</field>
+            <field name="district_id" ref="district_hyderabad"/>
+        </record>
+
+        <!-- Sukkur tehsils -->
+        <record id="tehsil_sukkur_sukkur" model="x_tehsil.master">
+            <field name="name">Sukkur</field>
+            <field name="code">SKR-01</field>
+            <field name="district_id" ref="district_sukkur"/>
+        </record>
+        <record id="tehsil_sukkur_rohri" model="x_tehsil.master">
+            <field name="name">Rohri</field>
+            <field name="code">SKR-02</field>
+            <field name="district_id" ref="district_sukkur"/>
+        </record>
+    </data>
+</odoo>
