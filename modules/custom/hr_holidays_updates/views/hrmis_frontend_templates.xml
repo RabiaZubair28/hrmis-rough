@@ -287,7 +287,7 @@
     <div class="tab-content hrmis-panel__body ">
 
         <!-- 🔹 TAB 1: USER PROFILE (YOUR ORIGINAL CONTENT) -->
-        <div class="tab-pane fade show active" id="personal_data">
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'personal' else ''}" id="personal">
 
             <div class="hrmis-kv hrmis-kv--grid">
 
@@ -389,7 +389,7 @@
         </div>
 
         <!-- 🔹 TAB 2: POSTING -->
-        <div class="tab-pane fade" id="posting">
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'posting' else ''}" id="posting">
             <table class="table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
@@ -422,7 +422,7 @@
         </div>
 
         <!-- 🔹 TAB 3: DISCIPLINARY -->
-        <div class="tab-pane fade" id="disciplinary">
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'disciplinary' else ''}" id="disciplinary">
             <table class="table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
@@ -442,7 +442,7 @@
         </div>
 
         <!-- 🔹 TAB 4: QUALIFICATIONS -->
-        <div class="tab-pane fade" id="qualifications">
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'qualifications' else ''}" id="qualifications">
             <table class="table table-bordered table-sm">
     <thead class="table-light">
         <tr>

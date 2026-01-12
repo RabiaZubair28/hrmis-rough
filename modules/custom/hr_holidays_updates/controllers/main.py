@@ -576,7 +576,14 @@ class HrmisLeaveFrontendController(http.Controller):
             tab = "personal"
         return request.render(
             "hr_holidays_updates.hrmis_staff_profile",
-            _base_ctx("User profile", active_menu, employee=employee),
+            _base_ctx(
+                "User profile",
+                active_menu,
+                employee=employee,
+                tab=tab,
+                # Used by the template to decide whether to show the service history table.
+                service_history=getattr(employee, "service_history_ids", request.env["hr.employee"].browse([])),
+            ),
         )
 
     @http.route(
