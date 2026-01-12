@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime, time
 import logging
 import re
 import json
@@ -1104,10 +1105,12 @@ class HrmisLeaveFrontendController(http.Controller):
             if "request_date_from" in Leave._fields and "request_date_to" in Leave._fields:
                 overlap_domain += [("request_date_from", "<=", d_to), ("request_date_to", ">=", d_from)]
             elif "date_from" in Leave._fields and "date_to" in Leave._fields:
-                overlap_domain += [
-                    ("date_from", "<=", fields.Datetime.to_datetime(d_to)),
-                    ("date_to", ">=", fields.Datetime.to_datetime(d_from)),
-                ]
+                # `date_from/date_to` are datetimes (can be half-day/hour-based). When the user
+                # selects a date range on the website we must treat it as a full-day window,
+                # otherwise comparing to midnight can miss same-day overlaps.
+                dt_start = datetime.combine(d_from, time.min)
+                dt_end = datetime.combine(d_to, time.max)
+                overlap_domain += [("date_from", "<=", dt_end), ("date_to", ">=", dt_start)]
             if Leave.search(overlap_domain, limit=1):
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
@@ -1142,11 +1145,13 @@ class HrmisLeaveFrontendController(http.Controller):
                     if "supported_attachment_ids" in leave._fields:
                         leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
 
-                if hasattr(leave, "action_confirm"):
-                    leave.action_confirm()
+            # Confirm regardless of whether a supporting document was uploaded.
+            # (Previous indentation meant many requests stayed in draft and could bypass checks.)
+            if hasattr(leave, "action_confirm"):
+                leave.action_confirm()
 
-                # Force constraint checks inside the savepoint (so failures roll back).
-                request.env.cr.flush()
+            # Force constraint checks inside the savepoint (so failures roll back).
+            request.env.cr.flush()
 
         except (ValidationError, UserError, AccessError, Exception) as e:
             msg = _friendly_leave_error(e)
