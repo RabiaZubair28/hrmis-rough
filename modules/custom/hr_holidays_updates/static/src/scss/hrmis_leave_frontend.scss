@@ -755,10 +755,57 @@
 .hrmis-alert--error {
   background: #fde8e8;
 }
+.hrmis-alert--danger {
+  background: #fde8e8;
+}
 .hrmis-alert--success {
   background: #e8f7ee;
 }
 
+.hrmis-tabs--profile {
+  margin: 0;
+  padding: 0;
+  border-bottom: 2px solid #2a2f31;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.hrmis-tabs--profile .nav-item {
+  flex: 1 1 0;
+  min-width: 180px;
+  margin: 0;
+}
+.hrmis-tabs--profile .hrmis-tab--profile {
+  width: 100%;
+  border: none !important;
+  border-right: 2px solid #2a2f31 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  color: #1b1f20 !important;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 12px 10px;
+  line-height: 1.15;
+}
+.hrmis-tabs--profile .nav-item:last-child .hrmis-tab--profile {
+  border-right: none !important;
+}
+.hrmis-tabs--profile .hrmis-tab--profile.active {
+  background: #064526 !important;
+  color: #fff !important;
+}
+
+.hrmis-tabs__content {
+  border-top: none;
+}
+
+.hrmis-profile-table {
+  margin-bottom: 0;
+}
+
+.hrmis-logout--topbar {
+  white-space: nowrap;
+}
 .hrmis-table__head,
 .hrmis-table__row {
   display: grid;
