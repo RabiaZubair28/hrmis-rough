@@ -9,6 +9,13 @@
                 Manage Requests
             </a>
             </t>
+              <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
+            <a t-attf-class="hrmis-nav__item" 
+               href="#">
+                Initiate Disciplinary Actions
+                </a>
+        
+            </t>
         </xpath>
     </template>
 

@@ -42,27 +42,33 @@
                                 </div>
                             </div>
                         </div>
-                         <div class="hrmis-user__avatar"></div>
                         <t t-if="current_employee">
                             <div class="hrmis-user-stack">
                                 <a class="hrmis-user-link" t-att-href="'/hrmis/staff/%s' % current_employee.id">
                                     <div class="hrmis-user">
+                                        <div class="hrmis-user__avatar">
+                                            <img t-att-alt="current_employee.name"
+                                                 t-att-src="'/web/image/hr.employee.public/%s/avatar_1024/' % current_employee.id"/>
+                                        </div>
                                        
                                         <div class="hrmis-user__meta">
                                             <div class="hrmis-user__label">Username</div>
                                             <div class="hrmis-user__value">
                                                 <t t-esc="request.env.user.name"/>
                                             </div>
-                                        </div>
-                                    </div>
-                                </a>
-                                <t t-if="request.session.uid">
+                                            <div>
+                                            <t t-if="request.session.uid">
                                     <a href="/web/session/logout?redirect=/web/login"
                                        class="btn btn-outline-danger btn-sm hrmis-logout"
                                        style="font-weight: 600; border-radius: 8px;">
                                         Logout
                                     </a>
                                 </t>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                                
                             </div>
                         </t>
                         <t t-else="">
@@ -75,16 +81,19 @@
                                             <div class="hrmis-user__value">
                                                 <t t-esc="request.env.user.name"/>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <t t-if="request.session.uid">
+                                            <div>
+                                              <t t-if="request.session.uid">
                                     <a href="/web/session/logout?redirect=/web/login"
                                        class="btn btn-outline-danger btn-sm hrmis-logout"
                                        style="font-weight: 600; border-radius: 8px;">
                                         Logout
                                     </a>
                                 </t>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                              
                             </div>
                         </t>
                     </div>
@@ -93,7 +102,9 @@
                 <div class="hrmis-body">
                     <aside class="hrmis-sidebar">
                         <div class="hrmis-brand">
-                            <div class="hrmis-brand__seal"></div>
+                              <div class="hrmis-brand__seal">
+                                <img src="/custom_login/static/src/img/logo.png" alt="HRMIS Logo"/>
+                            </div>
                             <div class="hrmis-brand__text">
                                 <div class="hrmis-brand__title">SINDH<br/>HUMAN RESOURCE<br/>MANAGEMENT<br/>INFORMATION SYSTEM</div>
                             </div>
@@ -110,7 +121,7 @@
                             <!-- <a class="hrmis-nav__item" href="#">Promotions</a>
                             <a class="hrmis-nav__item" href="#">Vacancies</a> -->
                             <a class="hrmis-nav__item" href="#">Disciplinary actions</a>
-                            <!-- <a class="hrmis-nav__item" href="#">ACR</a> -->
+                            <a class="hrmis-nav__item" href="#">Promotion Requests</a>
                                                         <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'leave_requests' else ''}"
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests
@@ -207,7 +218,10 @@
                     </t>
                     <t t-foreach="employees" t-as="emp">
                         <div class="hrmis-result">
-                            <div class="hrmis-result__avatar"></div>
+                            <div class="hrmis-result__avatar">
+                                <img t-att-alt="emp.name"
+                                     t-att-src="'/web/image/hr.employee.public/%s/avatar_1024/' % emp.id"/>
+                            </div>
                             <div class="hrmis-result__meta">
                                 <div class="hrmis-result__name">
                                     <t t-esc="emp.name"/> <t t-if="emp.hrmis_bps">, BPS <t t-esc="emp.hrmis_bps"/></t>
@@ -247,8 +261,8 @@
 
     <!-- TAB HEADERS -->
     <ul class="nav nav-tabs mb-3" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active"
+        <li class="nav-item ">
+            <button class="nav-link active hrmis-tab"
                     data-bs-toggle="tab"
                     data-bs-target="#personal_data"
                     type="button">
@@ -257,7 +271,7 @@
         </li>
 
         <li class="nav-item">
-            <button class="nav-link"
+            <button class="nav-link hrmis-tab"
                     data-bs-toggle="tab"
                     data-bs-target="#posting"
                     type="button">
@@ -266,7 +280,7 @@
         </li>
 
         <li class="nav-item">
-            <button class="nav-link"
+            <button class="nav-link hrmis-tab"
                     data-bs-toggle="tab"
                     data-bs-target="#disciplinary"
                     type="button">
@@ -275,7 +289,7 @@
         </li>
 
         <li class="nav-item">
-            <button class="nav-link"
+            <button class="nav-link hrmis-tab"
                     data-bs-toggle="tab"
                     data-bs-target="#qualifications"
                     type="button">
@@ -533,10 +547,10 @@
                         <a t-att-href="'/hrmis/staff/%s/services' % employee.id">&lt; Back to Services</a>
                     </div> -->
                     <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
-                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=history' % employee.id">Leave history</a>
-                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=new' % employee.id">New leave request</a>
-                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'allocation' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=allocation' % employee.id">New allocation request</a>
                         
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=new' % employee.id">New leave request</a>
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'allocation' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=allocation' % employee.id">New leave allocation request</a>
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=history' % employee.id">Leave history</a>
                     </div>
 
                     <div class="hrmis-panel__body">
@@ -559,11 +573,11 @@
 
                                 <div class="hrmis-form__grid">
                                     <div class="hrmis-field">
-                                        <label>Leave starting date<span class="req">*</span></label>
+                                        <label>Starting date<span class="req">*</span></label>
                                         <input class="hrmis-input js-hrmis-date-from" type="date" name="date_from" t-att-value="today" t-att-min="today"/>
                                     </div>
                                     <div class="hrmis-field">
-                                        <label>Leaving ending date<span class="req">*</span></label>
+                                        <label>Ending date<span class="req">*</span></label>
                                         <input class="hrmis-input js-hrmis-date-to" type="date" name="date_to" t-att-value="today" t-att-min="today"/>
                                     </div>
                                     <div class="hrmis-field">
@@ -582,7 +596,7 @@
                                         </select>
                                     </div>
                                     <div class="hrmis-field hrmis-field--wide">
-                                        <label>Remarks<span class="req">*</span></label>
+                                        <label>Reason<span class="req">*</span></label>
                                         <input class="hrmis-input hrmis-input--wide" type="text" name="remarks" required="required"/>
                                     </div>
                                     <div class="hrmis-field hrmis-field--wide js-hrmis-support-doc">
@@ -652,6 +666,7 @@
                             <div class="hrmis-table">
                                 <div class="hrmis-table__head">
                                     <div>Leave type</div>
+                                    <div>Submitted on</div>
                                     <div>From</div>
                                     <div>To</div>
                                     <div>Status</div>
@@ -659,6 +674,7 @@
                                 <t t-foreach="history" t-as="lv">
                                     <div class="hrmis-table__row">
                                         <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                            <div><t t-esc="lv.create_date"/></div>
                                         <div><t t-esc="lv.request_date_from"/></div>
                                         <div><t t-esc="lv.request_date_to"/></div>
                                         <div>
