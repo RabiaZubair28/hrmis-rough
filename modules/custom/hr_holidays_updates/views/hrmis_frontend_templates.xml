@@ -250,7 +250,7 @@
                     <!-- <div class="hrmis-panel__header">
                         <div class="hrmis-panel__title">User profile</div>
                     </div> -->
-                    <div class="hrmis-panel__body">
+                    <div class="">
                         <div class="card-body">
                             <t t-if="error">
                                 <div class="hrmis-alert hrmis-alert--danger"><t t-esc="error"/></div>
@@ -259,47 +259,28 @@
                                 <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
                             </t>
 
-    <!-- TAB HEADERS -->
-    <ul class="nav nav-tabs mb-3" role="tablist">
-        <li class="nav-item ">
-            <button class="nav-link active hrmis-tab"
-                    data-bs-toggle="tab"
-                    data-bs-target="#personal_data"
-                    type="button">
-                User Profile
-            </button>
-        </li>
+                    <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--profile">
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'personal' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=personal' % employee.id">
+                            User profile
+                        </a>
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'posting' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=posting' % employee.id">
+                            Posting and service history
+                        </a>
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'disciplinary' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=disciplinary' % employee.id">
+                            Disciplinary actions
+                        </a>
+                        <a t-attf-class="hrmis-tab #{'is-active' if tab == 'qualifications' else ''}"
+                           t-att-href="'/hrmis/staff/%s?tab=qualifications' % employee.id">
+                            Trainings and qualifications
+                        </a>
+                    </div>
 
-        <li class="nav-item">
-            <button class="nav-link hrmis-tab"
-                    data-bs-toggle="tab"
-                    data-bs-target="#posting"
-                    type="button">
-                Posting and Service History
-            </button>
-        </li>
-
-        <li class="nav-item">
-            <button class="nav-link hrmis-tab"
-                    data-bs-toggle="tab"
-                    data-bs-target="#disciplinary"
-                    type="button">
-                Disciplinary Actions
-            </button>
-        </li>
-
-        <li class="nav-item">
-            <button class="nav-link hrmis-tab"
-                    data-bs-toggle="tab"
-                    data-bs-target="#qualifications"
-                    type="button">
-                Trainings and Qualifications
-            </button>
-        </li>
-    </ul>
 
     <!-- TAB CONTENT -->
-    <div class="tab-content pt-3">
+    <div class="tab-content hrmis-panel__body ">
 
         <!-- 🔹 TAB 1: USER PROFILE (YOUR ORIGINAL CONTENT) -->
         <div class="tab-pane fade show active" id="personal_data">
@@ -546,7 +527,7 @@
                     <!-- <div class="hrmis-breadcrumb">
                         <a t-att-href="'/hrmis/staff/%s/services' % employee.id">&lt; Back to Services</a>
                     </div> -->
-                    <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
+                    <div class="hrmis-panel__header hrmis-panel__header--tabs ">
                         
                         <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=new' % employee.id">New leave request</a>
                         <a t-attf-class="hrmis-tab #{'is-active' if tab == 'allocation' else ''}" t-att-href="'/hrmis/staff/%s/leave?tab=allocation' % employee.id">New leave allocation request</a>

@@ -48,23 +48,15 @@
 }
 
 .hrmis-user-stack {
-  /* Keep notifications and user stack side-by-side,
-     and stack username + logout vertically. */
-  display: grid;
-  grid-template-columns: 44px auto; /* avatar width + meta */
-  column-gap: 12px;
-  row-gap: 0;
-  width: fit-content; /* prevent overlap with the bell */
+  /* Keep user link + logout aligned, avoid overlap/wrapping issues. */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
   min-width: 0;
   max-width: 100%;
 }
-.hrmis-user-stack > .hrmis-user-link {
-   grid-column: 2; /* take full width for avatar+meta row */
-  justify-self: end; /* align the whole row to the right */
-}
 .hrmis-logout {
-  grid-column: 2;
-  justify-self: start; /* align with the meta column */
   line-height: 1;
 }
 
@@ -134,7 +126,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  margin-right: 12px;
+  margin-right: 0;
   flex: 0 0 auto;
 }
 
@@ -656,6 +648,7 @@
   align-self: stretch;
   padding: 14px 12px;
   border-right: 2px solid #2a2f31;
+  
 
   color: #1b1f20;
   font-weight: 700;
@@ -701,6 +694,24 @@
   padding: 12px 10px;
 }
 .hrmis-panel__header--tabs--manage .hrmis-tab--manage:last-child {
+  border-right: none;
+}
+
+/* Staff profile page: 4 tabs should fit and wrap */
+.hrmis-panel__header--tabs--profile {
+  width: 100%;
+}
+.hrmis-panel__header--tabs--profile .hrmis-tab {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 16px;
+  padding: 12px 10px;
+}
+.hrmis-panel__header--tabs--profile .hrmis-tab:last-child {
   border-right: none;
 }
 
@@ -756,12 +767,12 @@
   gap: 12px;
   padding: 12px 10px;
   border-bottom: 1px solid #cfd7da;
-  font-size: 10px;
+  font-size: 15px;
 }
 .hrmis-table__head {
   font-weight: 900;
   background: #f2f6f7;
-  font-size: 10px;
+  font-size: 15px;
 }
 
 .hrmis-leave-row {
@@ -770,7 +781,7 @@
   gap: 16px;
   padding: 16px 10px;
   border-bottom: 2px solid #2a2f31;
-  font-size: 10px;
+  font-size: 15px;
 }
 .hrmis-leave-row__actions {
   display: flex;

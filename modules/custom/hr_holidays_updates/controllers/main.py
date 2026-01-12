@@ -560,7 +560,11 @@ class HrmisLeaveFrontendController(http.Controller):
             "user_profile"
             if current_emp and current_emp.id == employee.id
             else "staff"
+            
         )
+        tab = (kw.get("tab") or "personal").strip().lower()
+        if tab not in ("personal", "posting", "disciplinary", "qualifications"):
+            tab = "personal"
         return request.render(
             "hr_holidays_updates.hrmis_staff_profile",
             _base_ctx("User profile", active_menu, employee=employee),

@@ -24,11 +24,11 @@
             <div class="hrmis-panel">
                 <div class="hrmis-panel_header hrmis-panelheader--tabs hrmis-panel_header--tabs--manage">
                     <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'allocation' else ''}"
-                       t-att-href="'/hrmis/manage/requests?tab=allocation'">
+                       t-att-href="'/hrmis/manage/requests?tab=allocation'"  style="border-bottom: 2px solid black;">
                         Manage Allocation Requests
                     </a>
                     <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'leave' else ''}"
-                       t-att-href="'/hrmis/manage/requests?tab=leave'">
+                       t-att-href="'/hrmis/manage/requests?tab=leave'" style="border-bottom: 2px solid black;">
                         Manage Leave Requests
                     </a>
                 </div>
