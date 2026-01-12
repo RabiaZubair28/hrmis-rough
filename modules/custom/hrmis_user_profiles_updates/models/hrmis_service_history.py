@@ -12,14 +12,32 @@ class HrmisServiceHistory(models.Model):
     employee_id = fields.Many2one('hr.employee', string="Employee", required=True, ondelete="cascade")
 
     district_id = fields.Many2one('x_district.master', string="Posting District")
+    available_facility_ids = fields.Many2many(
+        "x_facility.type",
+        compute="_compute_available_facility_ids",
+        store=False,
+        string="Available Facilities",
+    )
     facility_id = fields.Many2one(
     'x_facility.type', string="Posting Facility",
-    domain="[('district_id','=',district_id)]"
+    # IMPORTANT:
+    # Use an id-based domain so module install/upgrade doesn't fail with
+    # "Unknown field _unknown.district_id" if the comodel isn't resolved yet.
+    domain="[('id','in',available_facility_ids)]"
     )
 
     from_date = fields.Date(string="From Date")
     end_date = fields.Date(string="End Date")
     commission_date = fields.Date(string="Commission Date")
+
+    @api.depends("district_id")
+    def _compute_available_facility_ids(self):
+        Facility = self.env["x_facility.type"]
+        for rec in self:
+            if rec.district_id:
+                rec.available_facility_ids = Facility.search([("district_id", "=", rec.district_id.id)])
+            else:
+                rec.available_facility_ids = Facility.browse([])
 
     @api.constrains('from_date', 'end_date', 'commission_date')
     def _check_date_range(self):

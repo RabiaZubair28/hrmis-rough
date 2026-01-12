@@ -69,11 +69,17 @@ class EmployeeProfileRequest(models.Model):
         required=False
     )
 
+    available_facility_ids = fields.Many2many(
+        "x_facility.type",
+        compute="_compute_available_facility_ids",
+        store=False,
+        string="Available Facilities",
+    )
     facility_id = fields.Many2one(
         'x_facility.type',
         string="Current Facility",
         required=False,
-        domain="[('district_id','=',district_id)]"
+        domain="[('id','in',available_facility_ids)]"
     )
 
     approved_by = fields.Many2one(
@@ -135,9 +141,18 @@ class EmployeeProfileRequest(models.Model):
         if self.district_id:
             return {
                 'domain': {
-                    'facility_id': [('district_id', '=', self.district_id.id)]
+                    'facility_id': [('id', 'in', self.available_facility_ids.ids)]
                 }
             }
+
+    @api.depends("district_id")
+    def _compute_available_facility_ids(self):
+        Facility = self.env["x_facility.type"]
+        for rec in self:
+            if rec.district_id:
+                rec.available_facility_ids = Facility.search([("district_id", "=", rec.district_id.id)])
+            else:
+                rec.available_facility_ids = Facility.browse([])
 
     # @api.constrains('hrmis_joining_date')
     # def _check_joining_date(self):

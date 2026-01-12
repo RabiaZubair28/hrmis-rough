@@ -31,10 +31,16 @@ class HrmisUserProfile(models.Model):
     
     # Keep these aligned with the district_facility master data
     district_id = fields.Many2one('x_district.master', string="Current Posting District")
+    available_facility_ids = fields.Many2many(
+        "x_facility.type",
+        compute="_compute_available_facility_ids",
+        store=False,
+        string="Available Facilities",
+    )
     facility_id = fields.Many2one(
         'x_facility.type',
         string="Current Posting Facility",
-        domain="[('district_id','=',district_id)]"
+        domain="[('id','in',available_facility_ids)]"
     )
     contact_info = fields.Char(string="Contact Info")
     description = fields.Text(string="Additional Notes")
@@ -79,10 +85,20 @@ class HrmisUserProfile(models.Model):
     @api.onchange('district_id')
     def _onchange_district(self):
         """Filter facilities based on selected district"""
+        self.facility_id = False
         if self.district_id:
-            return {'domain': {'facility_id': [('district_id', '=', self.district_id.id)]}}
+            return {'domain': {'facility_id': [('id', 'in', self.available_facility_ids.ids)]}}
         else:
             return {'domain': {'facility_id': []}}
+
+    @api.depends("district_id")
+    def _compute_available_facility_ids(self):
+        Facility = self.env["x_facility.type"]
+        for rec in self:
+            if rec.district_id:
+                rec.available_facility_ids = Facility.search([("district_id", "=", rec.district_id.id)])
+            else:
+                rec.available_facility_ids = Facility.browse([])
         
 
     @api.constrains('joining_date', 'date_of_birth')

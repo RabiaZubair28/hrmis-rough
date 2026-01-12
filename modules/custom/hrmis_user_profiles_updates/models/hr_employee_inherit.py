@@ -46,10 +46,16 @@ class HREmployee(models.Model):
         string="Current District"
     )
 
+    available_facility_ids = fields.Many2many(
+        "x_facility.type",
+        compute="_compute_available_facility_ids",
+        store=False,
+        string="Available Facilities",
+    )
     facility_id = fields.Many2one(
         'x_facility.type',
         string="Current Facility",
-        domain="[('district_id','=',district_id)]"
+        domain="[('id','in',available_facility_ids)]"
     )
 
 
@@ -62,6 +68,15 @@ class HREmployee(models.Model):
     service_postings_from_date = fields.Date(related="hrmis_service_history_ids.from_date", readonly=True)
     service_postings_end_date = fields.Date(related="hrmis_service_history_ids.end_date", readonly=True)
     service_postings_commission_date = fields.Date(related="hrmis_service_history_ids.commission_date", readonly=True)
+
+    @api.depends("district_id")
+    def _compute_available_facility_ids(self):
+        Facility = self.env["x_facility.type"]
+        for rec in self:
+            if rec.district_id:
+                rec.available_facility_ids = Facility.search([("district_id", "=", rec.district_id.id)])
+            else:
+                rec.available_facility_ids = Facility.browse([])
 
 
     def action_request_profile_update(self):
