@@ -29,11 +29,14 @@ class HrmisUserProfile(models.Model):
         ('20', '20')
     ],string="BPS")
     
-    district_id = fields.Many2one('x_district.master', string="Current Posting District")
+    # Keep these aligned with the employee/profile-request models
+    # so dropdowns populate from the same master data.
+    district_id = fields.Many2one('hrmis.district.master', string="Current Posting District")
     facility_id = fields.Many2one(
-    'x_facility.type', string="Current Posting Facility",
-    domain="[('district_id','=',district_id)]"
-)
+        'hrmis.facility.type',
+        string="Current Posting Facility",
+        domain="[('district_id','=',district_id)]"
+    )
     contact_info = fields.Char(string="Contact Info")
     description = fields.Text(string="Additional Notes")
     active = fields.Boolean(default=True)

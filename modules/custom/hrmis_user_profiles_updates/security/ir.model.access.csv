@@ -9,9 +9,11 @@ access_hrmis_training_record_employee,access_hrmis_training_record_employee,mode
 
 access_hrmis_district_hr_employee_user,District: Employee User,model_hrmis_district_master,hr.group_hr_user,1,1,1,0
 access_hrmis_district_hr_employee_system_user,District: System User,model_hrmis_district_master,hr.group_hr_manager,1,1,1,1
+access_hrmis_district_base_user,District: Base User,model_hrmis_district_master,base.group_user,1,0,0,0
 
 access_hrmis_facility_type_hr_employee_user,Facility Type: Employee User,model_hrmis_facility_type,hr.group_hr_user,1,1,1,0
 access_hrmis_facility_type_hr_employee_system_user,Facility Type: System User,model_hrmis_facility_type,hr.group_hr_manager,1,1,1,1
+access_hrmis_facility_type_base_user,Facility Type: Base User,model_hrmis_facility_type,base.group_user,1,0,0,0
 
 access_profile_request_employee,Employee Profile Request,model_hrmis_employee_profile_request,base.group_user,1,0,1,0
 access_profile_request_hr,HR Profile Request,model_hrmis_employee_profile_request,hr.group_hr_manager,1,1,1,1

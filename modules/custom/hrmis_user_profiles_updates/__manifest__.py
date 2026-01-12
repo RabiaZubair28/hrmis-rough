@@ -15,6 +15,8 @@
         'views/hrmis_facility_type_views.xml',
         'views/hrmis_profile_request_views.xml',
         'views/hrmis_menu.xml',
+        'data/hrmis_districts.xml',
+        'data/hrmis_facilities.xml',
         'data/res_user_data.xml',
     ],
     'installable': True,

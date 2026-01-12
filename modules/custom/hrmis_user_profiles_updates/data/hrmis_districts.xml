@@ -1,0 +1,38 @@
+<odoo>
+    <data noupdate="1">
+        <record id="hrmis_district_badin" model="hrmis.district.master">
+            <field name="name">Badin</field>
+            <field name="code">BDN</field>
+            <field name="region">south</field>
+            <field name="active">1</field>
+        </record>
+
+        <record id="hrmis_district_dadu" model="hrmis.district.master">
+            <field name="name">Dadu</field>
+            <field name="code">DAD</field>
+            <field name="region">north</field>
+            <field name="active">1</field>
+        </record>
+
+        <record id="hrmis_district_karachi" model="hrmis.district.master">
+            <field name="name">Karachi</field>
+            <field name="code">KHI</field>
+            <field name="region">east</field>
+            <field name="active">1</field>
+        </record>
+
+        <record id="hrmis_district_hyderabad" model="hrmis.district.master">
+            <field name="name">Hyderabad</field>
+            <field name="code">HDD</field>
+            <field name="region">south</field>
+            <field name="active">1</field>
+        </record>
+
+        <record id="hrmis_district_sukkur" model="hrmis.district.master">
+            <field name="name">Sukkur</field>
+            <field name="code">SKR</field>
+            <field name="region">north</field>
+            <field name="active">1</field>
+        </record>
+    </data>
+</odoo>
