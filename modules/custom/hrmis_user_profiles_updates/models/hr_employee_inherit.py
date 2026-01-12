@@ -42,12 +42,12 @@ class HREmployee(models.Model):
     ) 
 
     district_id = fields.Many2one(
-        'hrmis.district.master',
+        'x_district.master',
         string="Current District"
     )
 
     facility_id = fields.Many2one(
-        'hrmis.facility.type',
+        'x_facility.type',
         string="Current Facility",
         domain="[('district_id','=',district_id)]"
     )

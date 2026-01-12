@@ -11,9 +11,9 @@ class HrmisServiceHistory(models.Model):
 
     employee_id = fields.Many2one('hr.employee', string="Employee", required=True, ondelete="cascade")
 
-    district_id = fields.Many2one('hrmis.district.master', string="Posting District")
+    district_id = fields.Many2one('x_district.master', string="Posting District")
     facility_id = fields.Many2one(
-    'hrmis.facility.type', string="Posting Facility",
+    'x_facility.type', string="Posting Facility",
     domain="[('district_id','=',district_id)]"
     )
 

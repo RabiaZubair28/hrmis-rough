@@ -4,7 +4,7 @@
     'summary': "Staff Personal Information Profile - Read Only for Employees",
     'category': 'Human Resources',
     'author': "Humza Aqeel Shaikh",
-    'depends': ['hr'],
+    'depends': ['hr', 'district_facility'],
     'data': [
         'security/ir.model.access.csv',
         # 'security/security.xml',
@@ -15,8 +15,6 @@
         'views/hrmis_facility_type_views.xml',
         'views/hrmis_profile_request_views.xml',
         'views/hrmis_menu.xml',
-        'data/hrmis_districts.xml',
-        'data/hrmis_facilities.xml',
         'data/res_user_data.xml',
     ],
     'installable': True,

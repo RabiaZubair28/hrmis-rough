@@ -37,6 +37,7 @@
             'hr_holidays_updates/static/src/scss/hrmis_leave_frontend.scss',
             'hr_holidays_updates/static/src/js/hrmis_leave_frontend.js',
             'hr_holidays_updates/static/src/js/hrmis_notifications.js',
+            'hr_holidays_updates/static/src/js/hrmis_profile_request_facility_filter.js',
         ],
     },
     # Ensure DB-level constraint does not block approvals in buggy deployments.

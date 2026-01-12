@@ -48,13 +48,13 @@ class HrEmployeePublic(models.Model):
     )
     hrmis_bps = fields.Integer(string="BPS Grade", compute="_compute_extended_public_fields", readonly=True)
     district_id = fields.Many2one(
-        "hrmis.district.master",
+        "x_district.master",
         string="Current District",
         compute="_compute_extended_public_fields",
         readonly=True,
     )
     facility_id = fields.Many2one(
-        "hrmis.facility.type",
+        "x_facility.type",
         string="Current Facility",
         compute="_compute_extended_public_fields",
         readonly=True,

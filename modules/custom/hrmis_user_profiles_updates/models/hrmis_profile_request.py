@@ -64,13 +64,13 @@ class EmployeeProfileRequest(models.Model):
     )
 
     district_id = fields.Many2one(
-        'hrmis.district.master',
+        'x_district.master',
         string="Current District",
         required=False
     )
 
     facility_id = fields.Many2one(
-        'hrmis.facility.type',
+        'x_facility.type',
         string="Current Facility",
         required=False,
         domain="[('district_id','=',district_id)]"
