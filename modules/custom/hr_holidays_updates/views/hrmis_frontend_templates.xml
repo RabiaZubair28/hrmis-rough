@@ -10,7 +10,10 @@
                 <div class="hrmis-topbar">
                     <div class="hrmis-topbar__left">
                         <t t-if="active_menu == 'services'">
-                            <div class="hrmis-topbar__title">Facility Name<br/>District</div>
+                            <div class="hrmis-topbar__title hrmis-topbar__title--facility">
+                                <span class="hrmis-topbar__facility-name">Facility Name</span><br/>
+                                <span class="hrmis-topbar__district-name">District</span>
+                            </div>
                         </t>
                     </div>
                     <!-- <div class="hrmis-topbar__center">
@@ -59,7 +62,7 @@
                                             <div>
                                             <t t-if="request.session.uid">
                                     <a href="/web/session/logout?redirect=/web/login"
-                                       class="btn btn-outline-danger btn-sm hrmis-logout"
+                                       class="btn btn-outline-danger btn-sm hrmis-logout hrmis-logout__link"
                                        style="font-weight: 600; border-radius: 8px;">
                                         Logout
                                     </a>
@@ -84,7 +87,7 @@
                                             <div>
                                               <t t-if="request.session.uid">
                                     <a href="/web/session/logout?redirect=/web/login"
-                                       class="btn btn-outline-danger btn-sm hrmis-logout"
+                                       class="btn btn-outline-danger btn-sm hrmis-logout hrmis-logout__link"
                                        style="font-weight: 600; border-radius: 8px;">
                                         Logout
                                     </a>
@@ -137,7 +140,7 @@
                         </div>
                     </aside>
 
-                    <main class="hrmis-content">
+                    <main class="hrmis-content hrmis-content--main">
                         <t t-out="0"/>
                     </main>
                 </div>
