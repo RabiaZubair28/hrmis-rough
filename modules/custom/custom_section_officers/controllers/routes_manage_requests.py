@@ -8,15 +8,11 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-from odoo.addons.hr_holidays_updates.controllers.allocation_data import (
-    allocation_pending_for_current_user,
-    pending_allocation_requests_for_user,
-)
 from odoo.addons.hr_holidays_updates.controllers.leave_data import (
     leave_pending_for_current_user,
     pending_leave_requests_for_user,
 )
-from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_manage_allocations
+from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
@@ -54,7 +50,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         In some databases, the same real-world person can exist as multiple
         hr.employee rows (often with the same name / HRMIS service number),
-        and leave/allocation requests may be linked to different rows. We
+        and requests may be linked to different rows. We
         canonicalize using user_id first, then HRMIS service number, to make
         manager matching consistent and avoid showing the "same employee"
         under multiple section officers.
@@ -333,53 +329,13 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
     #     return request.redirect("/hrmis/manage/requests?tab=leave&success=dismissed")
 
 
-    # @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
-    # def hrmis_manage_requests(self, tab: str = "leave", **kw):
-    #     # Show requests pending the current user's action (multi-level + manager fallbacks).
-    #     uid = request.env.user.id
-    #     leaves = pending_leave_requests_for_user(uid)
-    #     allocations = pending_allocation_requests_for_user(uid)
-    #     # leaves_json = [
-    #     #     {
-    #     #         "id": lv.id,
-    #     #         "employee": lv.employee_id.name if lv.employee_id else False,
-    #     #         "state": lv.state,
-    #     #         "request_date_from": str(lv.request_date_from),
-    #     #         "request_date_to": str(lv.request_date_to),
-    #     #         "holiday_status": lv.holiday_status_id.name if lv.holiday_status_id else False,
-    #     #         "pending_approver_ids": lv.pending_approver_ids.ids if hasattr(lv, "pending_approver_ids") else [],
-    #     #     }
-    #     #     for lv in leaves
-    #     # ]
-
-    #     # Optionally include debug info
-    #     # debug_json = getattr(leaves, "debug", None)
-
-    #     # Return as JSON on the page
-    #     # return request.make_response(
-    #     #     json.dumps({
-    #     #         "leaves": leaves,  
-    #     #         "debug": debug_json or [],
-    #     #     }, indent=2),
-    #     #     headers=[("Content-Type", "application/json")]
-    #     # )
-    #     tab = tab if tab in ("leave", "allocation") else "leave"
-    #     return request.render(
-    #         "custom_section_officers.hrmis_manage_requests",
-    #         base_ctx("Manage Requests", "manage_requests", tab=tab, leaves=leaves, allocations=allocations),
-    #     )
-
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", success=None, error=None, **kw):
         uid = request.env.user.id
 
     
         leaves = pending_leave_requests_for_user(uid)
-        # leaves_debug = None
-
-        allocations = pending_allocation_requests_for_user(uid)
-
-        tab = tab if tab in ("leave", "allocation") else "leave"
+        tab = "leave"
 
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -388,59 +344,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
-                allocations=allocations,
                 success=success,
                 error=error,
             ),
         )
-
-    @http.route(["/hrmis/allocation/<int:allocation_id>"], type="http", auth="user", website=True)
-    def hrmis_allocation_view(self, allocation_id: int, **kw):
-        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-        if not alloc:
-            return request.not_found()
-
-        if not can_manage_allocations():
-            is_pending_for_me = allocation_pending_for_current_user(alloc)
-            is_managed = self._is_record_managed_by_current_user(alloc)
-            if not (is_pending_for_me or is_managed):
-                return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
-
-        return request.render(
-            "custom_section_officers.hrmis_allocation_view",
-            base_ctx("Allocation request", "manage_requests", allocation=alloc),
-        )
-
-    # REAL APPROVAL METHOD
-    # @http.route(
-    #     ["/hrmis/allocation/<int:allocation_id>/approve"],
-    #     type="http",
-    #     auth="user",
-    #     website=True,
-    #     methods=["POST"],
-    #     csrf=True,
-    # )
-    # def hrmis_allocation_approve(self, allocation_id: int, **post):
-    #     alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-    #     if not alloc:
-    #         return request.not_found()
-
-    #     # For SO Manage Requests, allow only managed employees (HR can still manage all allocations).
-    #     # Allow approval only when it's pending for the current user.
-    #     if not allocation_pending_for_current_user(alloc):
-    #         return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
-
-    #     try:
-    #         if hasattr(alloc, "action_approve"):
-    #             alloc.sudo(request.env.user).action_approve()
-    #         elif hasattr(alloc, "action_validate"):
-    #             alloc.sudo(request.env.user).action_validate()
-    #         else:
-    #             alloc.sudo().write({"state": "validate"})
-    #     except Exception:
-    #         return request.redirect("/hrmis/manage/requests?tab=allocation&error=approve_failed")
-
-    #     return request.redirect("/hrmis/manage/requests?tab=allocation&success=approved")
 
     @http.route(
     ["/hrmis/leave/<int:leave_id>/action"],
@@ -514,73 +421,3 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
 
 
-    @http.route(
-        ["/hrmis/allocation/<int:allocation_id>/refuse"],
-        type="http",
-        auth="user",
-        website=True,
-        methods=["POST"],
-        csrf=True,
-    )
-    def hrmis_allocation_refuse(self, allocation_id: int, **post):
-        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-        if not alloc:
-            return request.not_found()
-
-        # For SO Manage Requests, allow only managed employees (HR can still manage all allocations).
-        # Allow refusal only when it's pending for the current user.
-        if not allocation_pending_for_current_user(alloc):
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
-
-        try:
-            if hasattr(alloc, "action_refuse"):
-                alloc.sudo(request.env.user).action_refuse()
-            elif hasattr(alloc, "action_reject"):
-                alloc.sudo(request.env.user).action_reject()
-            else:
-                alloc.sudo().write({"state": "refuse"})
-        except Exception:
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=refuse_failed")
-
-        return request.redirect("/hrmis/manage/requests?tab=allocation&success=refused")
-
-    @http.route(
-        ["/hrmis/allocation/<int:allocation_id>/dismiss"],
-        type="http",
-        auth="user",
-        website=True,
-        methods=["GET", "POST"],
-        csrf=True,
-    )
-    def hrmis_allocation_dismiss(self, allocation_id: int, **post):
-        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-        if not alloc:
-            return request.not_found()
-
-        # See note in hrmis_leave_dismiss(): show confirmation on GET to avoid 404.
-        if request.httprequest.method == "GET":
-            return request.render(
-                "custom_section_officers.hrmis_confirm_dismiss",
-                base_ctx(
-                    "Confirm dismiss",
-                    "manage_requests",
-                    kind="allocation",
-                    record=alloc,
-                    post_url=f"/hrmis/allocation/{alloc.id}/dismiss",
-                    back_url="/hrmis/manage/requests?tab=allocation",
-                ),
-            )
-
-        try:
-            # Standard hr.leave.allocation does not have a "dismissed" state; use refusal.
-            rec = alloc.sudo(request.env.user)
-            if hasattr(rec, "action_refuse"):
-                rec.action_refuse()
-            elif hasattr(rec, "action_reject"):
-                rec.action_reject()
-            else:
-                alloc.sudo().write({"state": "refuse"})
-        except Exception:
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=dismiss_failed")
-
-        return request.redirect("/hrmis/manage/requests?tab=allocation&success=dismissed")

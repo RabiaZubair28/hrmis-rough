@@ -41,22 +41,21 @@ class HrLeaveTypeRules(models.Model):
     @api.model
     def apply_max_duration_rules(self):
         rules = {
-            # Accumulated Casual Leave: 24 days/year (allocated, not auto-allocated)
-            "Accumulated Casual Leave": {"max_days_per_year": 24.0, "max_days_per_month": 0.0, "auto_allocate": False},
-            "Earned Leave (Full Pay)": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
-            "Earned Leave With Pay": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
-            "Earned Leave": {"max_days_per_month": 4.0, "max_days_per_year": 48.0, "auto_allocate": True},
-            "Leave On Half Pay": {"max_days_per_year": 20.0, "auto_allocate": True},
-            "Leave on Half Pay": {"max_days_per_year": 20.0, "auto_allocate": True},
-            "Half Pay Leave": {"max_days_per_year": 20.0, "auto_allocate": True},
-            "Maternity Leave": {"max_days_per_request": 90.0, "max_days_per_year": 0.0, "max_times_in_service": 0, "auto_allocate": True},
-            "Maternity": {"max_days_per_request": 90.0, "max_days_per_year": 0.0, "max_times_in_service": 0, "auto_allocate": True},
-            "Paternity Leave": {"max_days_per_request": 7.0, "max_days_per_year": 0.0, "max_times_in_service": 0, "auto_allocate": True},
-            "Paternity": {"max_days_per_request": 7.0, "max_days_per_year": 0.0, "max_times_in_service": 0, "auto_allocate": True},
+            "Accumulated Casual Leave": {"max_days_per_year": 24.0, "max_days_per_month": 0.0},
+            "Earned Leave (Full Pay)": {"max_days_per_month": 4.0, "max_days_per_year": 48.0},
+            "Earned Leave With Pay": {"max_days_per_month": 4.0, "max_days_per_year": 48.0},
+            "Earned Leave": {"max_days_per_month": 4.0, "max_days_per_year": 48.0},
+            "Leave On Half Pay": {"max_days_per_year": 20.0},
+            "Leave on Half Pay": {"max_days_per_year": 20.0},
+            "Half Pay Leave": {"max_days_per_year": 20.0},
+            "Maternity Leave": {"max_days_per_request": 90.0, "max_days_per_year": 0.0, "max_times_in_service": 0},
+            "Maternity": {"max_days_per_request": 90.0, "max_days_per_year": 0.0, "max_times_in_service": 0},
+            "Paternity Leave": {"max_days_per_request": 7.0, "max_days_per_year": 0.0, "max_times_in_service": 0},
+            "Paternity": {"max_days_per_request": 7.0, "max_days_per_year": 0.0, "max_times_in_service": 0},
             "Study Leave": {"max_days_per_request": 1095.0},
-            "Leave Preparatory to Retirement (LPR)": {"max_days_per_request": 365.0, "auto_allocate": True},
-            "LPR": {"max_days_per_request": 365.0, "auto_allocate": True},
-            "Leave Preparatory to Retirement": {"max_days_per_request": 365.0, "auto_allocate": True},
+            "Leave Preparatory to Retirement (LPR)": {"max_days_per_request": 365.0},
+            "LPR": {"max_days_per_request": 365.0},
+            "Leave Preparatory to Retirement": {"max_days_per_request": 365.0},
         }
         for leave_type_name, vals in rules.items():
             # Avoid substring collisions (e.g. "Casual Leave" matching "Accumulated Casual Leave").

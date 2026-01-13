@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Ensure CL is configured (2/month, 24/year, auto-allocate) -->
-    <function model="hr.leave.type" name="ensure_casual_leave_policy"/>
-    <!-- Ensure policy leave types are configured so auto-allocation works -->
-    <function model="hr.leave.type" name="ensure_policy_leave_types"/>
-    <!-- Hide Odoo default leave types you don't want -->
-    <function model="hr.leave.type" name="archive_unwanted_default_leave_types"/>
-    <!-- Ensure "allocated after approval" leave types exist -->
-    <function model="hr.leave.type" name="ensure_approval_allocated_leave_types"/>
     <!-- Archive duplicate leave types (keeps dropdowns clean) -->
     <function model="hr.leave.type" name="archive_duplicate_leave_types"/>
     <!-- Apply/refresh supporting document rules on module upgrade -->

@@ -38,11 +38,6 @@ class HrLeaveTypeCore(models.Model):
         default=0,
         help="Maximum number of times this leave type can be taken over the employee's service. 0 means no limit.",
     )
-    auto_allocate = fields.Boolean(
-        string="Auto Allocate By Policy",
-        default=False,
-        help="If enabled, the system will create validated allocations automatically (e.g. monthly CL).",
-    )
 
     # -------------------------------------------------------------------------
     # Internal helpers
@@ -52,7 +47,7 @@ class HrLeaveTypeCore(models.Model):
         Pick a single leave type record to keep active when we detect duplicates.
 
         Preference order:
-        - Most referenced by hr.leave + hr.leave.allocation
+        - Most referenced by hr.leave
         - Lowest id as stable tie-breaker
         """
         leave_types = leave_types.exists()
@@ -60,14 +55,12 @@ class HrLeaveTypeCore(models.Model):
             return leave_types
 
         Leave = self.env["hr.leave"].sudo()
-        Allocation = self.env["hr.leave.allocation"].sudo()
 
         best = None
         best_score = None
         for lt in leave_types:
             leaves = Leave.search_count([("holiday_status_id", "=", lt.id)])
-            allocs = Allocation.search_count([("holiday_status_id", "=", lt.id)])
-            score = (leaves * 1_000_000) + allocs
+            score = leaves
             if best is None or score > best_score or (score == best_score and lt.id < best.id):
                 best = lt
                 best_score = score

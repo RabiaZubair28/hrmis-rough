@@ -130,34 +130,6 @@ def _can_manage_employee_leave(employee) -> bool:
     )
 
 
-def _can_manage_allocations() -> bool:
-    """
-    Allocation approvals are usually reserved for HR Time Off officers/managers.
-    Keep it conservative for website exposure.
-    """
-    user = request.env.user
-    if not user:
-        return False
-
-    # Prefer capability-based checks over hardcoded groups:
-    # deployments often customize approver groups, and the portal should mirror
-    # what the backend "To Approve" list shows for the same user.
-    try:
-        Allocation = request.env["hr.leave.allocation"].with_user(user)
-        # Use positional arg for maximum cross-version compatibility
-        if Allocation.check_access_rights("write", False):
-            return True
-    except Exception:
-        # Fall back to group checks if access-right probing fails for any reason.
-        pass
-
-    # Standard Odoo groups (fallback)
-    return bool(
-        user.has_group("hr_holidays.group_hr_holidays_user")
-        or user.has_group("hr_holidays.group_hr_holidays_manager")
-    )
-
-
 def _pending_leave_requests_for_user(user_id: int):
     Leave = request.env["hr.leave"].sudo()
 
@@ -221,71 +193,6 @@ def _leave_pending_for_current_user(leave) -> bool:
         return False
 
 
-def _allocation_pending_for_current_user(allocation) -> bool:
-    """Conservative check: only allow actions on allocations pending current user's approval."""
-    if not allocation:
-        return False
-    try:
-        pending = _pending_allocation_requests_for_user(request.env.user.id)
-        return bool(allocation.id in set(pending.ids))
-    except Exception:
-        return False
-
-
-def _pending_allocation_requests_for_user(user_id: int):
-    """
-    Best-effort: pending allocations that likely need current user's action.
-    In this deployment, leave types can be configured with multi-level validators
-    (`holiday_status_id.validator_ids`). Users expect those validators to approve
-    *allocations* as well (not only leave requests), so include that routing here.
-    """
-    Allocation = request.env["hr.leave.allocation"].sudo()
-    LeaveType = request.env["hr.leave.type"].sudo()
-    domains = []
-    has_validation_status_ids = "validation_status_ids" in Allocation._fields
-
-    # Leave-type validators (OpenHRMS): treat configured validators as allocation approvers too.
-    # This is the missing piece that causes "allocated to 4 approvers but nobody sees it".
-    if "validator_ids" in LeaveType._fields:
-        lt_domain = [("holiday_status_id.validator_ids.user_id", "=", user_id)]
-        # If the leave type supports explicit validation mode, restrict to multi-level.
-        if "leave_validation_type" in LeaveType._fields:
-            lt_domain.append(("holiday_status_id.leave_validation_type", "=", "multi"))
-        domains.append([("state", "in", ("confirm", "validate1"))] + lt_domain)
-    # OpenHRMS-style multi-level approval: show only allocations where current user
-    # is a validator and has NOT yet approved.
-    if has_validation_status_ids:
-        domains.append(
-            [
-                ("state", "in", ("confirm", "validate1")),
-                ("validation_status_ids.user_id", "=", user_id),
-                ("validation_status_ids.validation_status", "=", False),
-            ]
-        )
-
-    # Manager step (confirm) for direct reports
-    if "employee_id" in Allocation._fields:
-        # Manager approval is almost always the first stage (confirm).
-        # Do not over-restrict by validation_type; implementations vary and
-        # leave types can carry validation settings instead of allocations.
-        domains.append([("state", "=", "confirm"), ("employee_id.parent_id.user_id", "=", user_id)])
-
-    # HR step (confirm + validate1) for Time Off officers/managers
-    if _can_manage_allocations():
-        # Mirror Odoo's backend "To Approve" behavior: allocations awaiting approval
-        # live in confirm (first approval) or validate1 (second approval).
-        domains.append([("state", "in", ("confirm", "validate1"))])
-
-    if not domains:
-        return Allocation.browse([])
-    if len(domains) == 1:
-        return Allocation.search(domains[0], order="create_date desc, id desc", limit=200)
-    domain = ["|"] + domains[0] + domains[1]
-    for extra in domains[2:]:
-        domain = ["|"] + domain + extra
-    return Allocation.search(domain, order="create_date desc, id desc", limit=200)
-
-
 def _allowed_leave_type_domain(employee, request_date_from=None):
     """
     Reuse the same business rules implemented on hr.leave onchange
@@ -309,8 +216,8 @@ def _allowed_leave_type_domain(employee, request_date_from=None):
 def _leave_types_for_employee(employee, request_date_from=None):
     domain = _allowed_leave_type_domain(employee, request_date_from=request_date_from)
     request_date_from = _safe_date(request_date_from)
-    # Important: keep sudo() for website rendering, but compute labels using the employee context
-    # so Odoo's name_get() shows balances / "Requires Allocation" (matches backend widget).
+    # Important: keep sudo() for website rendering, but keep employee/date context
+    # so the dropdown label matches backend widgets where applicable.
     recs = (
         request.env["hr.leave.type"]
         .sudo()
@@ -330,107 +237,6 @@ def _leave_types_for_employee(employee, request_date_from=None):
         )
         .search(domain, order="name asc")
     )
-
-    # Include policy-driven auto-allocated leave types even if Odoo's onchange-domain
-    # hides them (common when allocations haven't been created yet).
-    if "auto_allocate" in recs._fields:
-        policy = (
-            request.env["hr.leave.type"]
-            .sudo()
-            .with_context(
-                allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-                company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-                employee_id=employee.id,
-                default_employee_id=employee.id,
-                request_type="leave",
-                default_date_from=request_date_from,
-                default_date_to=request_date_from,
-            )
-            .search([("auto_allocate", "=", True), ("active", "=", True)], order="name asc")
-        )
-
-        # Best-effort eligibility filter (gender + minimum service months).
-        gender = getattr(employee, "gender", False) if employee and "gender" in employee._fields else False
-        joining = getattr(employee, "hrmis_joining_date", False) if employee and "hrmis_joining_date" in employee._fields else False
-
-        def _service_months():
-            if not joining or not request_date_from:
-                return 10**9
-            try:
-                if request_date_from < joining:
-                    return 10**9
-                return (request_date_from.year - joining.year) * 12 + (request_date_from.month - joining.month)
-            except Exception:
-                return 10**9
-
-        months = _service_months()
-
-        def _eligible(lt):
-            try:
-                if "allowed_gender" in lt._fields:
-                    allowed = lt.allowed_gender or "all"
-                    if gender and allowed not in ("all", False, gender):
-                        return False
-                if "min_service_months" in lt._fields:
-                    req = int(getattr(lt, "min_service_months") or 0)
-                    if req and months < req:
-                        return False
-            except Exception:
-                return True
-            return True
-
-        policy = policy.filtered(_eligible)
-        recs |= policy
-
-    return recs
-
-
-def _allowed_allocation_type_domain(employee, date_from=None):
-    """
-    Compute which leave types should be selectable on an allocation request.
-
-    Reuses the same business rules implemented on hr.leave.allocation onchange
-    (gender/service eligibility in this codebase).
-    """
-    date_from = _safe_date(date_from)
-    alloc_new = request.env["hr.leave.allocation"].with_user(request.env.user).new(
-        {
-            "employee_id": employee.id,
-            "date_from": date_from,
-        }
-    )
-    res = {}
-    if hasattr(alloc_new, "_onchange_employee_filter_leave_type"):
-        res = alloc_new._onchange_employee_filter_leave_type() or {}
-    domain = (res.get("domain") or {}).get("holiday_status_id") or []
-    return domain
-
-
-def _allocation_types_for_employee(employee, date_from=None):
-    domain = _allowed_allocation_type_domain(employee, date_from=date_from)
-    date_from = _safe_date(date_from)
-    recs = (
-        request.env["hr.leave.type"]
-        .sudo()
-        .with_context(
-            allowed_company_ids=[employee.company_id.id] if getattr(employee, "company_id", False) else None,
-            company_id=employee.company_id.id if getattr(employee, "company_id", False) else None,
-        )
-        .with_context(
-            employee_id=employee.id,
-            default_employee_id=employee.id,
-            request_type="allocation",
-            default_date_from=date_from,
-            default_date_to=date_from,
-        )
-        .search(domain, order="name asc")
-    )
-    # Allocation request tab should show only allocation-based types when available.
-    if "requires_allocation" in recs._fields:
-        recs = recs.filtered(lambda lt: lt.requires_allocation == "yes")
-    # And exclude policy auto-allocated types (those should not be requested manually).
-    if "auto_allocate" in recs._fields:
-        recs = recs.filtered(lambda lt: not bool(getattr(lt, "auto_allocate", False)))
     return recs
 
 
@@ -620,103 +426,9 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.redirect("/hrmis/services?error=not_allowed")
 
         # Show leave types allowed by the same rules used in the backend UI.
-        #
-        # Business rule:
-        # - New Leave Request dropdown: only AUTO-ALLOCATED types (balance shown as
-        #   "X remaining out of Y").
-        # - New Allocation Request dropdown: only types that REQUIRE allocation.
         dt_leave = _safe_date(kw.get("date_from"))
-        dt_alloc = _safe_date(kw.get("allocation_date_from"))
-
-        leave_types = _dedupe_leave_types_for_ui(_leave_types_for_employee(employee, request_date_from=dt_leave))
-
-        # Dynamic dropdown rule for Leave Requests:
-        # - Show types the employee can actually use right now:
-        #   (a) policy auto-allocated, OR
-        #   (b) employee has a non-zero approved allocation for the type.
-        # - Exclude gender-specific entitlement types (Maternity/Paternity) from Leave Requests.
-        Allocation = request.env["hr.leave.allocation"].sudo()
-        Emp = request.env["hr.employee"].browse(employee.id)
-
-        # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
-        alloc_totals = {}
-        try:
-            groups = Allocation.read_group(
-                [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
-                ["number_of_days:sum", "holiday_status_id"],
-                ["holiday_status_id"],
-            )
-            for g in groups or []:
-                hid = (g.get("holiday_status_id") or [False])[0]
-                if hid:
-                    alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
-        except Exception:
-            alloc_totals = {}
-
-        def _total_allocated_days(lt):
-            lt_ctx = lt.with_context(
-                employee_id=employee.id,
-                default_employee_id=employee.id,
-                request_type="leave",
-                default_date_from=dt_leave,
-                default_date_to=dt_leave,
-            )
-            # Best-effort: ensure allocations exist for policy-driven types.
-            try:
-                if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
-                    ref_date = dt_leave or fields.Date.today()
-                    if getattr(lt_ctx, "max_days_per_month", 0.0):
-                        Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
-                    elif getattr(lt_ctx, "max_days_per_year", 0.0):
-                        Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
-                    else:
-                        Allocation._ensure_one_time_allocation(Emp, lt_ctx)
-            except Exception:
-                pass
-
-            # Compute allocation total (similar to our name_get logic).
-            try:
-                if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                    return float(lt_ctx.max_leaves or 0.0)
-            except Exception:
-                pass
-            try:
-                if hasattr(lt_ctx, "get_days"):
-                    days = lt_ctx.get_days(employee.id)
-                    info = days.get(employee.id) if isinstance(days, dict) else None
-                    if isinstance(info, dict):
-                        total = info.get("max_leaves")
-                        if total is None:
-                            total = (
-                                info.get("allocated_leaves")
-                                if info.get("allocated_leaves") is not None
-                                else info.get("total_allocated_leaves")
-                            )
-                        return float(total or 0.0)
-            except Exception:
-                pass
-            return 0.0
-
-        def _leave_type_allowed_for_leave_request(lt):
-            try:
-                # Gender eligibility (keep consistent with hr.leave onchange rules):
-                # - 'all'/False => everyone
-                # - 'male'/'female' => only that gender (and if employee gender is missing, hide it)
-                if "allowed_gender" in lt._fields:
-                    allowed = lt.allowed_gender or "all"
-                    emp_gender = employee.gender if employee and "gender" in employee._fields else False
-                    if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
-                        return False
-                if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
-                    return True
-                return _total_allocated_days(lt) > 0.0
-            except Exception:
-                return True
-
-        leave_types = leave_types.filtered(_leave_type_allowed_for_leave_request)
-
-        allocation_types = _dedupe_leave_types_for_ui(
-            _allocation_types_for_employee(employee, date_from=dt_alloc)
+        leave_types = _dedupe_leave_types_for_ui(
+            _leave_types_for_employee(employee, request_date_from=dt_leave)
         )
 
         history = request.env["hr.leave"].sudo().search(
@@ -733,9 +445,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 "Leave requests",
                 "leave_requests",
                 employee=employee,
-                tab=tab if tab in ("new", "history", "allocation") else "new",
+                tab=tab if tab in ("new", "history") else "new",
                 leave_types=leave_types,
-                allocation_types=allocation_types,
                 history=history,
                 error=error,
                 success=success,
@@ -765,85 +476,9 @@ class HrmisLeaveFrontendController(http.Controller):
             )
 
         d_from = _safe_date(kw.get("date_from"))
-        # Include allocation-based types too so approved allocations appear dynamically.
         leave_types = _dedupe_leave_types_for_ui(
             _leave_types_for_employee(employee, request_date_from=d_from)
-            | _allocation_types_for_employee(employee, date_from=d_from)
         )
-
-        Allocation = request.env["hr.leave.allocation"].sudo()
-        Emp = request.env["hr.employee"].browse(employee.id)
-
-        # Read approved allocations once (avoid relying on get_days/max_leaves quirks).
-        alloc_totals = {}
-        try:
-            groups = Allocation.read_group(
-                [("employee_id", "=", employee.id), ("state", "in", ("validate", "validate1"))],
-                ["number_of_days:sum", "holiday_status_id"],
-                ["holiday_status_id"],
-            )
-            for g in groups or []:
-                hid = (g.get("holiday_status_id") or [False])[0]
-                if hid:
-                    alloc_totals[int(hid)] = float(g.get("number_of_days_sum") or 0.0)
-        except Exception:
-            alloc_totals = {}
-
-        def _total_allocated_days(lt):
-            lt_ctx = lt.with_context(
-                employee_id=employee.id,
-                default_employee_id=employee.id,
-                request_type="leave",
-                default_date_from=d_from,
-                default_date_to=d_from,
-            )
-            try:
-                if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
-                    ref_date = d_from or fields.Date.today()
-                    if getattr(lt_ctx, "max_days_per_month", 0.0):
-                        Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
-                    elif getattr(lt_ctx, "max_days_per_year", 0.0):
-                        Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
-                    else:
-                        Allocation._ensure_one_time_allocation(Emp, lt_ctx)
-            except Exception:
-                pass
-            # Prefer Odoo's own leave balance engine (handles hours-based types too).
-            try:
-                if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                    return float(lt_ctx.max_leaves or 0.0)
-            except Exception:
-                pass
-            try:
-                if hasattr(lt_ctx, "get_days"):
-                    days = lt_ctx.get_days(employee.id)
-                    info = days.get(employee.id) if isinstance(days, dict) else None
-                    if isinstance(info, dict):
-                        total = info.get("max_leaves")
-                        if total is None:
-                            total = (
-                                info.get("allocated_leaves")
-                                if info.get("allocated_leaves") is not None
-                                else info.get("total_allocated_leaves")
-                            )
-                        return float(total or 0.0)
-            except Exception:
-                pass
-            # Fallback: sum of validated allocations in days.
-            return float(alloc_totals.get(int(lt.id), 0.0) or 0.0)
-
-        def _allowed(lt):
-            # Gender eligibility (keep consistent with hr.leave onchange rules).
-            if "allowed_gender" in lt._fields:
-                allowed = lt.allowed_gender or "all"
-                emp_gender = employee.gender if employee and "gender" in employee._fields else False
-                if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
-                    return False
-            if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
-                return True
-            return _total_allocated_days(lt) > 0.0
-
-        leave_types = leave_types.filtered(_allowed)
         payload = {
             "ok": True,
             "leave_types": [
@@ -1030,62 +665,6 @@ class HrmisLeaveFrontendController(http.Controller):
             allowed_types = _dedupe_leave_types_for_ui(
                 _leave_types_for_employee(employee, request_date_from=dt_from)
             )
-            Allocation = request.env["hr.leave.allocation"].sudo()
-            Emp = request.env["hr.employee"].browse(employee.id)
-
-            def _total_allocated_days(lt):
-                lt_ctx = lt.with_context(
-                    employee_id=employee.id,
-                    default_employee_id=employee.id,
-                    request_type="leave",
-                    default_date_from=_safe_date(dt_from),
-                    default_date_to=_safe_date(dt_from),
-                )
-                try:
-                    if "auto_allocate" in lt_ctx._fields and getattr(lt_ctx, "auto_allocate", False):
-                        ref_date = _safe_date(dt_from)
-                        if getattr(lt_ctx, "max_days_per_month", 0.0):
-                            Allocation._ensure_monthly_allocation(Emp, lt_ctx, ref_date.year, ref_date.month)
-                        elif getattr(lt_ctx, "max_days_per_year", 0.0):
-                            Allocation._ensure_yearly_allocation(Emp, lt_ctx, ref_date.year)
-                        else:
-                            Allocation._ensure_one_time_allocation(Emp, lt_ctx)
-                except Exception:
-                    pass
-                try:
-                    if "max_leaves" in lt_ctx._fields and (lt_ctx.max_leaves is not None):
-                        return float(lt_ctx.max_leaves or 0.0)
-                except Exception:
-                    pass
-                try:
-                    if hasattr(lt_ctx, "get_days"):
-                        days = lt_ctx.get_days(employee.id)
-                        info = days.get(employee.id) if isinstance(days, dict) else None
-                        if isinstance(info, dict):
-                            total = info.get("max_leaves")
-                            if total is None:
-                                total = (
-                                    info.get("allocated_leaves")
-                                    if info.get("allocated_leaves") is not None
-                                    else info.get("total_allocated_leaves")
-                                )
-                            return float(total or 0.0)
-                except Exception:
-                    pass
-                return 0.0
-
-            def _allowed(lt):
-                # Gender eligibility (keep consistent with hr.leave onchange rules).
-                if "allowed_gender" in lt._fields:
-                    allowed = lt.allowed_gender or "all"
-                    emp_gender = employee.gender if employee and "gender" in employee._fields else False
-                    if allowed in ("male", "female") and (not emp_gender or emp_gender != allowed):
-                        return False
-                if "auto_allocate" in lt._fields and bool(getattr(lt, "auto_allocate", False)):
-                    return True
-                return _total_allocated_days(lt) > 0.0
-
-            allowed_types = allowed_types.filtered(_allowed)
             if leave_type_id not in set(allowed_types.ids):
                 msg = "Selected leave type is not allowed"
                 if self._wants_json():
@@ -1181,65 +760,6 @@ class HrmisLeaveFrontendController(http.Controller):
         if self._wants_json():
             return self._json({"ok": True, "redirect": redirect_url})
         return request.redirect(redirect_url)
-
-    @http.route(
-        ["/hrmis/staff/<int:employee_id>/allocation/submit"],
-        type="http",
-        auth="user",
-        website=True,
-        methods=["POST"],
-        csrf=True,
-    )
-    def hrmis_allocation_submit(self, employee_id: int, **post):
-        employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
-        if not employee:
-            return request.not_found()
-
-        if not _can_manage_employee_leave(employee):
-            return request.redirect("/hrmis/services?error=not_allowed")
-
-        leave_type_id = _safe_int(post.get("leave_type_id"))
-        days = post.get("number_of_days")
-        reason = (post.get("reason") or "").strip()
-
-        try:
-            number_of_days = float(days) if days is not None and str(days).strip() else 0.0
-        except Exception:
-            number_of_days = 0.0
-
-        if not leave_type_id or number_of_days <= 0.0:
-            return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Please+fill+all+required+fields"
-            )
-
-        try:
-            allowed_types = _dedupe_leave_types_for_ui(
-                _allocation_types_for_employee(employee, date_from=fields.Date.today())
-            )
-            if leave_type_id not in set(allowed_types.ids):
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=allocation&error=Selected+leave+type+is+not+allowed"
-                )
-
-            vals = {
-                "employee_id": employee.id,
-                "holiday_status_id": leave_type_id,
-                "number_of_days": number_of_days,
-                "name": reason or "Allocation request",
-                # Standard field on most Odoo builds
-                "allocation_type": "regular",
-            }
-            alloc = request.env["hr.leave.allocation"].with_user(request.env.user).create(vals)
-            if hasattr(alloc, "action_confirm"):
-                alloc.action_confirm()
-        except Exception as e:
-            return request.redirect(
-                f"/hrmis/staff/{employee.id}/leave?tab=allocation&error={quote_plus(str(e) or 'Could not submit allocation request')}"
-            )
-
-        return request.redirect(
-            f"/hrmis/staff/{employee.id}/leave?tab=allocation&success=Allocation+request+submitted"
-        )
 
     @http.route(["/hrmis/leave/requests"], type="http", auth="user", website=True)
     def hrmis_leave_requests(self, **kw):
@@ -1355,8 +875,7 @@ class HrmisLeaveFrontendController(http.Controller):
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
         uid = request.env.user.id
         leaves = _pending_leave_requests_for_user(uid)
-        allocations = _pending_allocation_requests_for_user(uid)
-        tab = tab if tab in ("leave", "allocation") else "leave"
+        tab = "leave"
         return request.render(
             "hr_holidays_updates.hrmis_manage_requests",
             _base_ctx(
@@ -1364,84 +883,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
-                allocations=allocations,
             ),
         )
-
-    @http.route(["/hrmis/allocation/<int:allocation_id>"], type="http", auth="user", website=True)
-    def hrmis_allocation_view(self, allocation_id: int, **kw):
-        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-        if not alloc:
-            return request.not_found()
-
-        # Keep website exposure conservative: non-HR users can only view allocations
-        # for direct reports.
-        if not _can_manage_allocations():
-            if not (alloc.employee_id and alloc.employee_id.parent_id and alloc.employee_id.parent_id.user_id.id == request.env.user.id):
-                return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
-
-        return request.render(
-            "hr_holidays_updates.hrmis_allocation_view",
-            _base_ctx("Allocation request", "manage_requests", allocation=alloc),
-        )
-
-    @http.route(
-        ["/hrmis/allocation/<int:allocation_id>/approve"],
-        type="http",
-        auth="user",
-        website=True,
-        methods=["POST"],
-        csrf=True,
-    )
-    def hrmis_allocation_approve(self, allocation_id: int, **post):
-        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-        if not alloc:
-            return request.not_found()
-
-        if not _allocation_pending_for_current_user(alloc):
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
-
-        try:
-            # Odoo versions differ: try common approval methods.
-            if hasattr(alloc.with_user(request.env.user), "action_approve"):
-                alloc.with_user(request.env.user).action_approve()
-            elif hasattr(alloc.with_user(request.env.user), "action_validate"):
-                alloc.with_user(request.env.user).action_validate()
-            else:
-                # As a last resort, attempt to push to validated state (not ideal, but avoids dead UI).
-                alloc.sudo().write({"state": "validate"})
-        except Exception:
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=approve_failed")
-
-        return request.redirect("/hrmis/manage/requests?tab=allocation&success=approved")
-
-    @http.route(
-        ["/hrmis/allocation/<int:allocation_id>/refuse"],
-        type="http",
-        auth="user",
-        website=True,
-        methods=["POST"],
-        csrf=True,
-    )
-    def hrmis_allocation_refuse(self, allocation_id: int, **post):
-        alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
-        if not alloc:
-            return request.not_found()
-
-        if not _allocation_pending_for_current_user(alloc):
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=not_allowed")
-
-        try:
-            if hasattr(alloc.with_user(request.env.user), "action_refuse"):
-                alloc.with_user(request.env.user).action_refuse()
-            elif hasattr(alloc.with_user(request.env.user), "action_reject"):
-                alloc.with_user(request.env.user).action_reject()
-            else:
-                alloc.sudo().write({"state": "refuse"})
-        except Exception:
-            return request.redirect("/hrmis/manage/requests?tab=allocation&error=refuse_failed")
-
-        return request.redirect("/hrmis/manage/requests?tab=allocation&success=refused")
 
 class HrmisProfileRequestController(http.Controller):
     @http.route("/hrmis/profile/request", type="http", auth="user", website=True, methods=["GET"], csrf=False)
