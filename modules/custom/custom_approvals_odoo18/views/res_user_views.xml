@@ -6,28 +6,24 @@
         <field name="name">res.users.form.custom.fields</field>
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="priority" eval="1000"/>
         <field name="arch" type="xml">
-
-            <!-- Inject fields after the login field -->
+ 
+            <!-- 🔥 THIS is the real label -->
+            <xpath expr="//label[@for='login']" position="attributes">
+                <attribute name="string">Username</attribute>
+            </xpath>
+ 
+            <!-- HRMIS fields after login -->
             <xpath expr="//field[@name='login']" position="after">
-
-                <!-- <group string="HRMIS User Details">
-                    <field name="cnic"/>
-                    <field name="cadre"/>
-                    <field name="is_temp_password"/>
-                    <field name="onboarding_state" readonly="1"/>
-                    <field name="profile_id" readonly="1"/>
-                    <field name="login" string="Username"/>
-                    <field name="password" invisible="1"/>
-
-                </group> -->
                 <group string="HRMIS User Details">
                     <field name="cnic"/>
                     <field name="cadre"/>
+                    <field name="manager_id"/>
+                    <field name="hrmis_role"/>
                     <field name="temp_password"/>
                     <field name="is_temp_password"/>
-                    <field name="onboarding_state"/>
-                    <field name="profile_id"/>
+                    <field name="onboarding_state" readonly="1"/>
                 </group>
 
 

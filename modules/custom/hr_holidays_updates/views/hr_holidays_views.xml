@@ -36,31 +36,6 @@
         </field>
     </record>
 
-    <!-- Allocation: restrict Time Off Types by employee gender -->
-    <record id="view_hr_leave_allocation_form_gender_domain_inherit" model="ir.ui.view">
-        <field name="name">hr.leave.allocation.form.gender.domain.inherit</field>
-        <field name="model">hr.leave.allocation</field>
-        <field name="inherit_id" ref="hr_holidays.hr_leave_allocation_view_form"/>
-        <field name="arch" type="xml">
-            <!-- Ensure gender field is available for domain evaluation -->
-            <xpath expr="//field[@name='employee_id']" position="after">
-                <field name="employee_gender" invisible="1"/>
-                <field name="employee_service_months" invisible="1"/>
-            </xpath>
-
-            <xpath expr="//field[@name='holiday_status_id']" position="attributes">
-                <!-- Include legacy leave types where allowed_gender is empty/False -->
-                <attribute name="domain">
-                    ['&amp;','&amp;',
-                        '|','|',('allowed_gender','=',False),('allowed_gender','=','all'),('allowed_gender','=',employee_gender),
-                        '|',('min_service_months','=',0),('min_service_months','&lt;=',employee_service_months),
-                        '&amp;',('requires_allocation','=','yes'),('auto_allocate','=',False)
-                    ]
-                </attribute>
-            </xpath>
-        </field>
-    </record>
-
     <!-- Leave Type: show the Allowed Gender setting -->
     <record id="view_hr_leave_type_form_allowed_gender_inherit" model="ir.ui.view">
         <field name="name">hr.leave.type.form.allowed.gender.inherit</field>

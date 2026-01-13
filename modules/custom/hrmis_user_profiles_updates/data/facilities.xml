@@ -1,0 +1,52 @@
+<odoo>
+
+<!-- ========================= -->
+<!-- Badin – PHC Facilities -->
+<!-- ========================= -->
+ 
+<record id="facility_bhu_yousuf_shah" model="hrmis.facility.type">
+<field name="name">BHU Yousuf Shah</field>
+<field name="district_id" ref="district_badin"/>
+<field name="category">hospital</field>
+<field name="capacity">0</field>
+<field name="active">True</field>
+<field name="description">BHU Yousuf Shah</field>
+</record>
+ 
+<record id="facility_gd_arbab_baka_nohrio" model="hrmis.facility.type">
+<field name="name">GD Arbab Baka Nohrio</field>
+<field name="district_id" ref="district_badin"/>
+<field name="category">hospital</field>
+<field name="capacity">0</field>
+<field name="active">True</field>
+<field name="description">GD Arbab Baka Nohrio</field>
+</record>
+ 
+<record id="facility_mch_center_badin" model="hrmis.facility.type">
+<field name="name">MCH Center Badin</field>
+<field name="district_id" ref="district_badin"/>
+<field name="category">hospital</field>
+<field name="capacity">0</field>
+<field name="active">True</field>
+<field name="description">MCH Center Badin</field>
+</record>
+ 
+<record id="facility_bhu_yousuf_soomro" model="hrmis.facility.type">
+<field name="name">BHU Yousuf Soomro</field>
+<field name="district_id" ref="district_badin"/>
+<field name="category">hospital</field>
+<field name="capacity">0</field>
+<field name="active">True</field>
+<field name="description">BHU Yousuf Soomro</field>
+</record>
+ 
+<record id="facility_gd_haji_yousuf_soomro" model="hrmis.facility.type">
+<field name="name">GD Haji Yousuf Soomro</field>
+<field name="district_id" ref="district_badin"/>
+<field name="category">hospital</field>
+<field name="capacity">0</field>
+<field name="active">True</field>
+<field name="description">GD Haji Yousuf Soomro</field>
+</record>                                         
+
+</odoo>

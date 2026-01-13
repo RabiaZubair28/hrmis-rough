@@ -1,0 +1,62 @@
+<odoo>
+ 
+    <!-- ================= SINDH (South) ================= -->
+<record id="district_karachi" model="hrmis.district.master">
+<field name="name">Karachi</field>
+<field name="code">KHI</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_hyderabad" model="hrmis.district.master">
+<field name="name">Hyderabad</field>
+<field name="code">HYD</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_sukkur" model="hrmis.district.master">
+<field name="name">Sukkur</field>
+<field name="code">SKR</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_larkana" model="hrmis.district.master">
+<field name="name">Larkana</field>
+<field name="code">LAR</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_dadu" model="hrmis.district.master">
+<field name="name">Dadu</field>
+<field name="code">DAD</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_badin" model="hrmis.district.master">
+<field name="name">Badin</field>
+<field name="code">BDN</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_mirpurkhas" model="hrmis.district.master">
+<field name="name">Mirpur Khas</field>
+<field name="code">MPK</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_nawabshah" model="hrmis.district.master">
+<field name="name">Shaheed Benazirabad</field>
+<field name="code">SBA</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_thatta" model="hrmis.district.master">
+<field name="name">Thatta</field>
+<field name="code">THT</field>
+<field name="region">south</field>
+</record>
+ 
+    <record id="district_sanghar" model="hrmis.district.master">
+<field name="name">Sanghar</field>
+<field name="code">SGR</field>
+<field name="region">south</field>
+</record> </odoo>

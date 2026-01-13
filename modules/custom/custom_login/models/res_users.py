@@ -10,7 +10,7 @@ class ResUsers(models.Model):
     
     cnic = fields.Char(string="CNIC")
     cadre = fields.Many2one('hr.cadre', string="Cadre")
-    manager_id = fields.Many2one('hr.employee', string="Manager")
+    manager_id = fields.Many2one('hr.employee', string="Section Officer")
     temp_password = fields.Char(string="Temporary Password")
     is_temp_password = fields.Boolean(default=True)
     onboarding_state = fields.Selection([
