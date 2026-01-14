@@ -108,11 +108,63 @@ class HrLeave(models.Model):
                 leave.request_date_from or fields.Date.today(),
             )
 
-    @api.depends('employee_id', 'employee_id.hrmis_joining_date', 'request_date_from')
+    def _hrmis_get_employee_joining_date(self, employee):
+        """
+        Best-effort "joining date" resolver for service-length eligibility.
+
+        Why:
+        - Some deployments don't fill `hrmis_joining_date` consistently.
+        - Odoo may provide alternative start dates (e.g. contract start).
+        - HRMIS profiles may have service history lines.
+
+        Priority:
+        - `hrmis_joining_date`
+        - `first_contract_date` (if present)
+        - `contract_id.date_start` (if present)
+        - earliest service history `commission_date`/`from_date` (if present)
+        """
+        if not employee:
+            return False
+
+        # 1) HRMIS joining date (custom field)
+        if "hrmis_joining_date" in employee._fields and employee.hrmis_joining_date:
+            return employee.hrmis_joining_date
+
+        # 2) Odoo's first contract date (available in some versions)
+        if "first_contract_date" in employee._fields and employee.first_contract_date:
+            return employee.first_contract_date
+
+        # 3) Current contract start date (fallback)
+        if "contract_id" in employee._fields and employee.contract_id:
+            if "date_start" in employee.contract_id._fields and employee.contract_id.date_start:
+                return employee.contract_id.date_start
+
+        # 4) HRMIS service history (fallback)
+        if "hrmis_service_history_ids" in employee._fields and employee.hrmis_service_history_ids:
+            dates = []
+            for line in employee.hrmis_service_history_ids:
+                if "commission_date" in line._fields and line.commission_date:
+                    dates.append(line.commission_date)
+                if "from_date" in line._fields and line.from_date:
+                    dates.append(line.from_date)
+            if dates:
+                return min(dates)
+
+        return False
+
+    @api.depends(
+        'employee_id',
+        'employee_id.hrmis_joining_date',
+        'employee_id.contract_id',
+        'employee_id.contract_id.date_start',
+        'employee_id.hrmis_service_history_ids',
+        'employee_id.hrmis_service_history_ids.from_date',
+        'employee_id.hrmis_service_history_ids.commission_date',
+        'request_date_from',
+    )
     def _compute_employee_service_months(self):
         for leave in self:
-            # Use HRMIS joining date (available via hrmis_user_profiles_updates)
-            joining_date = leave.employee_id.hrmis_joining_date
+            joining_date = self._hrmis_get_employee_joining_date(leave.employee_id)
             ref_date = leave.request_date_from or fields.Date.today()
             if not joining_date or not ref_date:
                 leave.employee_service_months = 0

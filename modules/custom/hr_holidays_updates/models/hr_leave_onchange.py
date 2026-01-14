@@ -18,6 +18,7 @@ class HrLeaveOnchange(models.Model):
             domain = [("allowed_gender", "in", [False, "all"])]
 
         # Service eligibility: allow types with no minimum, or min <= employee months
+        # Note: `employee_service_months` uses best-effort joining date resolution.
         months = self.employee_service_months
         domain += ["|", ("min_service_months", "=", 0), ("min_service_months", "<=", months)]
 
