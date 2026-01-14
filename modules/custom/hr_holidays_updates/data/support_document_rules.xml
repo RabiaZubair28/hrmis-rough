@@ -4,6 +4,8 @@
     <function model="hr.leave.type" name="archive_duplicate_leave_types"/>
     <!-- Apply/refresh supporting document rules on module upgrade -->
     <function model="hr.leave.type" name="apply_support_document_rules"/>
+    <!-- Apply/refresh gender eligibility rules on module upgrade -->
+    <function model="hr.leave.type" name="apply_gender_eligibility_rules"/>
     <!-- Apply/refresh service eligibility rules on module upgrade -->
     <function model="hr.leave.type" name="apply_service_eligibility_rules"/>
     <!-- Apply/refresh max duration rules on module upgrade -->

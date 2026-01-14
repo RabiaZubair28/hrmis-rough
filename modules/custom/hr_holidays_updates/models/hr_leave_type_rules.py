@@ -5,6 +5,19 @@ class HrLeaveTypeRules(models.Model):
     _inherit = "hr.leave.type"
 
     @api.model
+    def apply_gender_eligibility_rules(self):
+        rules = {
+            "Maternity Leave": "female",
+            "Maternity": "female",
+            "Paternity Leave": "male",
+            "Paternity": "male",
+        }
+        for leave_type_name, gender in rules.items():
+            leave_types = self.search([("name", "ilike", leave_type_name)])
+            if leave_types:
+                leave_types.write({"allowed_gender": gender})
+
+    @api.model
     def apply_support_document_rules(self):
         rules = {
             "Leave Without Pay (EOL)": "Written request would be attached.",
