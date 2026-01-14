@@ -1,6 +1,4 @@
 from . import hr_leave_validator
-from . import hr_leave_type_core
-from . import hr_leave_type_rules
 
 # hr.leave extensions (split into smaller modules)
 from . import hr_leave_profile

@@ -195,22 +195,9 @@ def _leave_pending_for_current_user(leave) -> bool:
 
 def _allowed_leave_type_domain(employee, request_date_from=None):
     """
-    Reuse the same business rules implemented on hr.leave onchange
-    to compute which leave types should be selectable in the custom UI.
+    No eligibility restrictions: show all leave types.
     """
-    request_date_from = _safe_date(request_date_from)
-    leave_new = request.env["hr.leave"].with_user(request.env.user).new(
-        {
-            "employee_id": employee.id,
-            "request_date_from": request_date_from,
-            "request_date_to": request_date_from,
-        }
-    )
-    res = {}
-    if hasattr(leave_new, "_onchange_employee_filter_leave_type"):
-        res = leave_new._onchange_employee_filter_leave_type() or {}
-    domain = (res.get("domain") or {}).get("holiday_status_id") or []
-    return domain
+    return []
 
 
 def _leave_types_for_employee(employee, request_date_from=None):
@@ -487,8 +474,9 @@ class HrmisLeaveFrontendController(http.Controller):
                     # Use display_name which includes balances in context
                     # (e.g. "Casual Leave (2 remaining out of 2 days)").
                     "name": lt.display_name,
-                    "support_document": bool(lt.support_document),
-                    "support_document_note": lt.support_document_note or "",
+                    # No leave-type conditions: keep fields optional for UI compatibility.
+                    "support_document": bool(getattr(lt, "support_document", False)),
+                    "support_document_note": getattr(lt, "support_document_note", "") or "",
                 }
                 for lt in leave_types
             ],
@@ -662,15 +650,6 @@ class HrmisLeaveFrontendController(http.Controller):
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_past_msg)}"
                 )
 
-            allowed_types = _dedupe_leave_types_for_ui(
-                _leave_types_for_employee(employee, request_date_from=dt_from)
-            )
-            if leave_type_id not in set(allowed_types.ids):
-                msg = "Selected leave type is not allowed"
-                if self._wants_json():
-                    return self._json({"ok": False, "error": msg}, status=400)
-                return request.redirect(f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(msg)}")
-
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
             if not leave_type:
                 msg = "Invalid leave type"
@@ -680,11 +659,7 @@ class HrmisLeaveFrontendController(http.Controller):
 
             # Supporting document handling for the custom UI
             uploaded = request.httprequest.files.get("support_document")
-            if leave_type.support_document and not uploaded:
-                msg = quote_plus(leave_type.support_document_note or "Supporting document is required.")
-                return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={msg}"
-                )
+            # No leave-type conditions: never block submission based on leave type.
 
             # Prevent creating leave over existing leave days.
             Leave = request.env["hr.leave"].sudo()

@@ -664,7 +664,7 @@
                                             <t t-foreach="leave_types" t-as="lt">
                                                 <option t-att-value="lt.id"
                                                         t-att-data-support-document="1 if lt.support_document else 0"
-                                                        t-att-data-support-document-note="lt.support_document_note or ''">
+                                                        t-att-data-support-document-note="''">
                                                     <!-- `leave_types` are already prepared in the controller with the proper
                                                          employee/date/company/request_type context so balances compute correctly. -->
                                                     <t t-esc="lt.display_name"/>

@@ -19,18 +19,6 @@ class HrLeaveProfile(models.Model):
         readonly=True,
     )
 
-    leave_type_allowed_gender = fields.Selection(
-        related="holiday_status_id.allowed_gender",
-        string="Leave Type Allowed Gender",
-        readonly=True,
-    )
-
-    support_document_note = fields.Char(
-        related="holiday_status_id.support_document_note",
-        string="Supporting Document Requirement",
-        readonly=True,
-    )
-
     employee_service_months = fields.Integer(
         string="Service (Months)",
         compute="_compute_employee_service_months",

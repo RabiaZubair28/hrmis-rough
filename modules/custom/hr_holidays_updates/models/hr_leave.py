@@ -20,18 +20,6 @@ class HrLeave(models.Model):
         readonly=True,
     )
 
-    leave_type_allowed_gender = fields.Selection(
-        related="holiday_status_id.allowed_gender",
-        string="Leave Type Allowed Gender",
-        readonly=True,
-    )
-
-    support_document_note = fields.Char(
-        related="holiday_status_id.support_document_note",
-        string="Supporting Document Requirement",
-        readonly=True,
-    )
-
     employee_service_months = fields.Integer(
         string="Service (Months)",
         compute="_compute_employee_service_months",
@@ -256,33 +244,8 @@ class HrLeave(models.Model):
     def _onchange_employee_filter_leave_type(self):
         if not self.employee_id:
             return {'domain': {'holiday_status_id': []}}
-
-        gender = self.employee_gender
-        if gender in ('male', 'female'):
-            # Treat empty (False) as "All" for legacy leave types.
-            domain = [('allowed_gender', 'in', [False, 'all', gender])]
-        else:
-            # If gender is missing/other, keep only gender-neutral leave types.
-            domain = [('allowed_gender', 'in', [False, 'all'])]
-
-        return {'domain': {'holiday_status_id': domain}}
-
-    @api.constrains('employee_id', 'holiday_status_id')
-    def _check_leave_type_gender(self):
-        for leave in self:
-            if not leave.employee_id or not leave.holiday_status_id:
-                continue
-
-            allowed = leave.holiday_status_id.allowed_gender or 'all'
-            if allowed == 'all':
-                continue
-
-            gender = leave.employee_gender
-            if not gender or gender != allowed:
-                raise ValidationError(
-                    "This leave type is restricted by gender. "
-                    "Please select a leave type allowed for this employee."
-                )
+        # No eligibility restrictions: show all leave types.
+        return {'domain': {'holiday_status_id': []}}
 
     def _vals_include_any_attachment(self, vals):
         """
@@ -319,50 +282,6 @@ class HrLeave(models.Model):
                 return True
 
         return False
-
-    def _enforce_supporting_documents_required(self, incoming_vals=None):
-        """
-        Enforce supporting documents for leave types that require them.
-        Implemented as a post create/write check to avoid timing issues with
-        many2many_binary uploads (common with PDFs).
-        """
-        # TEMPORARILY DISABLED (per request): supporting documents enforcement
-        # to allow testing of other eligibility rules without being blocked.
-        return
-        for leave in self:
-            if not leave.holiday_status_id:
-                continue
-            if leave.state in ('cancel', 'refuse'):
-                continue
-            if not leave.holiday_status_id.support_document:
-                continue
-
-            # If the attachment is being added in the same transaction, accept it.
-            if self._vals_include_any_attachment(incoming_vals or {}):
-                continue
-
-            # Otherwise, verify there is at least one persisted attachment linked to this leave.
-            count = self.env['ir.attachment'].sudo().search_count([
-                ('res_model', '=', 'hr.leave'),
-                ('res_id', '=', leave.id),
-            ])
-            if count <= 0:
-                raise ValidationError(
-                    "A supporting document is required for this Time Off Type. "
-                    "Please attach the required document before submitting."
-                )
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        leaves = super().create(vals_list)
-        for leave, vals in zip(leaves, vals_list):
-            leave._enforce_supporting_documents_required(vals)
-        return leaves
-
-    def write(self, vals):
-        res = super().write(vals)
-        self._enforce_supporting_documents_required(vals)
-        return res
 
     def _period_bounds(self, ref_date, period):
         ref_date = fields.Date.to_date(ref_date or fields.Date.today())
