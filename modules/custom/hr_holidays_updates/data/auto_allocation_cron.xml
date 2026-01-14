@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!--
+    Compatibility file (no-op).
+
+    Older versions of this module referenced `data/auto_allocation_cron.xml` in
+    the manifest. Auto-allocation has been removed; this file intentionally does
+    not create any cron jobs or backfill functions.
+    -->
+</odoo>
+
