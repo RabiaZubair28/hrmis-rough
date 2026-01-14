@@ -667,7 +667,7 @@
                                                         t-att-data-support-document-note="lt.support_document_note or ''">
                                                     <!-- `leave_types` are already prepared in the controller with the proper
                                                          employee/date/company/request_type context so balances compute correctly. -->
-                                                    <t t-esc="lt.name_get()[0][1]"/>
+                                                    <t t-esc="lt.display_name"/>
                                                 </option>
                                             </t>
                                         </select>

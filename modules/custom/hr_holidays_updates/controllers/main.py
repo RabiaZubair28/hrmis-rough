@@ -484,9 +484,9 @@ class HrmisLeaveFrontendController(http.Controller):
             "leave_types": [
                 {
                     "id": lt.id,
-                    # Use context-aware name_get() so dropdown labels include balances
+                    # Use display_name which includes balances in context
                     # (e.g. "Casual Leave (2 remaining out of 2 days)").
-                    "name": lt.name_get()[0][1],
+                    "name": lt.display_name,
                     "support_document": bool(lt.support_document),
                     "support_document_note": lt.support_document_note or "",
                 }
