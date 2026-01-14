@@ -9,6 +9,8 @@ import json
 import base64
 from urllib.parse import quote_plus
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import http, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
@@ -195,22 +197,134 @@ def _leave_pending_for_current_user(leave) -> bool:
 
 def _allowed_leave_type_domain(employee, request_date_from=None):
     """
-    Reuse the same business rules implemented on hr.leave onchange
-    to compute which leave types should be selectable in the custom UI.
+    Build the domain for allowed leave types based on employee attributes.
+
+    Filters by:
+    - Gender: Only show leave types allowed for the employee's gender
+    - Service length: Only show leave types for which the employee meets minimum service requirements
+    - Special eligibility rules: Fitness To Resume Duty, Ex-Pakistan Leave, LPR
     """
     request_date_from = _safe_date(request_date_from)
-    leave_new = request.env["hr.leave"].with_user(request.env.user).new(
-        {
-            "employee_id": employee.id,
-            "request_date_from": request_date_from,
-            "request_date_to": request_date_from,
-        }
-    )
-    res = {}
-    if hasattr(leave_new, "_onchange_employee_filter_leave_type"):
-        res = leave_new._onchange_employee_filter_leave_type() or {}
-    domain = (res.get("domain") or {}).get("holiday_status_id") or []
+    domain = []
+
+    # Gender filter
+    gender = employee.gender
+    if gender in ("male", "female"):
+        # Allow leave types for all genders, unset gender, or matching gender
+        domain += [("allowed_gender", "in", [False, "all", gender])]
+    else:
+        # If gender is missing/other, keep only gender-neutral leave types
+        domain += [("allowed_gender", "in", [False, "all"])]
+
+    # Service eligibility filter
+    joining_date = employee.hrmis_joining_date
+    ref_date = request_date_from or fields.Date.today()
+    service_months = 0
+    if joining_date and ref_date and ref_date >= joining_date:
+        delta = relativedelta(ref_date, joining_date)
+        service_months = delta.years * 12 + delta.months
+
+    # Allow leave types with no minimum service, or where employee meets minimum
+    domain += ["|", ("min_service_months", "=", 0), ("min_service_months", "<=", service_months)]
+
+    # Fitness To Resume Duty eligibility
+    LeaveType = request.env["hr.leave.type"].sudo()
+    Leave = request.env["hr.leave"].sudo()
+
+    fitness_type = LeaveType.search([("name", "=ilike", "Fitness To Resume Duty")], limit=1)
+    if fitness_type:
+        # Check if employee is eligible (last approved leave was maternity/medical)
+        ref_dt = fields.Datetime.to_datetime(ref_date)
+        last_leave = Leave.search([
+            ("employee_id", "=", employee.id),
+            ("state", "=", "validate"),
+            ("date_to", "<=", ref_dt),
+        ], order="date_to desc", limit=1)
+
+        fitness_eligible = False
+        if last_leave:
+            lt_name = (last_leave.holiday_status_id.name or "").strip().lower()
+            fitness_eligible = ("maternity" in lt_name) or ("medical" in lt_name)
+
+        if not fitness_eligible:
+            domain += [("id", "!=", fitness_type.id)]
+
+    # Ex-Pakistan Leave: only if employee has any leave balance
+    ex_pk = LeaveType.search([("name", "=ilike", "Ex-Pakistan Leave")], limit=1)
+    if ex_pk:
+        total_balance = _compute_total_leave_balance(employee, ref_date)
+        if total_balance <= 0.0:
+            domain += [("id", "!=", ex_pk.id)]
+
+    # LPR: requires EOL leave balance
+    lpr = LeaveType.search([
+        "|",
+        ("name", "=ilike", "Leave Preparatory to Retirement (LPR)"),
+        ("name", "=ilike", "LPR"),
+    ], limit=1)
+    if lpr:
+        eol_balance = _compute_eol_leave_balance(employee, ref_date)
+        if eol_balance <= 0.0:
+            domain += [("id", "!=", lpr.id)]
+
     return domain
+
+
+def _compute_total_leave_balance(employee, ref_date=None):
+    """Compute total leave balance across all leave types for an employee."""
+    ref_date = fields.Date.to_date(ref_date or fields.Date.today())
+    all_types = request.env["hr.leave.type"].sudo().search([])
+    total = 0.0
+    for lt in all_types:
+        rem = _get_leave_type_remaining(lt, employee, ref_date)
+        if rem > 0:
+            total += rem
+    return total
+
+
+def _compute_eol_leave_balance(employee, ref_date=None):
+    """Compute EOL (Leave Without Pay) balance for an employee."""
+    ref_date = fields.Date.to_date(ref_date or fields.Date.today())
+    eol_types = request.env["hr.leave.type"].sudo().search([
+        "|",
+        ("name", "ilike", "EOL"),
+        ("name", "ilike", "Leave Without Pay"),
+    ])
+    total = 0.0
+    for lt in eol_types:
+        rem = _get_leave_type_remaining(lt, employee, ref_date)
+        if rem > 0:
+            total += rem
+    return total
+
+
+def _get_leave_type_remaining(leave_type, employee, ref_date=None):
+    """Get remaining days for a leave type for a given employee."""
+    ref_date = fields.Date.to_date(ref_date or fields.Date.today())
+    lt = leave_type.with_context(
+        employee_id=employee.id,
+        default_employee_id=employee.id,
+        default_date_from=ref_date,
+        default_date_to=ref_date,
+        request_type="leave",
+    )
+    # Use Odoo's balance computation
+    if hasattr(lt, "get_days"):
+        try:
+            days = lt.get_days(employee.id)
+            if isinstance(days, dict) and employee.id in days and isinstance(days[employee.id], dict):
+                return (
+                    days[employee.id].get("virtual_remaining_leaves")
+                    if days[employee.id].get("virtual_remaining_leaves") is not None
+                    else days[employee.id].get("remaining_leaves", 0.0)
+                ) or 0.0
+        except Exception:
+            pass
+    if "virtual_remaining_leaves" in lt._fields:
+        return lt.virtual_remaining_leaves or 0.0
+    if "remaining_leaves" in lt._fields:
+        return lt.remaining_leaves or 0.0
+    return 0.0
 
 
 def _leave_types_for_employee(employee, request_date_from=None):
