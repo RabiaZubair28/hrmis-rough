@@ -54,7 +54,7 @@ class HrLeave(models.Model):
             taken = sum(leaves.mapped("number_of_days")) if hasattr(leaves, "mapped") else 0.0
             rec.employee_leave_balance_total = (allocated or 0.0) - (taken or 0.0)
 
-    @api.depends("employee_id", "employee_id.hrmis_joining_date", "employee_id.joining_date")
+    @api.depends("employee_id")
     def _compute_earned_leave_balance(self):
         # Full months since joining date * 4 days
         today = fields.Date.context_today(self)
