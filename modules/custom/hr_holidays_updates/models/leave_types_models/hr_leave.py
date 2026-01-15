@@ -1,3 +1,5 @@
+from datetime import date
+
 from odoo import api, fields, models
 
 
@@ -63,9 +65,10 @@ class HrLeave(models.Model):
                 rec.earned_leave_balance = 0.0
                 continue
 
-            join_date = emp.hrmis_joining_date or getattr(emp, "joining_date", None)
-            join_date = fields.Date.to_date(join_date) if join_date else None
-            if not join_date or join_date > today:
+            join_date_raw = emp.hrmis_joining_date or getattr(emp, "joining_date", None)
+            join_date = fields.Date.to_date(join_date_raw) if join_date_raw else None
+            # Help static type checkers: ensure we only use a real `date` object below.
+            if not isinstance(join_date, date) or join_date > today:
                 rec.earned_leave_balance = 0.0
                 continue
 
