@@ -1,4 +1,6 @@
-from . import hr_leave
-from . import hr_leave_onchange
-from . import hr_leave_profile
-from . import hr_leave_validator
+"""
+Subpackage for leave-type related models.
+
+Important: do not import submodules here to avoid circular imports during Odoo
+addon loading. Import the model files from `hr_holidays_updates.models`.
+"""
