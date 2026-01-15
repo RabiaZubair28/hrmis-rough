@@ -83,24 +83,3 @@ def can_manage_employee_leave(employee) -> bool:
         or user.has_group("hr_holidays.group_hr_holidays_manager")
     )
 
-
-def can_manage_allocations() -> bool:
-    """
-    Allocation approvals are usually reserved for HR Time Off officers/managers.
-    Keep it conservative for website exposure.
-    """
-    user = request.env.user
-    if not user:
-        return False
-
-    try:
-        Allocation = request.env["hr.leave.allocation"].with_user(user)
-        if Allocation.check_access_rights("write", False):
-            return True
-    except Exception:
-        pass
-
-    return bool(
-        user.has_group("hr_holidays.group_hr_holidays_user")
-        or user.has_group("hr_holidays.group_hr_holidays_manager")
-    )

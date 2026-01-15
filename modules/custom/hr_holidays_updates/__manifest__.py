@@ -14,16 +14,11 @@
         'hr_holidays_multilevel_hierarchy',
     ],  # Important: extend the built-in module
     'data': [
-        'data/leave_type_data.xml',
-        'data/support_document_rules.xml',
-        'data/auto_allocation_cron.xml',
-        'views/hr_holidays_views.xml',
         'views/hrmis_frontend_templates.xml',
         'views/hrmis_frontend_menu.xml',
         "views/hrmis_profile_request_views.xml",
         "views/hrmis_profile_approvals.xml",
         "views/hrmis_profile_request_templates.xml",
-        'views/hr_leave_type_views.xml',
         'views/hrmis_leave_view_history.xml',
         'views/hrmis_user_profile_update_requests_view.xml',
         'views/hrmis_user_profile_update_requests_detailed_view.xml',

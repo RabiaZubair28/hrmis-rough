@@ -8,15 +8,11 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-from odoo.addons.hr_holidays_updates.controllers.allocation_data import (
-    allocation_pending_for_current_user,
-    pending_allocation_requests_for_user,
-)
 from odoo.addons.hr_holidays_updates.controllers.leave_data import (
     leave_pending_for_current_user,
     pending_leave_requests_for_user,
 )
-from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx, can_manage_allocations
+from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
@@ -376,10 +372,9 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
     
         leaves = pending_leave_requests_for_user(uid)
         # leaves_debug = None
+        tab = "leave"
 
-        allocations = pending_allocation_requests_for_user(uid)
-
-        tab = tab if tab in ("leave", "allocation") else "leave"
+       
 
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -388,14 +383,10 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
-                allocations=allocations,
                 success=success,
                 error=error,
             ),
         )
-
-    @http.route(["/hrmis/allocation/<int:allocation_id>"], type="http", auth="user", website=True)
-    def hrmis_allocation_view(self, allocation_id: int, **kw):
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()

@@ -1,5 +1,151 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- HRMIS Services Landing Page -->
+    <template id="hrmis_services" name="HRMIS Services">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">HRMIS Services</div>
+                </div>
+                <div class="hrmis-panel__body">
+                    <div class="hrmis-services-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 20px 0;">
+                        
+                        <!-- User Profile Card -->
+                        <t t-if="current_employee">
+                            <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                                <div style="font-size: 32px; margin-bottom: 12px;">👤</div>
+                                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">User Profile</h3>
+                                <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">View and manage your personal information</p>
+                                <a t-att-href="'/hrmis/staff/%s' % current_employee.id" 
+                                   class="hrmis-btn hrmis-btn--primary" 
+                                   style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                    View Profile
+                                </a>
+                            </div>
+                        </t>
+
+                        <!-- Search Staff Card -->
+                        <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">🔍</div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Search Staff</h3>
+                            <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">Search for employees by CNIC, designation, district or facility</p>
+                            <a href="/hrmis/staff" 
+                               class="hrmis-btn hrmis-btn--primary" 
+                               style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                Search Staff
+                            </a>
+                        </div>
+
+                        <!-- Leave Requests Card -->
+                        <t t-if="current_employee">
+                            <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                                <div style="font-size: 32px; margin-bottom: 12px;">📅</div>
+                                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Leave Requests</h3>
+                                <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">Submit new leave requests and view leave history</p>
+                                <a t-att-href="'/hrmis/staff/%s/leave?tab=new' % current_employee.id" 
+                                   class="hrmis-btn hrmis-btn--primary" 
+                                   style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                    Manage Leave
+                                </a>
+                            </div>
+                        </t>
+
+                        <!-- Manage Leave Requests Card (for approvers) -->
+                        <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">✅</div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Manage Requests</h3>
+                            <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">Review and approve pending leave requests</p>
+                            <a href="/hrmis/manage/requests?tab=leave" 
+                               class="hrmis-btn hrmis-btn--primary" 
+                               style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                Manage Requests
+                            </a>
+                        </div>
+
+                        <!-- Profile Update Request Card -->
+                        <t t-if="current_employee">
+                            <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                                <div style="font-size: 32px; margin-bottom: 12px;">✏️</div>
+                                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Profile Update</h3>
+                                <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">Request updates to your profile information</p>
+                                <a href="/hrmis/profile/request" 
+                                   class="hrmis-btn hrmis-btn--primary" 
+                                   style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                    Request Update
+                                </a>
+                            </div>
+                        </t>
+
+                        <!-- Notifications Card -->
+                        <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">🔔</div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Notifications</h3>
+                            <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">View all your notifications and alerts</p>
+                            <a href="/hrmis/notifications" 
+                               class="hrmis-btn hrmis-btn--primary" 
+                               style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                View Notifications
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- HRMIS Staff Services Page (for specific employee) -->
+    <template id="hrmis_staff_services" name="HRMIS Staff Services">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header">
+                    <div class="hrmis-panel__title">Services for <t t-esc="employee.name"/></div>
+                </div>
+                <div class="hrmis-panel__body">
+                    <div class="hrmis-services-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 20px 0;">
+                        
+                        <!-- View Profile Card -->
+                        <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">👤</div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">User Profile</h3>
+                            <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">View profile information</p>
+                            <a t-att-href="'/hrmis/staff/%s' % employee.id" 
+                               class="hrmis-btn hrmis-btn--primary" 
+                               style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                View Profile
+                            </a>
+                        </div>
+
+                        <!-- Leave Requests Card -->
+                        <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">📅</div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Leave Requests</h3>
+                            <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">Submit new leave requests and view leave history</p>
+                            <a t-att-href="'/hrmis/staff/%s/leave?tab=new' % employee.id" 
+                               class="hrmis-btn hrmis-btn--primary" 
+                               style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                Manage Leave
+                            </a>
+                        </div>
+
+                        <!-- Leave History Card -->
+                        <div class="hrmis-service-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">Leave History</h3>
+                            <p style="color: #666; font-size: 14px; margin: 0 0 16px 0;">View past leave requests and their status</p>
+                            <a t-att-href="'/hrmis/staff/%s/leave?tab=history' % employee.id" 
+                               class="hrmis-btn hrmis-btn--primary" 
+                               style="display: inline-block; padding: 10px 20px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none;">
+                                View History
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
     <template id="hrmis_ui_layout" name="HRMIS UI Layout">
         <t t-call="website.layout">
             <t t-set="no_header" t-value="True"/>
@@ -518,10 +664,10 @@
                                             <t t-foreach="leave_types" t-as="lt">
                                                 <option t-att-value="lt.id"
                                                         t-att-data-support-document="1 if lt.support_document else 0"
-                                                        t-att-data-support-document-note="lt.support_document_note or ''">
+                                                        t-att-data-support-document-note="''">
                                                     <!-- `leave_types` are already prepared in the controller with the proper
                                                          employee/date/company/request_type context so balances compute correctly. -->
-                                                    <t t-esc="lt.name_get()[0][1]"/>
+                                                    <t t-esc="lt.display_name"/>
                                                 </option>
                                             </t>
                                         </select>
