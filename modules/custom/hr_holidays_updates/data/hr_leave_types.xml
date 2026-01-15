@@ -5,8 +5,6 @@
             <field name="name">Casual Leave</field>
             <!-- Keep validation simple by default; can be switched to 'multi' in UI if needed. -->
             <field name="leave_validation_type">manager</field>
-            <!-- Typical policy: allocated days required -->
-            <field name="requires_allocation">True</field>
         </record>
     </data>
 </odoo>
