@@ -45,9 +45,19 @@ class HrLeaveAllocation(models.Model):
 
         for lt in leave_types:
             is_casual = bool(casual and lt.id == casual.id)
-            days = 2.0 if is_casual else 365.0
-            period_from = month_start if is_casual else year_start
-            period_to = month_end if is_casual else year_end
+            is_maternity = "maternity" in ((lt.name or "").lower())
+            if is_casual:
+                days = 2.0
+                period_from = month_start
+                period_to = month_end
+            elif is_maternity:
+                days = 90.0
+                period_from = year_start
+                period_to = year_end
+            else:
+                days = 365.0
+                period_from = year_start
+                period_to = year_end
 
             for emp in employees:
                 domain = [
