@@ -8,6 +8,21 @@ from odoo import api, fields, models
 class HrLeaveAllocation(models.Model):
     _inherit = "hr.leave.allocation"
 
+    def _hrmis_refuse_allocation(self):
+        """Best-effort: make an allocation not count toward balances."""
+        for alloc in self:
+            try:
+                if hasattr(alloc, "action_refuse"):
+                    alloc.action_refuse()
+                    continue
+            except Exception:
+                pass
+            try:
+                if "state" in alloc._fields:
+                    alloc.sudo().write({"state": "refuse"})
+            except Exception:
+                pass
+
     @api.model
     def hrmis_ensure_allocations_for_employees(self, employees):
         """Create/update allocations for the given employee(s) only."""
@@ -40,14 +55,12 @@ class HrLeaveAllocation(models.Model):
                     ("holiday_status_id", "=", lt.id),
                     ("state", "not in", ("refuse", "cancel")),
                 ]
-                if "company_id" in self._fields and getattr(emp, "company_id", False):
-                    domain += [("company_id", "=", emp.company_id.id)]
                 if "date_from" in self._fields:
                     domain += [("date_from", "=", period_from)]
                 if "date_to" in self._fields:
                     domain += [("date_to", "=", period_to)]
 
-                alloc = self.sudo().search(domain, limit=1, order="id desc")
+                allocs = self.sudo().search(domain, order="id desc")
                 vals = {
                     "name": f"{lt.name} allocation",
                     "employee_id": emp.id,
@@ -67,6 +80,12 @@ class HrLeaveAllocation(models.Model):
                     vals["date_to"] = period_to
                 if "company_id" in self._fields and getattr(emp, "company_id", False):
                     vals["company_id"] = emp.company_id.id
+
+                # Pick one allocation to keep; refuse duplicates to prevent double counting.
+                alloc = allocs[:1]
+                dupes = allocs[1:]
+                if dupes:
+                    dupes._hrmis_refuse_allocation()
 
                 if alloc:
                     alloc.sudo().write(vals)
@@ -116,73 +135,6 @@ class HrLeaveAllocation(models.Model):
         lt_domain = [("active", "=", True)] if "active" in LeaveType._fields else []
         leave_types = LeaveType.search(lt_domain)
 
-        for lt in leave_types:
-            is_casual = bool(casual and lt.id == casual.id)
-            days = 2.0 if is_casual else 365.0
-            period_from = month_start if is_casual else year_start
-            period_to = month_end if is_casual else year_end
-
-            for emp in employees:
-                # Create OR fix allocation for this period/type/employee
-                domain = [
-                    ("employee_id", "=", emp.id),
-                    ("holiday_status_id", "=", lt.id),
-                    ("state", "not in", ("refuse", "cancel")),
-                ]
-                # Multi-company: allocations must match the employee company to be counted in balances.
-                if "company_id" in self._fields and getattr(emp, "company_id", False):
-                    domain += [("company_id", "=", emp.company_id.id)]
-                if "date_from" in self._fields:
-                    domain += [("date_from", "=", period_from)]
-                if "date_to" in self._fields:
-                    domain += [("date_to", "=", period_to)]
-
-                alloc = self.sudo().search(domain, limit=1, order="id desc")
-
-                vals = {
-                    "name": f"{lt.name} allocation",
-                    "employee_id": emp.id,
-                    "holiday_status_id": lt.id,
-                }
-                # Required fields vary by Odoo/version/customizations; set if present.
-                if "holiday_type" in self._fields:
-                    vals["holiday_type"] = "employee"
-                if "allocation_type" in self._fields:
-                    vals["allocation_type"] = "regular"
-                if "number_of_days" in self._fields:
-                    vals["number_of_days"] = days
-                elif "number_of_days_display" in self._fields:
-                    vals["number_of_days_display"] = days
-                if "date_from" in self._fields:
-                    vals["date_from"] = period_from
-                if "date_to" in self._fields:
-                    vals["date_to"] = period_to
-                if "company_id" in self._fields and getattr(emp, "company_id", False):
-                    vals["company_id"] = emp.company_id.id
-
-                if alloc:
-                    # Update existing allocation if it was created earlier with 0 days / draft state.
-                    try:
-                        alloc.sudo().write(vals)
-                    except Exception:
-                        pass
-                else:
-                    alloc = self.sudo().create(vals)
-
-                # Validate if workflow requires it
-                try:
-                    # Some DBs use a direct state set; try actions first.
-                    if hasattr(alloc, "action_confirm"):
-                        alloc.action_confirm()
-                    if hasattr(alloc, "action_validate"):
-                        alloc.action_validate()
-                    if hasattr(alloc, "action_approve"):
-                        alloc.action_approve()
-                    # If still not validated and the field exists, force validate.
-                    if "state" in alloc._fields and alloc.state not in ("validate", "validate1", "validate2"):
-                        alloc.sudo().write({"state": "validate"})
-                except Exception:
-                    # If the allocation can't be validated automatically in this DB,
-                    # keep it created (it can be validated manually).
-                    pass
+        # Reuse the same "ensure" logic for all employees (includes de-duplication).
+        self.hrmis_ensure_allocations_for_employees(employees)
 
