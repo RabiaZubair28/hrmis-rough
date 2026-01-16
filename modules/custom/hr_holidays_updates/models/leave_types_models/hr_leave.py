@@ -1,6 +1,9 @@
 from datetime import date
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
+
+from dateutil.relativedelta import relativedelta
 
 
 class HrLeave(models.Model):
@@ -77,3 +80,58 @@ class HrLeave(models.Model):
             if today.day < join_date.day:
                 months -= 1
             rec.earned_leave_balance = max(0, months) * 4.0
+
+    @api.constrains("employee_id", "holiday_status_id", "request_date_from", "request_date_to", "state")
+    def _check_casual_leave_monthly_limit(self):
+        """Casual Leave cannot exceed 2 days per calendar month."""
+        casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
+        if not casual:
+            return
+
+        for leave in self:
+            if not leave.employee_id or not leave.holiday_status_id:
+                continue
+            if leave.holiday_status_id.id != casual.id:
+                continue
+            if leave.state in ("cancel", "refuse"):
+                continue
+
+            d_from = fields.Date.to_date(getattr(leave, "request_date_from", None)) if "request_date_from" in leave._fields else None
+            d_to = fields.Date.to_date(getattr(leave, "request_date_to", None)) if "request_date_to" in leave._fields else None
+            if not d_from or not d_to:
+                continue
+
+            # Check each month spanned by the request
+            cursor = date(d_from.year, d_from.month, 1)
+            end_cursor = date(d_to.year, d_to.month, 1)
+            while cursor <= end_cursor:
+                month_start = cursor
+                month_end = (cursor + relativedelta(months=1)) - relativedelta(days=1)
+
+                # Find all casual leaves overlapping this month (except refused/cancelled)
+                dom = [
+                    ("id", "!=", leave.id),
+                    ("employee_id", "=", leave.employee_id.id),
+                    ("holiday_status_id", "=", casual.id),
+                    ("state", "not in", ("cancel", "refuse")),
+                    ("request_date_from", "<=", month_end),
+                    ("request_date_to", ">=", month_start),
+                ]
+                others = self.sudo().search(dom)
+
+                # Total days in this month = (this leave overlap) + (others overlaps)
+                def _overlap_days(a_from, a_to):
+                    left = max(a_from, month_start)
+                    right = min(a_to, month_end)
+                    return max(0, (right - left).days + 1)
+
+                total = _overlap_days(d_from, d_to)
+                for o in others:
+                    ofrom = fields.Date.to_date(o.request_date_from)
+                    oto = fields.Date.to_date(o.request_date_to)
+                    total += _overlap_days(ofrom, oto)
+
+                if total > 2:
+                    raise ValidationError("You cannot take casual leave more than 2 days a month")
+
+                cursor = cursor + relativedelta(months=1)

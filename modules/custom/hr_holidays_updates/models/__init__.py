@@ -10,3 +10,4 @@ from .notifications_models import hrmis_notification
 from .notifications_models import res_users_hrmis_notifications
 
 from . import hr_employee
+from . import hr_leave_allocation
