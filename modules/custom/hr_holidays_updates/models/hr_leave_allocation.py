@@ -46,7 +46,7 @@ class HrLeaveAllocation(models.Model):
             period_to = month_end if is_casual else year_end
 
             for emp in employees:
-                # Skip if allocation already exists for this period/type/employee
+                # Create OR fix allocation for this period/type/employee
                 domain = [
                     ("employee_id", "=", emp.id),
                     ("holiday_status_id", "=", lt.id),
@@ -57,8 +57,7 @@ class HrLeaveAllocation(models.Model):
                 if "date_to" in self._fields:
                     domain += [("date_to", "=", period_to)]
 
-                if self.search(domain, limit=1):
-                    continue
+                alloc = self.sudo().search(domain, limit=1, order="id desc")
 
                 vals = {
                     "name": f"{lt.name} allocation",
@@ -79,7 +78,14 @@ class HrLeaveAllocation(models.Model):
                 if "date_to" in self._fields:
                     vals["date_to"] = period_to
 
-                alloc = self.sudo().create(vals)
+                if alloc:
+                    # Update existing allocation if it was created earlier with 0 days / draft state.
+                    try:
+                        alloc.sudo().write(vals)
+                    except Exception:
+                        pass
+                else:
+                    alloc = self.sudo().create(vals)
 
                 # Validate if workflow requires it
                 try:
