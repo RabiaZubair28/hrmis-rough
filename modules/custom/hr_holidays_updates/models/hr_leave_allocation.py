@@ -52,6 +52,9 @@ class HrLeaveAllocation(models.Model):
                     ("holiday_status_id", "=", lt.id),
                     ("state", "not in", ("refuse", "cancel")),
                 ]
+                # Multi-company: allocations must match the employee company to be counted in balances.
+                if "company_id" in self._fields and getattr(emp, "company_id", False):
+                    domain += [("company_id", "=", emp.company_id.id)]
                 if "date_from" in self._fields:
                     domain += [("date_from", "=", period_from)]
                 if "date_to" in self._fields:
@@ -77,6 +80,8 @@ class HrLeaveAllocation(models.Model):
                     vals["date_from"] = period_from
                 if "date_to" in self._fields:
                     vals["date_to"] = period_to
+                if "company_id" in self._fields and getattr(emp, "company_id", False):
+                    vals["company_id"] = emp.company_id.id
 
                 if alloc:
                     # Update existing allocation if it was created earlier with 0 days / draft state.
