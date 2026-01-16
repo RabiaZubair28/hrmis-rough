@@ -698,7 +698,7 @@
                         </t>
 
                         <t t-if="tab == 'history'">
-                            <t t-set="earned_leave_balance" t-value="(history and history[0].earned_leave_balance) or 0.0"/>
+                            <t t-set="earned_leave_balance" t-value="employee.earned_leave_balance or 0.0"/>
                             <div class="hrmis-kv" style="margin-bottom: 12px;">
                                 <div class="hrmis-kv__row">
                                     <div class="hrmis-kv__k">Earned leave balance</div>
