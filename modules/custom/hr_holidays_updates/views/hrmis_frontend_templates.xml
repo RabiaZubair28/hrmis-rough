@@ -698,6 +698,14 @@
                         </t>
 
                         <t t-if="tab == 'history'">
+                            <div class="hrmis-kv" style="margin-bottom: 12px;">
+                                <div class="hrmis-kv__row">
+                                    <div class="hrmis-kv__k">Earned leave balance</div>
+                                    <div class="hrmis-kv__v">
+                                        <t t-esc="earned_leave_balance"/> days
+                                    </div>
+                                </div>
+                            </div>
                             <div class="hrmis-table">
                                 <div class="hrmis-table__head">
                                     <div>Leave type</div>

@@ -426,6 +426,16 @@ class HrmisLeaveFrontendController(http.Controller):
 
         error = kw.get("error")
         success = kw.get("success")
+        # Simple earned leave balance: 4 days per full month after joining date.
+        earned_leave_balance = 0.0
+        join_date = getattr(employee, "hrmis_joining_date", False) or None
+        join_date = fields.Date.to_date(join_date) if join_date else None
+        today_dt = fields.Date.context_today(request.env.user)
+        if join_date and join_date <= today_dt:
+            months = (today_dt.year - join_date.year) * 12 + (today_dt.month - join_date.month)
+            if today_dt.day < join_date.day:
+                months -= 1
+            earned_leave_balance = float(max(0, months) * 4)
         return request.render(
             "hr_holidays_updates.hrmis_leave_form",
             _base_ctx(
@@ -437,6 +447,7 @@ class HrmisLeaveFrontendController(http.Controller):
                 history=history,
                 error=error,
                 success=success,
+                earned_leave_balance=earned_leave_balance,
                 today=date.today(),
             ),
         )
