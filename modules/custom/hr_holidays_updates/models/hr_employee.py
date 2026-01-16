@@ -8,6 +8,13 @@ from odoo import api, fields, models
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
+    employee_leave_balance_total = fields.Float(
+        string="Total Leave Balance (Days)",
+        compute="_compute_employee_leave_balances",
+        readonly=True,
+        help="Approximate total available leave balance (validated allocations - validated leaves).",
+    )
+
     earned_leave_balance = fields.Float(
         string="Earned Leave Balance (Days)",
         compute="_compute_earned_leave_balance",
@@ -28,4 +35,33 @@ class HrEmployee(models.Model):
             if today.day < join_date.day:
                 months -= 1
             emp.earned_leave_balance = max(0, months) * 4.0
+
+    @api.depends("id")
+    def _compute_employee_leave_balances(self):
+        """
+        Keep depends simple (avoid missing-field depends during module load).
+        """
+        Allocation = self.env["hr.leave.allocation"].sudo()
+        Leave = self.env["hr.leave"].sudo()
+
+        alloc_days_field = "number_of_days" if "number_of_days" in Allocation._fields else None
+        leave_days_field = "number_of_days" if "number_of_days" in Leave._fields else None
+
+        for emp in self:
+            if not emp:
+                emp.employee_leave_balance_total = 0.0
+                continue
+
+            allocated = 0.0
+            taken = 0.0
+
+            if alloc_days_field:
+                allocs = Allocation.search([("employee_id", "=", emp.id), ("state", "=", "validate")])
+                allocated = sum(allocs.mapped(alloc_days_field)) or 0.0
+
+            if leave_days_field:
+                leaves = Leave.search([("employee_id", "=", emp.id), ("state", "in", ("validate", "validate1", "validate2"))])
+                taken = sum(leaves.mapped(leave_days_field)) or 0.0
+
+            emp.employee_leave_balance_total = allocated - taken
 
