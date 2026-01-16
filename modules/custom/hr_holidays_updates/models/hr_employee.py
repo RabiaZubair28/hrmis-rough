@@ -31,9 +31,9 @@ class HrEmployee(models.Model):
                 emp.earned_leave_balance = 0.0
                 continue
 
-            months = (today.year - join_date.year) * 12 + (today.month - join_date.month)
-            if today.day < join_date.day:
-                months -= 1
+            # Count calendar months since joining (inclusive of joining month).
+            # Example: 2025-11-19 -> 2026-01-16 counts Nov, Dec, Jan => 3 months => 12 days.
+            months = (today.year - join_date.year) * 12 + (today.month - join_date.month) + 1
             emp.earned_leave_balance = max(0, months) * 4.0
 
     def _compute_employee_leave_balances(self):

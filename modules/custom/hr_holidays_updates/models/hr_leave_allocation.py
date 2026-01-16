@@ -40,10 +40,6 @@ class HrLeaveAllocation(models.Model):
         leave_types = LeaveType.search(lt_domain)
 
         for lt in leave_types:
-            # Skip types that do not require allocations (unlimited)
-            if "requires_allocation" in lt._fields and lt.requires_allocation == "no":
-                continue
-
             is_casual = bool(casual and lt.id == casual.id)
             days = 2.0 if is_casual else 365.0
             period_from = month_start if is_casual else year_start
@@ -68,8 +64,16 @@ class HrLeaveAllocation(models.Model):
                     "name": f"{lt.name} allocation",
                     "employee_id": emp.id,
                     "holiday_status_id": lt.id,
-                    "number_of_days": days,
                 }
+                # Required fields vary by Odoo/version/customizations; set if present.
+                if "holiday_type" in self._fields:
+                    vals["holiday_type"] = "employee"
+                if "allocation_type" in self._fields:
+                    vals["allocation_type"] = "regular"
+                if "number_of_days" in self._fields:
+                    vals["number_of_days"] = days
+                elif "number_of_days_display" in self._fields:
+                    vals["number_of_days_display"] = days
                 if "date_from" in self._fields:
                     vals["date_from"] = period_from
                 if "date_to" in self._fields:
@@ -79,12 +83,16 @@ class HrLeaveAllocation(models.Model):
 
                 # Validate if workflow requires it
                 try:
+                    # Some DBs use a direct state set; try actions first.
                     if hasattr(alloc, "action_confirm"):
                         alloc.action_confirm()
                     if hasattr(alloc, "action_validate"):
                         alloc.action_validate()
                     if hasattr(alloc, "action_approve"):
                         alloc.action_approve()
+                    # If still not validated and the field exists, force validate.
+                    if "state" in alloc._fields and alloc.state not in ("validate", "validate1", "validate2"):
+                        alloc.sudo().write({"state": "validate"})
                 except Exception:
                     # If the allocation can't be validated automatically in this DB,
                     # keep it created (it can be validated manually).
