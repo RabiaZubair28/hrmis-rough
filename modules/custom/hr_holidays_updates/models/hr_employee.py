@@ -51,6 +51,12 @@ class HrEmployee(models.Model):
                 emp.employee_leave_balance_total = 0.0
                 continue
 
+            # Ensure allocations exist for this employee so balance isn't 0/0.
+            try:
+                self.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(emp)
+            except Exception:
+                pass
+
             allocated = 0.0
             taken = 0.0
 

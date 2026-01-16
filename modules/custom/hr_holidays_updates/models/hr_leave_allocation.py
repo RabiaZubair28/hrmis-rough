@@ -9,6 +9,83 @@ class HrLeaveAllocation(models.Model):
     _inherit = "hr.leave.allocation"
 
     @api.model
+    def hrmis_ensure_allocations_for_employees(self, employees):
+        """Create/update allocations for the given employee(s) only."""
+        employees = employees.sudo()
+        if not employees:
+            return
+
+        today = fields.Date.context_today(self)
+        year_start = date(today.year, 1, 1)
+        year_end = date(today.year, 12, 31)
+        month_start = date(today.year, today.month, 1)
+        if today.month == 12:
+            next_month_first = date(today.year + 1, 1, 1)
+        else:
+            next_month_first = date(today.year, today.month + 1, 1)
+        month_end = next_month_first - timedelta(days=1)
+
+        casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
+        leave_types = self.env["hr.leave.type"].sudo().search([])
+
+        for lt in leave_types:
+            is_casual = bool(casual and lt.id == casual.id)
+            days = 2.0 if is_casual else 365.0
+            period_from = month_start if is_casual else year_start
+            period_to = month_end if is_casual else year_end
+
+            for emp in employees:
+                domain = [
+                    ("employee_id", "=", emp.id),
+                    ("holiday_status_id", "=", lt.id),
+                    ("state", "not in", ("refuse", "cancel")),
+                ]
+                if "company_id" in self._fields and getattr(emp, "company_id", False):
+                    domain += [("company_id", "=", emp.company_id.id)]
+                if "date_from" in self._fields:
+                    domain += [("date_from", "=", period_from)]
+                if "date_to" in self._fields:
+                    domain += [("date_to", "=", period_to)]
+
+                alloc = self.sudo().search(domain, limit=1, order="id desc")
+                vals = {
+                    "name": f"{lt.name} allocation",
+                    "employee_id": emp.id,
+                    "holiday_status_id": lt.id,
+                }
+                if "holiday_type" in self._fields:
+                    vals["holiday_type"] = "employee"
+                if "allocation_type" in self._fields:
+                    vals["allocation_type"] = "regular"
+                if "number_of_days" in self._fields:
+                    vals["number_of_days"] = days
+                elif "number_of_days_display" in self._fields:
+                    vals["number_of_days_display"] = days
+                if "date_from" in self._fields:
+                    vals["date_from"] = period_from
+                if "date_to" in self._fields:
+                    vals["date_to"] = period_to
+                if "company_id" in self._fields and getattr(emp, "company_id", False):
+                    vals["company_id"] = emp.company_id.id
+
+                if alloc:
+                    alloc.sudo().write(vals)
+                else:
+                    alloc = self.sudo().create(vals)
+
+                try:
+                    if hasattr(alloc, "action_confirm"):
+                        alloc.action_confirm()
+                    if hasattr(alloc, "action_validate"):
+                        alloc.action_validate()
+                    if hasattr(alloc, "action_approve"):
+                        alloc.action_approve()
+                    if "state" in alloc._fields and alloc.state not in ("validate", "validate1", "validate2"):
+                        alloc.sudo().write({"state": "validate"})
+                except Exception:
+                    pass
+
+    @api.model
     def hrmis_auto_allocate_yearly_leaves(self):
         """
         Auto-create allocations.

@@ -412,6 +412,12 @@ class HrmisLeaveFrontendController(http.Controller):
             # Avoid exposing other employees' leave UI to normal users
             return request.redirect("/hrmis/services?error=not_allowed")
 
+        # Ensure allocations exist for this employee so balances display correctly.
+        try:
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+        except Exception:
+            pass
+
         # Show leave types allowed by the same rules used in the backend UI.
         dt_leave = _safe_date(kw.get("date_from"))
         leave_types = _dedupe_leave_types_for_ui(
@@ -461,6 +467,12 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.make_response(
                 json.dumps(payload), headers=[("Content-Type", "application/json")]
             )
+
+        # Ensure allocations exist for this employee so balances display correctly.
+        try:
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+        except Exception:
+            pass
 
         d_from = _safe_date(kw.get("date_from"))
         leave_types = _dedupe_leave_types_for_ui(
