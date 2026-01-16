@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
-
-from dateutil.relativedelta import relativedelta
+from datetime import date, timedelta
 
 from odoo import api, fields, models
 
@@ -13,14 +11,21 @@ class HrLeaveAllocation(models.Model):
     @api.model
     def hrmis_auto_allocate_yearly_leaves(self):
         """
-        Auto-create yearly allocations.
+        Auto-create allocations.
 
         - All leave types (that require allocation): 365 days / year
-        - Casual Leave: 24 days / year (but usage is still capped to 2 days/month by hr.leave constraint)
+        - Casual Leave: 2 days / month (current month only)
         """
         today = fields.Date.context_today(self)
         year_start = date(today.year, 1, 1)
         year_end = date(today.year, 12, 31)
+        month_start = date(today.year, today.month, 1)
+        # last day of the current month
+        if today.month == 12:
+            next_month_first = date(today.year + 1, 1, 1)
+        else:
+            next_month_first = date(today.year, today.month + 1, 1)
+        month_end = next_month_first - timedelta(days=1)
 
         casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
 
@@ -39,33 +44,36 @@ class HrLeaveAllocation(models.Model):
             if "requires_allocation" in lt._fields and lt.requires_allocation == "no":
                 continue
 
-            days = 24.0 if (casual and lt.id == casual.id) else 365.0
+            is_casual = bool(casual and lt.id == casual.id)
+            days = 2.0 if is_casual else 365.0
+            period_from = month_start if is_casual else year_start
+            period_to = month_end if is_casual else year_end
 
             for emp in employees:
-                # Skip if allocation already exists for this year/type/employee
+                # Skip if allocation already exists for this period/type/employee
                 domain = [
                     ("employee_id", "=", emp.id),
                     ("holiday_status_id", "=", lt.id),
                     ("state", "not in", ("refuse", "cancel")),
                 ]
                 if "date_from" in self._fields:
-                    domain += [("date_from", "=", year_start)]
+                    domain += [("date_from", "=", period_from)]
                 if "date_to" in self._fields:
-                    domain += [("date_to", "=", year_end)]
+                    domain += [("date_to", "=", period_to)]
 
                 if self.search(domain, limit=1):
                     continue
 
                 vals = {
-                    "name": f"{lt.name} {today.year} allocation",
+                    "name": f"{lt.name} allocation",
                     "employee_id": emp.id,
                     "holiday_status_id": lt.id,
                     "number_of_days": days,
                 }
                 if "date_from" in self._fields:
-                    vals["date_from"] = year_start
+                    vals["date_from"] = period_from
                 if "date_to" in self._fields:
-                    vals["date_to"] = year_end
+                    vals["date_to"] = period_to
 
                 alloc = self.sudo().create(vals)
 
@@ -75,6 +83,8 @@ class HrLeaveAllocation(models.Model):
                         alloc.action_confirm()
                     if hasattr(alloc, "action_validate"):
                         alloc.action_validate()
+                    if hasattr(alloc, "action_approve"):
+                        alloc.action_approve()
                 except Exception:
                     # If the allocation can't be validated automatically in this DB,
                     # keep it created (it can be validated manually).
