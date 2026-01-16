@@ -36,7 +36,6 @@ class HrEmployee(models.Model):
                 months -= 1
             emp.earned_leave_balance = max(0, months) * 4.0
 
-    @api.depends("id")
     def _compute_employee_leave_balances(self):
         """
         Keep depends simple (avoid missing-field depends during module load).
