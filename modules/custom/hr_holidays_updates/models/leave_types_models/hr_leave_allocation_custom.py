@@ -24,20 +24,25 @@ class HrLeaveAllocation(models.Model):
                 pass
 
     @api.model
-    def hrmis_ensure_allocations_for_employees(self, employees):
-        """Create/update allocations for the given employee(s) only."""
+    def hrmis_ensure_allocations_for_employees(self, employees, target_date=None):
+        """
+        Create/update allocations for the given employee(s) for the year/month
+        matching `target_date` (used for future-year balance display).
+
+        If `target_date` is not provided, defaults to "today".
+        """
         employees = employees.sudo()
         if not employees:
             return
 
-        today = fields.Date.context_today(self)
-        year_start = date(today.year, 1, 1)
-        year_end = date(today.year, 12, 31)
-        month_start = date(today.year, today.month, 1)
-        if today.month == 12:
-            next_month_first = date(today.year + 1, 1, 1)
+        d = fields.Date.to_date(target_date) if target_date else fields.Date.context_today(self)
+        year_start = date(d.year, 1, 1)
+        year_end = date(d.year, 12, 31)
+        month_start = date(d.year, d.month, 1)
+        if d.month == 12:
+            next_month_first = date(d.year + 1, 1, 1)
         else:
-            next_month_first = date(today.year, today.month + 1, 1)
+            next_month_first = date(d.year, d.month + 1, 1)
         month_end = next_month_first - timedelta(days=1)
 
         casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)

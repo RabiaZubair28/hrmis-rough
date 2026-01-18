@@ -496,7 +496,10 @@ class HrmisLeaveFrontendController(http.Controller):
 
         # Ensure allocations exist for this employee so balances display correctly.
         try:
-            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+            # Use the selected date to ensure future-year allocations exist so
+            # balances do not show "0 remaining out of 0".
+            dt_leave = _safe_date(kw.get("date_from"))
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee, target_date=dt_leave)
         except Exception:
             pass
 
@@ -552,7 +555,7 @@ class HrmisLeaveFrontendController(http.Controller):
 
         # Ensure allocations exist for this employee so balances display correctly.
         try:
-            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee, target_date=d_from)
         except Exception:
             pass
 
