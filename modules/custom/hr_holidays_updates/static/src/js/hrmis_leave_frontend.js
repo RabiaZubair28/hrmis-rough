@@ -272,9 +272,8 @@ function _syncEndDateMin(formEl) {
   const fromDate = new Date(`${fromVal}T00:00:00`);
   if (Number.isNaN(fromDate.getTime())) return;
 
-  // End date must be strictly after start date.
+  // End date must be >= start date (allow 1-day leave).
   const minTo = new Date(fromDate);
-  minTo.setDate(minTo.getDate() + 1);
   const yyyy = String(minTo.getFullYear()).padStart(4, "0");
   const mm = String(minTo.getMonth() + 1).padStart(2, "0");
   const dd = String(minTo.getDate()).padStart(2, "0");

@@ -50,17 +50,20 @@
                             <div class="hrmis-empty">No leave requests pending your action.</div>
                         </t>
                         <t t-else="">
-                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table" style="font-size: 12px;">
+                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 36px 2.2fr 1.2fr 160px 1.6fr 2.4fr; column-gap: 12px; align-items: start;'"/>
+                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table"
+                                 t-att-style="grid + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
                                 <div style="width:36px; max-width:36px;">#</div>
                                 <div>Staff / Facility / District</div>
                                 <div>Leave Type</div>
                                 <div>Submitted On</div>
                                 <div>Dates</div>
-                                <div>Comments / Actions</div>
+                                <div style="white-space: nowrap;">Comments / Actions</div>
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]"/>
-                                <div class="hrmis-leave-row hrmis-manage-table__row" style="font-size: 12px;">
+                                <div class="hrmis-leave-row hrmis-manage-table__row"
+                                     t-att-style="grid + 'font-size: 12px;'">
                                     <!-- Serial Number -->
                                     <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:36px; max-width:36px;">
                                         <t t-esc="idx0 + 1"/>
@@ -84,7 +87,7 @@
 
                                     <!-- Submitted On -->
                                     <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.create_date"/>
+                                        <t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/>
                                     </div>
 
                                     <!-- Dates -->
