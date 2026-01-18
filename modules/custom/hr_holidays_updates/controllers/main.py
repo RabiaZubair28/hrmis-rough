@@ -553,13 +553,16 @@ class HrmisLeaveFrontendController(http.Controller):
                 json.dumps(payload), headers=[("Content-Type", "application/json")]
             )
 
+        d_from = _safe_date(kw.get("date_from"))
+
         # Ensure allocations exist for this employee so balances display correctly.
         try:
-            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee, target_date=d_from)
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(
+                employee, target_date=d_from
+            )
         except Exception:
             pass
 
-        d_from = _safe_date(kw.get("date_from"))
         leave_types = _dedupe_leave_types_for_ui(
             _leave_types_for_employee(employee, request_date_from=d_from)
         )
