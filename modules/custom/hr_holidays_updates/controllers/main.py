@@ -796,6 +796,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 dt_end = datetime.combine(d_to, time.max)
                 overlap_domain += [("date_from", "<=", dt_end), ("date_to", ">=", dt_start)]
             if Leave.search(overlap_domain, limit=1):
+                if self._wants_json():
+                    return self._json({"ok": False, "error": friendly_overlap_msg}, status=400)
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_overlap_msg)}"
                 )

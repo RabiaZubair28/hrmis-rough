@@ -286,6 +286,59 @@ class HrLeave(models.Model):
             if days and days > 90:
                 raise ValidationError("the maximum duration for this leave type is 90 days")
 
+    @api.constrains("employee_id", "request_date_from", "request_date_to", "date_from", "date_to", "state")
+    def _check_leave_overlap(self):
+        """
+        Prevent overlapping leave requests against BOTH pending and approved leaves.
+        """
+        Leave = self.env["hr.leave"].sudo()
+
+        def _date_range(leave):
+            d_from = None
+            d_to = None
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+            return d_from, d_to
+
+        for leave in self:
+            if not leave.employee_id:
+                continue
+            if getattr(leave, "state", None) in ("cancel", "refuse"):
+                continue
+            d_from, d_to = _date_range(leave)
+            if not d_from or not d_to:
+                continue
+
+            domain = [
+                ("id", "!=", leave.id),
+                ("employee_id", "=", leave.employee_id.id),
+                ("state", "not in", ("cancel", "refuse")),
+            ]
+
+            # Prefer request_date_* overlap check when present.
+            if "request_date_from" in Leave._fields and "request_date_to" in Leave._fields:
+                domain += [
+                    ("request_date_from", "<=", d_to),
+                    ("request_date_to", ">=", d_from),
+                ]
+            elif "date_from" in Leave._fields and "date_to" in Leave._fields:
+                # Full-day overlap for datetime-based leaves.
+                dt_start = datetime.combine(d_from, time.min)
+                dt_end = datetime.combine(d_to, time.max)
+                domain += [
+                    ("date_from", "<=", dt_end),
+                    ("date_to", ">=", dt_start),
+                ]
+
+            if Leave.search_count(domain):
+                raise ValidationError("this leave request is overlapping with existing leave")
+
     @api.constrains("holiday_status_id", "employee_id", "request_date_from", "request_date_to", "date_from", "date_to", "state")
     def _check_no_today_leave_request(self):
         """
