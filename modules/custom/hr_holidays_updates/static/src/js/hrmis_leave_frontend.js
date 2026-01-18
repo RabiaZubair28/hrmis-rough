@@ -292,6 +292,16 @@ function _init() {
         // If the server returns HTML (e.g., proxy/CSRF errors), JSON parsing fails
         // and `data` will be null. Provide a slightly more useful fallback.
         let msg = data?.error;
+        // If we got redirected to an HTML page with ?error=..., surface that message.
+        if (!msg) {
+          try {
+            const u = new URL(resp?.url || "", window.location.origin);
+            const err = u.searchParams.get("error");
+            if (err) msg = err;
+          } catch {
+            // ignore
+          }
+        }
         if (!msg) {
           msg = `Could not submit leave request${resp?.status ? ` (HTTP ${resp.status})` : ""}`;
         }
