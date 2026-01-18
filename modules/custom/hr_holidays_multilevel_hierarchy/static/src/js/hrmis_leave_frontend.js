@@ -140,7 +140,7 @@
                 credentials: "same-origin",
                 headers: { Accept: "application/json" }
             });
-            const data = await resp.json();
+            const data = await resp.json().catch(() => null);
             console.log("🟣 [HRMIS] Approver API response:", data);
 
             if (!data?.ok || !Array.isArray(data.steps)) {
@@ -170,7 +170,7 @@
                 credentials: "same-origin",
                 headers: { Accept: "application/json" }
             });
-            const data = await resp.json();
+            const data = await resp.json().catch(() => null);
             console.log("🟣 [HRMIS] Leave types API response:", data);
 
             if (!data?.ok) return;
