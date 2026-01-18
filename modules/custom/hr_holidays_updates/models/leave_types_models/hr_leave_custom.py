@@ -121,21 +121,29 @@ class HrLeave(models.Model):
 
     def _compute_number_of_days(self):
         """
-        Ensure Casual Leave excludes weekends/holidays from the deducted days.
+        Ensure specific leave types exclude weekends/holidays from the deducted days.
         """
         parent = super(HrLeave, self)
         base = getattr(parent, "_compute_number_of_days", None)
         if callable(base):
             base()
 
+        # Leave types where we want deducted days to be "effective days"
+        # (excluding weekends/holidays via calendar when possible).
         casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
-        if not casual:
+        lpr = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        ex_pk_full = self.env.ref("hr_holidays_updates.leave_type_ex_pakistan_full_pay", raise_if_not_found=False)
+        earned_full = self.env.ref("hr_holidays_updates.leave_type_earned_full_pay", raise_if_not_found=False)
+        study_full = self.env.ref("hr_holidays_updates.leave_type_study_full_pay", raise_if_not_found=False)
+
+        target_ids = {lt.id for lt in (casual, lpr, ex_pk_full, earned_full, study_full) if lt}
+        if not target_ids:
             return
 
         for leave in self:
             if not leave.employee_id or not leave.holiday_status_id:
                 continue
-            if leave.holiday_status_id.id != casual.id:
+            if leave.holiday_status_id.id not in target_ids:
                 continue
 
             d_from = fields.Date.to_date(getattr(leave, "request_date_from", None)) if "request_date_from" in leave._fields else None
