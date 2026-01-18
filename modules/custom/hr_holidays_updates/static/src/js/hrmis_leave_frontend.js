@@ -282,11 +282,19 @@ function _init() {
         method: "POST",
         body: fd,
         credentials: "same-origin",
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
       });
       const data = await resp.json().catch(() => null);
       if (!resp.ok || !data || data.ok === false) {
-        const msg = data?.error || "Could not submit leave request";
+        // If the server returns HTML (e.g., proxy/CSRF errors), JSON parsing fails
+        // and `data` will be null. Provide a slightly more useful fallback.
+        let msg = data?.error;
+        if (!msg) {
+          msg = `Could not submit leave request${resp?.status ? ` (HTTP ${resp.status})` : ""}`;
+        }
         _showInlineAlert(formEl, "error", msg);
         return;
       }

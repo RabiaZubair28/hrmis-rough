@@ -102,13 +102,26 @@ class HrLeaveAllocation(models.Model):
                 else:
                     alloc = self.sudo().create(vals)
 
+                # Best-effort validation: different Odoo/custom versions have slightly
+                # different workflows/permissions for allocations. We want these
+                # allocations to count toward balances, so validate them as robustly
+                # as possible (and never crash the website).
                 try:
                     if hasattr(alloc, "action_confirm"):
                         alloc.action_confirm()
+                except Exception:
+                    pass
+                try:
                     if hasattr(alloc, "action_validate"):
                         alloc.action_validate()
+                except Exception:
+                    pass
+                try:
                     if hasattr(alloc, "action_approve"):
                         alloc.action_approve()
+                except Exception:
+                    pass
+                try:
                     if "state" in alloc._fields and alloc.state not in ("validate", "validate1", "validate2"):
                         alloc.sudo().write({"state": "validate"})
                 except Exception:

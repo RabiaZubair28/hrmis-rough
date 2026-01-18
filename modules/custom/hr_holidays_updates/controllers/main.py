@@ -197,9 +197,25 @@ def _leave_pending_for_current_user(leave) -> bool:
 
 def _allowed_leave_type_domain(employee, request_date_from=None):
     """
-    No eligibility restrictions: show all leave types.
+    Eligibility restrictions for the HRMIS website dropdown.
+
+    Current rules:
+    - Maternity Leave is visible only for female employees.
     """
-    return []
+    domain = []
+    try:
+        maternity = request.env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+        # Some deployments use `gender`, others use `hrmis_gender`. Keep both.
+        gender = getattr(employee, "gender", False) or getattr(employee, "hrmis_gender", False)
+        if maternity and gender and gender != "female":
+            domain.append(("id", "!=", maternity.id))
+        # If gender is unknown, be conservative and hide maternity
+        if maternity and not gender:
+            domain.append(("id", "!=", maternity.id))
+    except Exception:
+        # Never break the form because of an eligibility rule.
+        pass
+    return domain
 
 
 def _leave_types_for_employee(employee, request_date_from=None):

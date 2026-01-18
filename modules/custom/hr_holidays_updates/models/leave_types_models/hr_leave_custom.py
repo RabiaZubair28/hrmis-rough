@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, time
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -82,6 +82,74 @@ class HrLeave(models.Model):
                 months -= 1
             rec.earned_leave_balance = max(0, months) * 4.0
 
+    def _hrmis_effective_days(self, employee, day_from: date, day_to: date) -> float:
+        """
+        Effective leave days, excluding weekends/holidays where possible.
+
+        Uses Odoo's calendar-based computation when available, so public holidays
+        and non-working days are excluded. Falls back to counting Mon-Fri.
+        """
+        if not employee or not day_from or not day_to:
+            return 0.0
+        if day_to < day_from:
+            return 0.0
+
+        dt_from = datetime.combine(day_from, time.min)
+        dt_to = datetime.combine(day_to, time.max)
+
+        get_days = getattr(self, "_get_number_of_days", None)
+        if callable(get_days):
+            try:
+                days = get_days(dt_from, dt_to, employee.id)
+                return float(days or 0.0)
+            except TypeError:
+                try:
+                    days = get_days(dt_from, dt_to, employee)
+                    return float(days or 0.0)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        cur = day_from
+        total = 0
+        while cur <= day_to:
+            if cur.weekday() < 5:
+                total += 1
+            cur = cur + relativedelta(days=1)
+        return float(total)
+
+    def _compute_number_of_days(self):
+        """
+        Ensure Casual Leave excludes weekends/holidays from the deducted days.
+        """
+        parent = super(HrLeave, self)
+        base = getattr(parent, "_compute_number_of_days", None)
+        if callable(base):
+            base()
+
+        casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
+        if not casual:
+            return
+
+        for leave in self:
+            if not leave.employee_id or not leave.holiday_status_id:
+                continue
+            if leave.holiday_status_id.id != casual.id:
+                continue
+
+            d_from = fields.Date.to_date(getattr(leave, "request_date_from", None)) if "request_date_from" in leave._fields else None
+            d_to = fields.Date.to_date(getattr(leave, "request_date_to", None)) if "request_date_to" in leave._fields else None
+            if not d_from or not d_to:
+                continue
+
+            eff = leave._hrmis_effective_days(leave.employee_id, d_from, d_to)
+            # Odoo stores the duration in `number_of_days` (and optionally `number_of_days_display`).
+            if "number_of_days" in leave._fields:
+                leave.number_of_days = eff
+            if "number_of_days_display" in leave._fields:
+                leave.number_of_days_display = eff
+
     @api.constrains("employee_id", "holiday_status_id", "request_date_from", "request_date_to", "state")
     def _check_casual_leave_monthly_limit(self):
         """Casual Leave cannot exceed 2 days per calendar month."""
@@ -102,7 +170,7 @@ class HrLeave(models.Model):
             if not d_from or not d_to:
                 continue
 
-            # Check each month spanned by the request
+            # Check each month spanned by the request (counting effective work days).
             cursor = date(d_from.year, d_from.month, 1)
             end_cursor = date(d_to.year, d_to.month, 1)
             while cursor <= end_cursor:
@@ -120,11 +188,11 @@ class HrLeave(models.Model):
                 ]
                 others = self.sudo().search(dom)
 
-                # Total days in this month = (this leave overlap) + (others overlaps)
+                # Total effective days in this month = (this leave overlap) + (others overlaps)
                 def _overlap_days(a_from, a_to):
                     left = max(a_from, month_start)
                     right = min(a_to, month_end)
-                    return max(0, (right - left).days + 1)
+                    return leave._hrmis_effective_days(leave.employee_id, left, right)
 
                 total = _overlap_days(d_from, d_to)
                 for o in others:
