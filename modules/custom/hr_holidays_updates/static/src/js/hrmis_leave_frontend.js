@@ -157,7 +157,7 @@ async function _refreshApprovers(formEl) {
       _renderApproverSteps(panelEl, []);
       return;
     }
-    const data = await resp.json();
+    const data = await resp.json().catch(() => null);
     if (!data || !data.ok) {
       _renderApproverSteps(panelEl, []);
       return;
@@ -187,7 +187,7 @@ async function _refreshLeaveTypes(formEl) {
       headers: { Accept: "application/json" },
     });
     if (!resp.ok) return;
-    const data = await resp.json();
+    const data = await resp.json().catch(() => null);
     if (!data || !data.ok) return;
     _setSelectOptions(selectEl, data.leave_types || [], true);
     _updateSupportDocUI(formEl);
