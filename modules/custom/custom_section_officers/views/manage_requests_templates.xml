@@ -14,7 +14,14 @@
                href="#">
                 Initiate Disciplinary Actions
                 </a>
-        
+            </t>
+            <t t-if="
+                 request.env.user.has_group('custom_login.group_section_officer')
+                ">
+                <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'profile_update_requests' else ''}"
+                    href="/hrmis/profile-update-requests">
+                        Profile Update Requests
+                </a>
             </t>
         </xpath>
     </template>
@@ -43,7 +50,7 @@
                             <div class="hrmis-empty">No leave requests pending your action.</div>
                         </t>
                         <t t-else="">
-                            <div class="hrmis-table__head hrmis-leave-row">
+                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table">
                                 <div>#</div>
                                 <div>Staff / Facility / District</div>
                                 <div>Leave Type</div>
@@ -52,7 +59,7 @@
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]"/>
-                                <div class="hrmis-leave-row">
+                                <div class="hrmis-leave-row hrmis-manage-table__row">
                                     <!-- Serial Number -->
                                     <div class="hrmis-leave-row_cell hrmis-leave-row_sno">
                                         <t t-esc="idx0 + 1"/>

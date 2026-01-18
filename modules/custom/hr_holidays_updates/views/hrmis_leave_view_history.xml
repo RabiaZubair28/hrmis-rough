@@ -43,7 +43,7 @@
                         <div class="hrmis-kv__row">
                             <div class="hrmis-kv__k">Status</div>
                             <div class="hrmis-kv__v">
-                                <t t-if="leave.state in ('confirm','validate1')">Awaiting</t>
+                                <t t-if="leave.state in ('confirm','validate1')">Pending</t>
                                 <t t-elif="leave.state in ('validate','validate2')">Approved</t>
                                 <t t-elif="leave.state == 'refuse'">Rejected</t>
                                 <t t-elif="leave.state == 'cancel'">Cancelled</t>
@@ -60,18 +60,6 @@
                                 <t t-esc="pending_names"/>
                             </div>
                         </div>
-                        <div class="hrmis-kv__row">
-                            <div class="hrmis-kv__k">Comments</div>
-                            <div class="hrmis-kv__v">
-                                <t t-foreach="leave.message_ids" t-as="m">
-                                    <div>
-                                        <t t-esc="m.author_id.name"/>:
-                                        <t t-esc="m.body"/>
-                                    </div>
-                                </t>
-                            </div>
-                        </div>
-
                     </div>
 
                     <div class="hrmis-form__actions">

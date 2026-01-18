@@ -4,7 +4,7 @@
     "author": "Aneeqa Baig",
     "depends": ["base", "hr", "website" , 'custom_approvals_odoo18', 'hr_holidays_updates', 'hrmis_user_profiles_updates'],
     "data": [
-        "security/ir.model.access.csv",
+        # "security/ir.model.access.csv",
         "security/security.xml",
         "views/res_user_views.xml",
         "views/force_password_template.xml",

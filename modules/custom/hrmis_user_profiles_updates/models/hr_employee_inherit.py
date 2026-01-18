@@ -29,14 +29,20 @@ class HREmployee(models.Model):
         ('female', 'Female'),
         ('other', 'Other')
     ], string="Gender")
-    hrmis_cadre = fields.Selection(
-    [
-        ('anesthesia', 'Anesthesia'),
-        ('public_health', 'Public Health'),
-        ('medical', 'Medical'),
-    ],
-    string="Cadre"
-)
+    # hrmis_cadre = fields.Selection(
+    # [
+    #     ('anesthesia', 'Anesthesia'),
+    #     ('public_health', 'Public Health'),
+    #     ('medical', 'Medical'),
+    # ],
+    # string="Cadre"
+    # )
+    hrmis_cadre = fields.Many2one(
+    'hrmis.cadre',
+    string='Cadre',
+    required=True
+    )
+
     hrmis_designation = fields.Char(string="Designation")
     hrmis_bps = fields.Integer(
     string="BPS Grade"

@@ -15,3 +15,7 @@ access_hrmis_facility_type_hr_employee_system_user,Facility Type: System User,mo
 
 access_profile_request_employee,Employee Profile Request,model_hrmis_employee_profile_request,base.group_user,1,0,1,0
 access_profile_request_hr,HR Profile Request,model_hrmis_employee_profile_request,hr.group_hr_manager,1,1,1,1
+
+
+
+access_hrmis_cadre_user,hrmis cadre user,model_hrmis_cadre,,1,1,1,1

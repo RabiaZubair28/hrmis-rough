@@ -270,13 +270,6 @@
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests
                             </a>
-                           <t t-if="request.env.user.has_group('base.group_system') or request.env.user.has_group('hr.group_hr_manager')">
-                                <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'profile_update_requests' else ''}"
-                                href="/hrmis/profile-update-requests">
-                                    Profile Update Requests
-                                </a>
-                            </t>
-
                           
                         </nav>
 

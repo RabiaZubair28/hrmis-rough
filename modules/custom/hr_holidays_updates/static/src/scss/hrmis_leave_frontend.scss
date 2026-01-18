@@ -894,6 +894,91 @@
     min-width: 0;
     word-break: break-word;
 }
+
+.hrmis-manage-table__row {
+  display: grid;
+
+  /* Column layout:
+     1) S.No              – compact
+     2) Staff info        – balanced
+     3) Leave Type        – compact
+     4) Dates / Days      – compact
+     5) Comments/Actions – wide
+  */
+  grid-template-columns:
+    64px
+    1.2fr
+    0.8fr
+    0.9fr
+    2.4fr;
+
+  gap: 16px;
+  align-items: start;
+}
+
+/* Header must mirror row grid */
+.hrmis-manage-table.hrmis-leave-row {
+  grid-template-columns:
+    64px
+    1.2fr
+    0.8fr
+    0.9fr
+    2.4fr;
+}
+
+/* Prevent grid blow-outs */
+.hrmis-manage-table__row > div {
+  min-width: 0;
+}
+
+/* =========================================
+   Comments area (scoped)
+   ========================================= */
+
+.hrmis-manage-table__row .hrmis-comments {
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Allow comment text to wrap properly */
+.hrmis-manage-table__row .hrmis-comment {
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* =========================================
+   Action form layout (scoped)
+   ========================================= */
+
+.hrmis-manage-table__row .hrmis-leave-row__actions form {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Expand comment input */
+.hrmis-manage-table__row input[type="text"] {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Keep buttons compact */
+.hrmis-manage-table__row .hrmis-btn {
+  white-space: nowrap;
+  padding: 0 14px;
+}
+.hrmis-manage-table > div:last-child{
+  align-items: center;
+
+}
+.hrmis-manage-table div:nth-last-child(1){
+  text-align: center;
+}
+
+
+
 @media (max-width: 768px) {
     .hrmis-kv-row-fix {
         grid-template-columns: 1fr;

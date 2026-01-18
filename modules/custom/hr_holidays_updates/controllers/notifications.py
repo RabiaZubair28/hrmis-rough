@@ -79,4 +79,3 @@ class HrmisNotificationsController(http.Controller):
         Notification = request.env["hrmis.notification"].sudo()
         Notification.search([("user_id", "=", request.env.user.id), ("is_read", "=", False)]).write({"is_read": True})
         return request.make_json_response({"ok": True, "unread_count": 0})
-

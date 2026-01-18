@@ -15,6 +15,12 @@ class EmployeeProfileRequest(models.Model):
         readonly=True
     )
 
+    approver_id = fields.Many2one(
+        "hr.employee",
+        string="Approver",
+        readonly=True,
+    )
+
     user_id = fields.Many2one(
         'res.users',
         default=lambda self: self.env.user,
@@ -50,11 +56,12 @@ class EmployeeProfileRequest(models.Model):
         ('other', 'Other')
     ])
 
-    hrmis_cadre = fields.Selection([
-        ('anesthesia', 'Anesthesia'),
-        ('public_health', 'Public Health'),
-        ('medical', 'Medical'),
-    ])
+    hrmis_cadre = fields.Many2one(
+    'hrmis.cadre',
+    string='Cadre',
+    # required=True
+    )
+
 
     hrmis_designation = fields.Char(
         string="Designation"    )
@@ -135,6 +142,12 @@ class EmployeeProfileRequest(models.Model):
     # -------------------------------------------------
     # ACTIONS
     # -------------------------------------------------
+
+
+    def _is_parent_approver(self):
+        self.ensure_one()
+        parent = self.employee_id.parent_id
+        return parent and parent.user_id == self.env.user
     def action_submit(self):
         self.ensure_one()
 
@@ -186,19 +199,23 @@ class EmployeeProfileRequest(models.Model):
     def action_approve(self):
         self.ensure_one()
 
-        # 1. Only HR Manager can approve
-        if not self.env.user.has_group('hr.group_hr_manager'):
-            raise UserError("Only HR Managers can approve profile update requests.")
+        # Access: either parent/manager, admin, or HR
+        is_hr = self.env.user.has_group('hr.group_hr_manager')
+        is_admin = self.env.user.has_group('base.group_system')
+        is_parent = self._is_parent_approver()
 
-        # 2. Prevent self-approval
+        if not (is_hr or is_admin or is_parent):
+            raise UserError("Only the employee's manager (or HR/Admin) can approve this request.")
+
+        # Prevent self-approval
         if self.user_id == self.env.user:
             raise UserError("You cannot approve your own profile update request.")
 
-        # 3. Must be in submitted state
+        # Must be submitted
         if self.state != 'submitted':
             raise UserError("Only submitted requests can be approved.")
 
-        # Apply changes
+        # Apply changes safely
         self.employee_id.write({
             'hrmis_employee_id': self.hrmis_employee_id,
             'hrmis_cnic': self.hrmis_cnic,
@@ -206,18 +223,18 @@ class EmployeeProfileRequest(models.Model):
             'hrmis_joining_date': self.hrmis_joining_date,
             'hrmis_bps': self.hrmis_bps,
             'gender': self.gender,
-            'hrmis_cadre': self.hrmis_cadre,
+            'hrmis_cadre': self.hrmis_cadre.id if self.hrmis_cadre else False,
             'hrmis_designation': self.hrmis_designation,
-            'district_id': self.district_id.id,
-            'facility_id': self.facility_id.id,
+            'district_id': self.district_id.id if self.district_id else False,
+            'facility_id': self.facility_id.id if self.facility_id else False,
             'hrmis_contact_info': self.hrmis_contact_info,
         })
 
         self.approved_by = self.env.user.id
         self.state = 'approved'
 
-        # Notify employee (NO email)
-        if self.user_id:
+        # Notify employee (without breaking UI)
+        if self.user_id and self.user_id.partner_id:
             self.message_post(
                 body="Your profile update request has been approved.",
                 partner_ids=[self.user_id.partner_id.id],
@@ -229,8 +246,13 @@ class EmployeeProfileRequest(models.Model):
     def action_reject(self):
         self.ensure_one()
 
-        if not self.env.user.has_group('hr.group_hr_manager'):
-            raise UserError("Only HR Managers can reject profile update requests.")
+        # Access: either parent/manager, admin, or HR
+        is_hr = self.env.user.has_group('hr.group_hr_manager')
+        is_admin = self.env.user.has_group('base.group_system')
+        is_parent = self._is_parent_approver()
+
+        if not (is_hr or is_admin or is_parent):
+            raise UserError("Only the employee's manager (or HR/Admin) can reject this request.")
 
         if self.user_id == self.env.user:
             raise UserError("You cannot reject your own profile update request.")
@@ -240,7 +262,8 @@ class EmployeeProfileRequest(models.Model):
 
         self.state = 'rejected'
 
-        if self.user_id:
+        # Notify employee safely
+        if self.user_id and self.user_id.partner_id:
             self.message_post(
                 body="Your profile update request has been rejected.",
                 partner_ids=[self.user_id.partner_id.id],
