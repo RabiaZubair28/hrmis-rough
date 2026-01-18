@@ -260,6 +260,38 @@ function _syncProfileTabsActiveClass() {
   });
 }
 
+function _syncEndDateMin(formEl) {
+  const dateFromEl = _qs(formEl, ".js-hrmis-date-from");
+  const dateToEl = _qs(formEl, ".js-hrmis-date-to");
+  if (!dateFromEl || !dateToEl) return;
+
+  const fromVal = (dateFromEl.value || "").trim();
+  if (!fromVal) return;
+
+  // HTML date input uses YYYY-MM-DD.
+  const fromDate = new Date(`${fromVal}T00:00:00`);
+  if (Number.isNaN(fromDate.getTime())) return;
+
+  // End date must be strictly after start date.
+  const minTo = new Date(fromDate);
+  minTo.setDate(minTo.getDate() + 1);
+  const yyyy = String(minTo.getFullYear()).padStart(4, "0");
+  const mm = String(minTo.getMonth() + 1).padStart(2, "0");
+  const dd = String(minTo.getDate()).padStart(2, "0");
+  const minVal = `${yyyy}-${mm}-${dd}`;
+
+  dateToEl.min = minVal;
+
+  const curTo = (dateToEl.value || "").trim();
+  if (curTo && curTo < minVal) {
+    dateToEl.value = minVal;
+  }
+  if (!curTo) {
+    // If empty, keep it empty; user will pick. (Template defaults to today though.)
+    // No-op.
+  }
+}
+
 function _init() {
   const formEl = document.querySelector(".hrmis-leave-request-form");
   _syncProfileTabsActiveClass();
@@ -328,8 +360,14 @@ function _init() {
 
   const dateFromEl = _qs(formEl, ".js-hrmis-date-from");
   if (dateFromEl) {
-    dateFromEl.addEventListener("change", () => _refreshLeaveTypes(formEl));
-    dateFromEl.addEventListener("blur", () => _refreshLeaveTypes(formEl));
+    dateFromEl.addEventListener("change", () => {
+      _syncEndDateMin(formEl);
+      _refreshLeaveTypes(formEl);
+    });
+    dateFromEl.addEventListener("blur", () => {
+      _syncEndDateMin(formEl);
+      _refreshLeaveTypes(formEl);
+    });
   }
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
@@ -342,6 +380,7 @@ function _init() {
   // Ensure the leave-type dropdown reflects newly approved allocations
   // even when the user navigates back to this page (BFCache) or doesn't
   // change the date field after approvals.
+  _syncEndDateMin(formEl);
   _refreshLeaveTypes(formEl);
 }
 
