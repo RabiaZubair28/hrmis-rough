@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import math
 
 from odoo import api, fields, models
 
@@ -106,7 +107,8 @@ class HrEmployee(models.Model):
                 # Reuse the hr.leave helper that excludes holidays/weekends where possible.
                 eff = float(Leave._hrmis_effective_days(emp, d_from, d_to) or 0.0) if hasattr(Leave, "_hrmis_effective_days") else float((d_to - d_from).days + 1)
                 if lv.holiday_status_id and lv.holiday_status_id.id in half_ids:
-                    deducted += eff * 0.5
+                    # Upper-bound half (e.g., 9 -> 5).
+                    deducted += float(math.ceil(eff / 2.0))
                 else:
                     deducted += eff
 

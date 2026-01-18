@@ -26,7 +26,7 @@ def _safe_int(v, default=None):
 
 _DATE_DMY_RE = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$")
 _OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
-_OVERLAP_FRIENDLY_MSG = "Leave already taken for this duration"
+_OVERLAP_FRIENDLY_MSG = "this leave request is overlapping with existing leave"
 _EXISTING_DAY_MSG = "You cannot take existing day's leave"
 
 
@@ -797,7 +797,7 @@ class HrmisLeaveFrontendController(http.Controller):
                 overlap_domain += [("date_from", "<=", dt_end), ("date_to", ">=", dt_start)]
             if Leave.search(overlap_domain, limit=1):
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_overlap_msg)}"
                 )
 
             # IMPORTANT: use a savepoint so partial creates are rolled back on any error.

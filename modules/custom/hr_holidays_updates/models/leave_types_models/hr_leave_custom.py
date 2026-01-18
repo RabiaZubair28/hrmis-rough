@@ -257,6 +257,35 @@ class HrLeave(models.Model):
             if days and days > 365:
                 raise ValidationError("LPR leave cannot exceed 365 days per request.")
 
+    @api.constrains("holiday_status_id", "request_date_from", "request_date_to", "date_from", "date_to")
+    def _check_maternity_max_duration(self):
+        """
+        Maternity Leave rule: max 90 calendar days per request.
+        """
+        maternity = self.env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+        if not maternity:
+            return
+
+        def _calendar_days_inclusive(leave) -> int:
+            d_from = None
+            d_to = None
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+            if not d_from or not d_to or d_to < d_from:
+                return 0
+            return (d_to - d_from).days + 1
+
+        for leave in self.filtered(lambda l: l.holiday_status_id and l.holiday_status_id.id == maternity.id):
+            days = _calendar_days_inclusive(leave)
+            if days and days > 90:
+                raise ValidationError("the maximum duration for this leave type is 90 days")
+
     @api.constrains("holiday_status_id", "employee_id", "request_date_from", "request_date_to", "date_from", "date_to", "state")
     def _check_no_today_leave_request(self):
         """
