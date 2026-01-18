@@ -240,3 +240,89 @@ class HrLeave(models.Model):
             days = _calendar_days_inclusive(leave)
             if days and days > 365:
                 raise ValidationError("LPR leave cannot exceed 365 days per request.")
+
+    @api.constrains("holiday_status_id", "employee_id", "request_date_from", "request_date_to", "date_from", "date_to", "state")
+    def _check_no_today_leave_request(self):
+        """
+        Business rule: employee cannot apply for leave that includes today's date.
+        """
+        today = fields.Date.context_today(self)
+
+        def _date_range(leave):
+            d_from = None
+            d_to = None
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+            return d_from, d_to
+
+        for leave in self:
+            # Apply-time states only (avoid breaking legacy validated leaves).
+            if getattr(leave, "state", None) not in ("draft", "confirm", "validate1"):
+                continue
+            d_from, d_to = _date_range(leave)
+            if not d_from or not d_to:
+                continue
+            if d_from <= today <= d_to:
+                raise ValidationError("You cannot take existing day's leave")
+
+    @api.constrains("holiday_status_id", "employee_id", "request_date_from", "request_date_to", "date_from", "date_to")
+    def _check_lpr_age_window(self):
+        """
+        LPR rule: employee can only request LPR within their age 59-60 period
+        (based on DOB).
+        """
+        lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        if not lpr_leave_type:
+            return
+
+        def _employee_dob(emp):
+            if not emp:
+                return None
+            for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
+                if f in getattr(emp, "_fields", {}):
+                    d = fields.Date.to_date(getattr(emp, f, None))
+                    if d:
+                        return d
+                else:
+                    d = fields.Date.to_date(getattr(emp, f, None))
+                    if d:
+                        return d
+            return None
+
+        def _date_range(leave):
+            d_from = None
+            d_to = None
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+            return d_from, d_to
+
+        for leave in self.filtered(lambda l: l.holiday_status_id == lpr_leave_type):
+            if not leave.employee_id:
+                continue
+            dob = _employee_dob(leave.employee_id)
+            if not dob:
+                raise ValidationError("Date of birth is required to apply for LPR leave.")
+
+            d_from, d_to = _date_range(leave)
+            if not d_from or not d_to:
+                continue
+
+            start_allowed = dob + relativedelta(years=59)
+            end_exclusive = dob + relativedelta(years=60)
+            # Allow only dates in [start_allowed, end_exclusive)
+            if d_from < start_allowed or d_to >= end_exclusive:
+                raise ValidationError(
+                    "You can only apply for LPR leave between your 59th and 60th birthday."
+                )

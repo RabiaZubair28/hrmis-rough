@@ -242,8 +242,40 @@ def _allowed_leave_type_domain(employee, request_date_from=None):
                 domain.append(("id", "!=", maternity.id))
 
         # LPR visibility rules
-        if lpr and lpr_taken >= 1:
-            domain.append(("id", "!=", lpr.id))
+        if lpr:
+            if lpr_taken >= 1:
+                domain.append(("id", "!=", lpr.id))
+            else:
+                # Date eligibility: only allow applying for LPR within the employee's
+                # age 59-60 window (based on DOB).
+                try:
+                    from dateutil.relativedelta import relativedelta
+
+                    dob = None
+                    # Common DOB fields across deployments
+                    for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
+                        if f in getattr(employee, "_fields", {}):
+                            dob = fields.Date.to_date(getattr(employee, f, None))
+                            if dob:
+                                break
+                        else:
+                            # Best-effort fallback for non-standard attrs
+                            dob = fields.Date.to_date(getattr(employee, f, None))
+                            if dob:
+                                break
+
+                    req_dt = _safe_date(request_date_from) if request_date_from else None
+                    if not dob or not req_dt:
+                        # No DOB or no requested start date: hide to avoid invalid requests.
+                        domain.append(("id", "!=", lpr.id))
+                    else:
+                        start_allowed = dob + relativedelta(years=59)
+                        end_exclusive = dob + relativedelta(years=60)
+                        if not (start_allowed <= req_dt < end_exclusive):
+                            domain.append(("id", "!=", lpr.id))
+                except Exception:
+                    # If we can't compute eligibility, keep LPR visible (constraint will still enforce).
+                    pass
     except Exception:
         # Never break the form because of an eligibility rule.
         pass
@@ -710,6 +742,14 @@ class HrmisLeaveFrontendController(http.Controller):
                     return self._json({"ok": False, "error": friendly_past_msg}, status=400)
                 return request.redirect(
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_past_msg)}"
+                )
+
+            # Business requirement: cannot apply for any leave that includes today's date.
+            if d_from <= today <= d_to:
+                if self._wants_json():
+                    return self._json({"ok": False, "error": friendly_existing_day_msg}, status=400)
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
                 )
 
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
