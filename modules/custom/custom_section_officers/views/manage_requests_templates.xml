@@ -98,6 +98,12 @@
                                     <!-- COMMENTS + ACTIONS -->
                                     <div class="hrmis-leave-row__actions" style="display:grid; gap:8px;">
 
+                                        <a class="hrmis-btn hrmis-btn--outline"
+                                           style="width: fit-content;"
+                                           t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)">
+                                            Go to History
+                                        </a>
+
                                         <!-- Previous approvers comments -->
                                         <t t-if="lv.message_ids and len(lv.message_ids)">
                                             <div class="hrmis-comments" style="padding:4px 0; max-height:120px; overflow-y:auto; border-bottom:1px solid #eee;">
@@ -139,6 +145,76 @@
                         </t>
                     </t>
 
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="hrmis_manage_history" name="HRMIS Manage History (Section Officer)">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
+                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'leave' else ''}"
+                       t-att-href="'/hrmis/manage/history/%s?tab=leave' % employee.id">
+                        Leave Requests History
+                    </a>
+                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'transfer' else ''}"
+                       t-att-href="'/hrmis/manage/history/%s?tab=transfer' % employee.id">
+                        Transfer Requests History
+                    </a>
+                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'disciplinary' else ''}"
+                       t-att-href="'/hrmis/manage/history/%s?tab=disciplinary' % employee.id">
+                        Disciplinary Actions History
+                    </a>
+                </div>
+
+                <div class="hrmis-panel__body">
+                    <div style="margin-bottom: 12px; font-weight: 600;">
+                        History for: <t t-esc="employee.name"/>
+                    </div>
+
+                    <t t-if="tab == 'leave'">
+                        <t t-if="not leaves_history">
+                            <div class="hrmis-empty">No leave history found for this employee.</div>
+                        </t>
+                        <t t-else="">
+                            <t t-set="grid_hist" t-value="'display:grid; grid-template-columns: 2fr 170px 1.2fr 1.2fr 1fr; column-gap: 12px; align-items: start;'"/>
+                            <div class="hrmis-table__head"
+                                 t-att-style="grid_hist + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
+                                <div>Leave Type</div>
+                                <div>Submitted On</div>
+                                <div>From</div>
+                                <div>To</div>
+                                <div>Status</div>
+                            </div>
+                            <t t-foreach="leaves_history" t-as="lv">
+                                <div class="hrmis-table__row" t-att-style="grid_hist + 'font-size: 12px;'">
+                                    <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                    <div><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
+                                    <div><t t-esc="lv.request_date_from or ''"/></div>
+                                    <div><t t-esc="lv.request_date_to or ''"/></div>
+                                    <div>
+                                        <t t-if="lv.state in ('confirm','validate1')">Pending</t>
+                                        <t t-elif="lv.state in ('validate','validate2')">Approved</t>
+                                        <t t-elif="lv.state == 'refuse'">Rejected</t>
+                                        <t t-else=""><t t-esc="lv.state"/></t>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                    </t>
+
+                    <t t-if="tab == 'transfer'">
+                        <div class="hrmis-empty">No transfer requests history available yet.</div>
+                    </t>
+
+                    <t t-if="tab == 'disciplinary'">
+                        <div class="hrmis-empty">No disciplinary actions history available yet.</div>
+                    </t>
+
+                    <div class="hrmis-form__actions" style="margin-top: 16px;">
+                        <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/manage/requests?tab=leave">Back to Manage Requests</a>
+                    </div>
                 </div>
             </div>
         </t>
