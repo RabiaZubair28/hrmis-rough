@@ -208,14 +208,35 @@ class HrLeave(models.Model):
     @api.constrains('holiday_status_id', 'request_date_from', 'request_date_to')
     def _check_lpr_max_duration(self):
         """
-        Ensure LPR leave does not exceed 1 year (365 days) per single leave request.
+        Ensure LPR leave does not exceed 365 calendar days per single leave request
+        (including weekends/holidays).
         """
         lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
         if not lpr_leave_type:
             return  # LPR leave type not defined
 
+        def _calendar_days_inclusive(leave) -> int:
+            # Prefer request_date_* (date fields). Fall back to date_* (datetime fields).
+            d_from = None
+            d_to = None
+
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+
+            if not d_from or not d_to:
+                return 0
+            if d_to < d_from:
+                return 0
+            return (d_to - d_from).days + 1
+
         for leave in self.filtered(lambda l: l.holiday_status_id == lpr_leave_type):
-            if leave.request_date_from and leave.request_date_to:
-                delta = leave.request_date_to - leave.request_date_from
-                if delta.days + 1 > 365:
-                    raise ValidationError("LPR leave cannot exceed 1 year per request.")
+            days = _calendar_days_inclusive(leave)
+            if days and days > 365:
+                raise ValidationError("LPR leave cannot exceed 365 days per request.")

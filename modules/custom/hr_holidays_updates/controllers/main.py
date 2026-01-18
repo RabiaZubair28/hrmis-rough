@@ -201,17 +201,49 @@ def _allowed_leave_type_domain(employee, request_date_from=None):
 
     Current rules:
     - Maternity Leave is visible only for female employees.
+    - Maternity Leave is hidden after 3 approved maternity leaves.
+    - LPR Leave is hidden after 1 approved LPR leave.
     """
     domain = []
     try:
         maternity = request.env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+        lpr = request.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
         # Some deployments use `gender`, others use `hrmis_gender`. Keep both.
         gender = getattr(employee, "gender", False) or getattr(employee, "hrmis_gender", False)
-        if maternity and gender and gender != "female":
-            domain.append(("id", "!=", maternity.id))
-        # If gender is unknown, be conservative and hide maternity
-        if maternity and not gender:
-            domain.append(("id", "!=", maternity.id))
+
+        Leave = request.env["hr.leave"].sudo()
+        approved_states = ("validate", "validate2")
+
+        maternity_taken = 0
+        if maternity:
+            maternity_taken = Leave.search_count(
+                [
+                    ("employee_id", "=", employee.id),
+                    ("holiday_status_id", "=", maternity.id),
+                    ("state", "in", approved_states),
+                ]
+            )
+
+        lpr_taken = 0
+        if lpr:
+            lpr_taken = Leave.search_count(
+                [
+                    ("employee_id", "=", employee.id),
+                    ("holiday_status_id", "=", lpr.id),
+                    ("state", "in", approved_states),
+                ]
+            )
+
+        # Maternity visibility rules
+        if maternity:
+            if not gender or gender != "female":
+                domain.append(("id", "!=", maternity.id))
+            elif maternity_taken >= 3:
+                domain.append(("id", "!=", maternity.id))
+
+        # LPR visibility rules
+        if lpr and lpr_taken >= 1:
+            domain.append(("id", "!=", lpr.id))
     except Exception:
         # Never break the form because of an eligibility rule.
         pass
