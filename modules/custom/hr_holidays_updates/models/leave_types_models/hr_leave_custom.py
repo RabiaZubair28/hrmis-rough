@@ -44,19 +44,13 @@ class HrLeave(models.Model):
 
     @api.depends("employee_id")
     def _compute_employee_leave_balances(self):
-        Allocation = self.env["hr.leave.allocation"].sudo()
-        Leave = self.env["hr.leave"].sudo()
         for rec in self:
             emp = rec.employee_id
             if not emp:
                 rec.employee_leave_balance_total = 0.0
                 continue
-
-            allocs = Allocation.search([("employee_id", "=", emp.id), ("state", "=", "validate")])
-            leaves = Leave.search([("employee_id", "=", emp.id), ("state", "=", "validate")])
-            allocated = sum(allocs.mapped("number_of_days")) if hasattr(allocs, "mapped") else 0.0
-            taken = sum(leaves.mapped("number_of_days")) if hasattr(leaves, "mapped") else 0.0
-            rec.employee_leave_balance_total = (allocated or 0.0) - (taken or 0.0)
+            # Keep this aligned with the employee-level "Total Leave Balance" logic.
+            rec.employee_leave_balance_total = float(getattr(emp, "employee_leave_balance_total", 0.0) or 0.0)
 
     @api.depends("employee_id")
     def _compute_earned_leave_balance(self):
@@ -147,15 +141,11 @@ class HrLeave(models.Model):
         casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
         lpr = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
         ex_pk_full = self.env.ref("hr_holidays_updates.leave_type_ex_pakistan_full_pay", raise_if_not_found=False)
-        ex_pk_half = self.env.ref("hr_holidays_updates.leave_type_ex_pakistan_half_pay", raise_if_not_found=False)
         earned_full = self.env.ref("hr_holidays_updates.leave_type_earned_full_pay", raise_if_not_found=False)
-        half_pay = self.env.ref("hr_holidays_updates.leave_type_half_pay", raise_if_not_found=False)
         study_full = self.env.ref("hr_holidays_updates.leave_type_study_full_pay", raise_if_not_found=False)
-        study_half = self.env.ref("hr_holidays_updates.leave_type_study_half_pay", raise_if_not_found=False)
 
-        full_ids = {lt.id for lt in (casual, lpr, ex_pk_full, earned_full, study_full) if lt}
-        half_ids = {lt.id for lt in (half_pay, study_half, ex_pk_half) if lt}
-        target_ids = full_ids | half_ids
+        # Only enforce effective-day calculation for these (no half scaling here).
+        target_ids = {lt.id for lt in (casual, lpr, ex_pk_full, earned_full, study_full) if lt}
         if not target_ids:
             return
 
@@ -170,8 +160,6 @@ class HrLeave(models.Model):
                 continue
 
             eff = leave._hrmis_effective_days(leave.employee_id, d_from, d_to)
-            if leave.holiday_status_id.id in half_ids:
-                eff = eff * 0.5
             # Odoo stores the duration in `number_of_days` (and optionally `number_of_days_display`).
             if "number_of_days" in leave._fields:
                 leave.number_of_days = eff
