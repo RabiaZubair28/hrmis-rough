@@ -7,7 +7,7 @@
     'depends': ['hr'],
     'data': [
         'security/ir.model.access.csv',
-        # 'security/security.xml',
+        'security/security.xml',
         'views/hr_employee_inherit.xml',
         'views/hrmis_user_services_views.xml',
         'views/hrmis_training_views.xml',
@@ -18,6 +18,7 @@
         'data/res_user_data.xml',
         'data/districts.xml',
         'data/facilities.xml',
+        'data/hrmis_cadre.xml',
     ],
     'installable': True,
     'application': False,

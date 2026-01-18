@@ -93,7 +93,7 @@ class HrLeave(models.Model):
         Flow = self.env["hr.leave.approval.flow"]
         for leave in self:
             # Some deployments (and merged customizations) use Odoo's 2-step approval
-            # states where "validate1" is still awaiting final approval. Treat it as
+            # states where "validate1" is still pending final approval. Treat it as
             # pending as well, otherwise the next approver won't see the request.
             if leave.state not in ("confirm", "validate1") or not leave.holiday_status_id:
                 leave.pending_approver_ids = False

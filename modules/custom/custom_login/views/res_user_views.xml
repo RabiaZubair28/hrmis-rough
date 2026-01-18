@@ -38,8 +38,10 @@
             <!-- HRMIS fields after login -->
             <xpath expr="//field[@name='login']" position="after">
                 <group string="HRMIS User Details">
-                    <field name="cnic"/>
-                    <field name="cadre"/>
+                    <field name="hrmis_cnic"/>
+                    <field name="hrmis_cadre" domain="[('active','=',True)]"/>
+
+
                     <field name="manager_id"/>
                     <field name="hrmis_role"/>   <!-- ✅ right here -->
                     <field name="temp_password"/>

@@ -270,13 +270,6 @@
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests
                             </a>
-                           <t t-if="request.env.user.has_group('base.group_system') or request.env.user.has_group('hr.group_hr_manager')">
-                                <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'profile_update_requests' else ''}"
-                                href="/hrmis/profile-update-requests">
-                                    Profile Update Requests
-                                </a>
-                            </t>
-
                           
                         </nav>
 
@@ -698,6 +691,15 @@
                         </t>
 
                         <t t-if="tab == 'history'">
+                            <t t-set="earned_leave_balance" t-value="employee.earned_leave_balance or 0.0"/>
+                            <div class="hrmis-kv" style="margin-bottom: 12px;">
+                                <div class="hrmis-kv__row">
+                                    <div class="hrmis-kv__k">Earned leave balance</div>
+                                    <div class="hrmis-kv__v">
+                                        <t t-esc="earned_leave_balance"/> days
+                                    </div>
+                                </div>
+                            </div>
                             <div class="hrmis-table">
                                 <div class="hrmis-table__head">
                                     <div>Leave type</div>

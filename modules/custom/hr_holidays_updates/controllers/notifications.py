@@ -6,7 +6,6 @@ from odoo.http import request
 from .utils import base_ctx
 
 
-
 class HrmisNotificationsController(http.Controller):
     @http.route(["/hrmis/notifications"], type="http", auth="user", website=True)
     def hrmis_notifications_page(self, **kw):

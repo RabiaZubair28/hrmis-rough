@@ -108,15 +108,56 @@
                             </div>
 
                             <!-- Cadre / Designation -->
-                            <div class="hrmis-field">
+                            <!-- <div class="hrmis-field">
                                 <label>Cadre<span class="req">*</span></label>
+                                <t t-set="current_cadre" t-value="req.hrmis_cadre or current_employee.hrmis_cadre"/>
                                 <select class="hrmis-input" name="hrmis_cadre" required="required">
                                     <option value="">Select</option>
-                                    <option value="anesthesia" t-att-selected="req.hrmis_cadre == 'anesthesia' or current_employee.hrmis_cadre == 'anesthesia'">Anesthesia</option>
-                                    <option value="public_health" t-att-selected="req.hrmis_cadre == 'public_health' or current_employee.hrmis_cadre == 'public_health'">Public Health</option>
-                                    <option value="medical" t-att-selected="req.hrmis_cadre == 'medical' or current_employee.hrmis_cadre == 'medical'">Medical</option>
+                                    <t t-foreach="env['hrmis.cadre'].search([], order='name')" t-as="cadre">
+                                        <option t-att-value="cadre.id"
+                                                t-att-selected="current_cadre and current_cadre.id == cadre.id">
+                                            <t t-esc="cadre.name"/>
+                                        </option>
+                                    </t>
                                 </select>
                             </div>
+ -->
+                                                        
+                            <!-- Cadre -->
+                            <div class="hrmis-field">
+                                <label>Cadre<span class="req">*</span></label>
+
+                                <!-- Set current_cadre for template -->
+                                <t t-set="current_cadre" t-value="req.hrmis_cadre or current_employee.hrmis_cadre"/>
+
+                                <select class="hrmis-input js-cadre-select" name="hrmis_cadre" required="required">
+                                    <option value="">Select</option>
+                                    <t t-foreach="env['hrmis.cadre'].search([], order='name')" t-as="cadre">
+                                        <option t-att-value="cadre.id"
+                                                t-att-selected="current_cadre and current_cadre.id == cadre.id">
+                                            <t t-esc="cadre.name"/>
+                                        </option>
+                                    </t>
+                                    <option t-att-value="'other'"
+                                            t-att-selected="current_cadre and current_cadre.name not in [c.name for c in env['hrmis.cadre'].search([])]">
+                                        Other
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Specify Other -->
+                            <div class="hrmis-field js-cadre-other d-none">
+                                <label>Specify Cadre<span class="req">*</span></label>
+                                <input type="text"
+                                    class="hrmis-input"
+                                    name="hrmis_cadre_other"
+                                    t-att-value="current_cadre and current_cadre.name not in [c.name for c in env['hrmis.cadre'].search([])] and current_cadre.name or ''"
+                                    placeholder="Enter your cadre"/>
+                            </div>
+
+
+
+
 
                             <div class="hrmis-field">
                                 <label>Designation<span class="req">*</span></label>

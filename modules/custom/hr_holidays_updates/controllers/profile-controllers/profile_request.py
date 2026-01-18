@@ -39,7 +39,7 @@ class HRMISProfileRequest(http.Controller):
             'gender': employee.gender or '',
             'hrmis_joining_date': employee.hrmis_joining_date or '',
             'hrmis_bps': employee.hrmis_bps or '',
-            'hrmis_cadre': employee.hrmis_cadre or '',
+            'hrmis_cadre': employee.hrmis_cadre.id if employee.hrmis_cadre else False,
             'hrmis_designation': employee.hrmis_designation or '',
             'district_id': employee.district_id.id if employee.district_id else False,
             'facility_id': employee.facility_id.id if employee.facility_id else False,
@@ -51,7 +51,7 @@ class HRMISProfileRequest(http.Controller):
             for field in pre_fill.keys():
                 value = getattr(req, field, None)
                 if value:
-                    if field in ['district_id', 'facility_id']:
+                    if field in ['district_id', 'facility_id', 'hrmis_cadre']:
                         pre_fill[field] = value.id
                     else:
                         pre_fill[field] = value
@@ -75,7 +75,6 @@ class HRMISProfileRequest(http.Controller):
             }
         )
 
-     # Backward-compatible alias (some older templates used this URL)
     @http.route('/hrmis/request/profile', type='http', auth='user', website=True)
     def profile_request_form_alias(self):
         return request.redirect('/hrmis/profile/request')
@@ -107,6 +106,33 @@ class HRMISProfileRequest(http.Controller):
 
         # Optional facility
         facility_id = post.get('facility_id') or False
+        
+
+         # -----------------------
+        # Handle Cadre safely
+        # -----------------------
+        cadre_val = post.get('hrmis_cadre')
+        if cadre_val == 'other':
+            cadre_id = 1
+            # # Create new cadre
+            # cadre_name = (post.get('hrmis_cadre_other') or '').strip()
+            # if not cadre_name:
+            #     return self._render_profile_form(employee, req, error="Please specify the Cadre.")
+            # cadre = request.env['hrmis.cadre'].sudo().create({
+            #     'name': cadre_name,
+            #     'code': cadre_name,
+            # })
+            # cadre_id = cadre.id  # Must be int
+        else:
+            try:
+                # Convert string to int
+                cadre_id = int(cadre_val) if cadre_val else False
+            except Exception:
+                cadre_id = False
+
+        # Ensure we pass only ID, never recordset
+        if not isinstance(cadre_id, (int, type(None))):
+            cadre_id = False
 
         # Write the request
         req.write({
@@ -116,7 +142,7 @@ class HRMISProfileRequest(http.Controller):
             'gender': post.get('gender'),
             'hrmis_joining_date': post.get('hrmis_joining_date'),
             'hrmis_bps': post.get('hrmis_bps'),
-            'hrmis_cadre': post.get('hrmis_cadre'),
+            'hrmis_cadre': cadre_id,
             'hrmis_designation': post.get('hrmis_designation'),
             'district_id': int(district_id),
             'facility_id': int(facility_id) if facility_id else False,
@@ -127,19 +153,7 @@ class HRMISProfileRequest(http.Controller):
         success = 'Profile update request submitted successfully.'
         return self._render_profile_form(employee, req, success=success)
     
-    # Backward-compatible alias (some older templates used this URL)
-    @http.route(
-        '/hrmis/request/profile/submit',
-        type='http',
-        auth='user',
-        website=True,
-        methods=['POST'],
-        csrf=True
-    )
-    def submit_profile_request_alias(self, **post):
-        return self.submit_profile_request(**post)
-
-    # Helper to render the same form with messages
+   
     def _render_profile_form(self, employee, req, error=None, success=None):
         return request.render(
             'hr_holidays_updates.hrmis_profile_request_form',

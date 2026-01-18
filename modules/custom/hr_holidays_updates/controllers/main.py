@@ -8,6 +8,8 @@ import re
 import json
 import base64
 from urllib.parse import quote_plus
+from odoo.http import Response
+
 
 from odoo import http, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -412,6 +414,12 @@ class HrmisLeaveFrontendController(http.Controller):
             # Avoid exposing other employees' leave UI to normal users
             return request.redirect("/hrmis/services?error=not_allowed")
 
+        # Ensure allocations exist for this employee so balances display correctly.
+        try:
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+        except Exception:
+            pass
+
         # Show leave types allowed by the same rules used in the backend UI.
         dt_leave = _safe_date(kw.get("date_from"))
         leave_types = _dedupe_leave_types_for_ui(
@@ -461,6 +469,12 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.make_response(
                 json.dumps(payload), headers=[("Content-Type", "application/json")]
             )
+
+        # Ensure allocations exist for this employee so balances display correctly.
+        try:
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+        except Exception:
+            pass
 
         d_from = _safe_date(kw.get("date_from"))
         leave_types = _dedupe_leave_types_for_ui(
@@ -865,18 +879,29 @@ class HrmisProfileRequestController(http.Controller):
     @http.route("/hrmis/profile/request", type="http", auth="user", website=True, methods=["GET"], csrf=False)
     def hrmis_profile_request_form(self, **kw):
         user = request.env.user
-        # `user.employee_id` may be `hr.employee.public` for non-HR users; resolve the real employee via sudo.
         employee = request.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
         if not employee:
             return request.render("hr_holidays_updates.hrmis_error", {"error": "No employee linked to your user."})
 
         ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
+
         req = ProfileRequest.search(
             [("employee_id", "=", employee.id), ("state", "in", ["draft", "submitted"])], limit=1
         )
-        if not req:
-            req = ProfileRequest.create({"employee_id": employee.id, "user_id": user.id, "state": "draft"})
 
+        if not req:
+            approver = employee.parent_id
+            req = ProfileRequest.create({
+                "employee_id": employee.id,
+                "user_id": user.id,
+                "approver_id": approver.id if approver else False,
+                "state": "draft",
+                "hrmis_cadre": employee.hrmis_cadre.id if employee.hrmis_cadre else False,
+                "district_id": employee.district_id.id if employee.district_id else False,
+                "facility_id": employee.facility_id.id if employee.facility_id else False,
+            })
+
+        # Pre-fill dictionary (for form rendering)
         pre_fill = {
             "hrmis_employee_id": employee.hrmis_employee_id or "",
             "hrmis_cnic": employee.hrmis_cnic or "",
@@ -884,20 +909,12 @@ class HrmisProfileRequestController(http.Controller):
             "gender": employee.gender or "",
             "hrmis_joining_date": employee.hrmis_joining_date or "",
             "hrmis_bps": employee.hrmis_bps or "",
-            "hrmis_cadre": employee.hrmis_cadre or "",
+            "hrmis_cadre": req.hrmis_cadre.id if req.hrmis_cadre else False,  # ✅ ID only
             "hrmis_designation": employee.hrmis_designation or "",
-            "district_id": employee.district_id.id if employee.district_id else False,
-            "facility_id": employee.facility_id.id if employee.facility_id else False,
+            "district_id": req.district_id.id if req.district_id else False,
+            "facility_id": req.facility_id.id if req.facility_id else False,
             "hrmis_contact_info": employee.hrmis_contact_info or "",
         }
-        if req:
-            for field in list(pre_fill.keys()):
-                value = getattr(req, field, None)
-                if value:
-                    if field in ["district_id", "facility_id"]:
-                        pre_fill[field] = value.id
-                    else:
-                        pre_fill[field] = value
 
         info = None
         if getattr(req, "state", "") == "submitted":
@@ -920,6 +937,8 @@ class HrmisProfileRequestController(http.Controller):
                 info=info,
             ),
         )
+
+
 
     @http.route(
         "/hrmis/profile/request/submit",
@@ -978,7 +997,34 @@ class HrmisProfileRequestController(http.Controller):
                     error="Please complete the following fields before submitting:\n• " + "\n• ".join(missing),
                 ),
             )
+        
+        # -----------------------
+        # Handle Cadre safely
+        # -----------------------
+        cadre_val = post.get('hrmis_cadre')
+        if cadre_val == 'other':
+            cadre_id = 1
+            # # Create new cadre
+            # cadre_name = (post.get('hrmis_cadre_other') or '').strip()
+            # if not cadre_name:
+            #     return self._render_profile_form(employee, req, error="Please specify the Cadre.")
+            # cadre = request.env['hrmis.cadre'].sudo().create({
+            #     'name': cadre_name,
+            #     'code': cadre_name,
+            # })
+            # cadre_id = cadre.id  # Must be int
+        else:
+            try:
+                # Convert string to int
+                cadre_id = int(cadre_val) if cadre_val else False
+            except Exception:
+                cadre_id = False
 
+        # Ensure we pass only ID, never recordset
+        if not isinstance(cadre_id, (int, type(None))):
+            cadre_id = False
+
+        approver = employee.parent_id
         req.write(
             {
                 "hrmis_employee_id": post.get("hrmis_employee_id"),
@@ -987,11 +1033,12 @@ class HrmisProfileRequestController(http.Controller):
                 "gender": post.get("gender"),
                 "hrmis_joining_date": post.get("hrmis_joining_date"),
                 "hrmis_bps": int(post.get("hrmis_bps")),
-                "hrmis_cadre": post.get("hrmis_cadre"),
+                "hrmis_cadre": cadre_id,
                 "hrmis_designation": post.get("hrmis_designation"),
                 "district_id": int(post.get("district_id")),
                 "facility_id": int(post.get("facility_id")),
                 "hrmis_contact_info": post.get("hrmis_contact_info"),
+                "approver_id": approver.id if approver else False,
                 "state": "submitted",
             }
         )
@@ -1012,81 +1059,276 @@ class HrmisProfileRequestController(http.Controller):
 
 class HrmisProfileUpdateRequests(http.Controller):
 
+
+        
+    def _is_parent_approver(self, user, req):
+        """
+        Parent (manager) of employee is the approver
+        """
+        parent = req.employee_id.parent_id
+        return bool(parent and parent.user_id and parent.user_id.id == user.id)
+    
     @http.route('/hrmis/profile-update-requests', type='http', auth='user', website=True)
     def profile_update_requests(self, **kwargs):
         # Only admin and HR Manager can access
-        if not request.env.user.has_group('hr.group_hr_manager') and not request.env.user.has_group('base.group_system'):
-            return request.render('hrmis_ui.access_denied')  # optional page
+        user = request.env.user
 
-        # Fetch profile update requests
+        is_admin = user.has_group('base.group_system')
+        is_hr_manager = user.has_group('hr.group_hr_manager')
+
         ProfileRequest = request.env['hrmis.employee.profile.request'].sudo()
-        requests = ProfileRequest.search([], order='create_date desc')
 
-        # Prepare display data (only changed / important fields)
+        # -------------------------------------------------
+        # DATA VISIBILITY
+        # -------------------------------------------------
+        if is_admin or is_hr_manager:
+            # HR / Admin → see all
+            requests = ProfileRequest.search([], order='create_date desc')
+        else:
+            # Approver → only assigned requests
+            requests = ProfileRequest.search(
+                [('approver_id.user_id', '=', user.id)],
+                order='create_date desc'
+            )
+
+        # -------------------------------------------------
+        # PREPARE DISPLAY DATA
+        # -------------------------------------------------
         requests_for_display = []
+
         for req in requests:
             changes = []
-            if req.hrmis_employee_id != (req.employee_id.hrmis_employee_id or ''):
+
+            emp = req.employee_id
+
+            if req.hrmis_employee_id != (emp.hrmis_employee_id or ''):
                 changes.append(f"Employee ID: {req.hrmis_employee_id}")
-            if req.hrmis_cnic != (req.employee_id.hrmis_cnic or ''):
+
+            if req.hrmis_cnic != (emp.hrmis_cnic or ''):
                 changes.append(f"CNIC: {req.hrmis_cnic}")
-            if req.hrmis_father_name != (req.employee_id.hrmis_father_name or ''):
+
+            if req.hrmis_father_name != (emp.hrmis_father_name or ''):
                 changes.append(f"Father Name: {req.hrmis_father_name}")
-            if req.hrmis_bps != (req.employee_id.hrmis_bps or 0):
+
+            if req.hrmis_bps != (emp.hrmis_bps or 0):
                 changes.append(f"BPS: {req.hrmis_bps}")
-            if req.hrmis_designation != (req.employee_id.hrmis_designation or ''):
+
+            if req.hrmis_designation != (emp.hrmis_designation or ''):
                 changes.append(f"Designation: {req.hrmis_designation}")
-            # Add more fields as needed
 
             requests_for_display.append({
                 'id': req.id,
-                'employee_name': req.employee_id.name,
+                'employee_name': emp.name,
                 'state': req.state,
                 'create_date': req.create_date,
                 'changes': changes,
+                'is_my_request': req.user_id.id == user.id,
+                'is_my_approval': req.approver_id.user_id.id == user.id if req.approver_id else False,
             })
 
-        return request.render('hr_holidays_updates.hrmis_profile_update_requests', {
-            'profile_update_requests': requests_for_display
-        })
+        return request.render(
+            'hr_holidays_updates.hrmis_profile_update_requests',
+            {
+                'profile_update_requests': requests_for_display,
+                'is_admin': is_admin,
+                'is_hr_manager': is_hr_manager,
+            }
+        )
 
     @http.route(
-        '/hrmis/profile/request/view/<int:request_id>',
-        type='http',
-        auth='user',
-        website=True
+    '/hrmis/profile/request/view/<int:request_id>',
+    type='http',
+    auth='user',
+    website=True
     )
     def profile_update_request_view(self, request_id, **kw):
 
+        user = request.env.user
         req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
 
         if not req.exists():
             return request.not_found()
 
-        # Access control
-        if not (
-            request.env.user.has_group('hr.group_hr_manager')
-            or request.env.user == req.user_id
-        ):
+        # ------------------------------------------------
+        # ACCESS CONTROL
+        # ------------------------------------------------
+        is_admin = user.has_group('base.group_system')
+        is_hr = user.has_group('hr.group_hr_manager')
+        is_owner = user.id == req.user_id.id
+        is_parent_approver = self._is_parent_approver(user, req)
+
+        can_approve = (
+            req.state in ('draft', 'submitted')
+            and (
+                request.env.user.has_group('hr.group_hr_manager')
+                or request.env.user.has_group('base.group_system')
+                or req._is_parent_approver()
+            )
+        )
+        if not (is_admin or is_hr or is_owner or is_parent_approver):
             return request.not_found()
 
         return request.render(
-            'hr_holidays_updates.hrmis_profile_update_request_view',
+            "hr_holidays_updates.hrmis_profile_update_request_view",
             {
-                'req': req,
-                'back_url': '/hrmis/profile-update-requests',
-            }
+                "req": req,
+                "districts": request.env["hrmis.district.master"].sudo().search([]),
+                "facilities": request.env["hrmis.facility.type"].sudo().search([]),
+                "cadres": request.env["hrmis.cadre"].sudo().search([]),
+                "back_url": "/hrmis/profile-update-requests",
+                "can_approve": can_approve,
+            },
         )
-    
-    @http.route('/hrmis/profile/request/approve/<int:request_id>', type='http', auth='user', website=True)
-    def profile_request_approve(self, request_id):
+
+
+
+
+
+    # @http.route('/hrmis/profile/request/approve/<int:request_id>', type='http', auth='user', website=True)
+    # def profile_request_approve(self, request_id):
+
+    #     user = request.env.user
+    #     req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
+
+    #     if not req.exists():
+    #         return request.not_found()
+
+    #     # ------------------------------------------------
+    #     # ACCESS CONTROL
+    #     # ------------------------------------------------
+    #     is_admin = user.has_group('base.group_system')
+    #     is_hr = user.has_group('hr.group_hr_manager')
+    #     is_parent_approver = self._is_parent_approver(user, req)
+
+    #     # ❗ ONLY parent can approve (HR/Admin optional view-only)
+    #     if not is_parent_approver:
+    #         return request.redirect(
+    #             f"/hrmis/profile/request/view/{req.id}?error=You are not allowed to approve this request."
+    #         )
+
+    #     # ------------------------------------------------
+    #     # STATE PROTECTION
+    #     # ------------------------------------------------
+    #     if req.state != 'submitted':
+    #         return request.redirect('/hrmis/profile-update-requests')
+
+    #     # ------------------------------------------------
+    #     # ACTION (SAFE)
+    #     # ------------------------------------------------
+    #     try:
+    #         req.action_approve()
+    #     except Exception as e:
+    #         return request.redirect(
+    #             f"/hrmis/profile/request/view/{req.id}?error={str(e)}"
+    #         )
+
+    #     return request.redirect('/hrmis/profile-update-requests')
+
+
+    @http.route('/hrmis/profile/request/approve/<int:request_id>', type='http', auth='user', website=True, methods=['POST', 'GET'])
+    def profile_request_approve(self, request_id, **post):
+        user = request.env.user
         req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
-        req.action_approve()
+        if not req.exists():
+            return request.not_found()
+
+        # Access control: parent or admin
+        is_admin = user.has_group('base.group_system')
+        is_parent_approver = self._is_parent_approver(user, req)
+
+        if not (is_parent_approver or is_admin):
+            return request.redirect(
+                f"/hrmis/profile/request/view/{req.id}?error=You are not allowed to approve this request."
+            )
+
+        # ------------------------------------------------
+        # GET → show editable approval form
+        # ------------------------------------------------
+        if request.httprequest.method == 'GET':
+            return request.render(
+                'hr_holidays_updates.hrmis_profile_request_approve_form',
+                {
+                    'req': req,
+                    'back_url': '/hrmis/profile-update-requests',
+                    'districts': request.env['hrmis.district.master'].sudo().search([]),
+                    'facilities': request.env['hrmis.facility.type'].sudo().search([]),
+                    'cadres': request.env['hrmis.cadre'].sudo().search([]),
+                }
+            )
+
+        # ------------------------------------------------
+        # POST → manager edits request data
+        # ------------------------------------------------
+        def m2o(val):
+            try:
+                return int(val)
+            except Exception:
+                return False
+
+        # ✅ ONLY update request fields here
+        req.write({
+            'hrmis_employee_id': post.get('hrmis_employee_id'),
+            'hrmis_cnic': post.get('hrmis_cnic'),
+            'hrmis_father_name': post.get('hrmis_father_name'),
+            'gender': post.get('gender'),
+            'hrmis_joining_date': post.get('hrmis_joining_date'),
+            'hrmis_bps': int(post.get('hrmis_bps') or 0),
+            'hrmis_cadre': m2o(post.get('hrmis_cadre')),
+            'hrmis_designation': post.get('hrmis_designation'),
+            'district_id': m2o(post.get('district_id')),
+            'facility_id': m2o(post.get('facility_id')),
+            'hrmis_contact_info': post.get('hrmis_contact_info'),
+            'state': 'submitted',
+        })
+
+        if req.state != 'submitted':
+            return request.redirect('/hrmis/profile-update-requests')
+        try:
+            req.action_approve()
+        except Exception as e:
+            return request.redirect(
+                f"/hrmis/profile/request/view/{req.id}?error={str(e)}"
+            )
+
         return request.redirect('/hrmis/profile-update-requests')
+
+
+
 
 
     @http.route('/hrmis/profile/request/reject/<int:request_id>', type='http', auth='user', website=True)
     def profile_request_reject(self, request_id):
+
+        user = request.env.user
         req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
-        req.action_reject()
+
+        if not req.exists():
+            return request.not_found()
+
+        # ------------------------------------------------
+        # ACCESS CONTROL
+        # ------------------------------------------------
+        is_parent_approver = self._is_parent_approver(user, req)
+
+        if not is_parent_approver:
+            return request.redirect(
+                f"/hrmis/profile/request/view/{req.id}?error=You are not allowed to reject this request."
+            )
+
+        # ------------------------------------------------
+        # STATE PROTECTION
+        # ------------------------------------------------
+        if req.state != 'submitted':
+            return request.redirect('/hrmis/profile-update-requests')
+
+        # ------------------------------------------------
+        # ACTION (SAFE)
+        # ------------------------------------------------
+        try:
+            req.action_reject()
+        except Exception as e:
+            return request.redirect(
+                f"/hrmis/profile/request/view/{req.id}?error={str(e)}"
+            )
+
         return request.redirect('/hrmis/profile-update-requests')
