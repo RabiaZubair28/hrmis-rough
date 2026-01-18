@@ -48,14 +48,14 @@ class HrEmployee(models.Model):
                 continue
 
             # Business definition:
-            # Total leave balance starts from 365 days and is reduced ONLY by the
+            # Total leave balance starts from Earned Leave Balance and is reduced ONLY by the
             # following leave types:
             # - Full deduction (effective days, excluding holidays/weekends):
             #   Study Leave (Full Pay), LPR, Ex-Pakistan (Full Pay), Earned Leave (Full Pay)
             # - Half deduction (effective days * 0.5):
             #   Leave on Half Pay, Study Leave (Half Pay), Ex-Pakistan (Half Pay)
             # All other leave types do NOT affect total leave balance.
-            base_total = 365.0
+            base_total = float(getattr(emp, "earned_leave_balance", 0.0) or 0.0)
 
             # Resolve leave types (ignore if not present on this DB).
             full_types = [
