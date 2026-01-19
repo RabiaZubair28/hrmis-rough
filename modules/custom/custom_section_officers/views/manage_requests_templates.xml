@@ -50,11 +50,12 @@
                             <div class="hrmis-empty">No leave requests pending your action.</div>
                         </t>
                         <t t-else="">
-                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 36px 2.2fr 1.2fr 160px 1.6fr 2.4fr; column-gap: 12px; align-items: start;'"/>
+                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 36px 2.0fr 130px 1.1fr 160px 1.6fr 2.4fr; column-gap: 12px; align-items: start;'"/>
                             <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table"
                                  t-att-style="grid + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
                                 <div style="width:36px; max-width:36px;">#</div>
                                 <div>Staff / Facility / District</div>
+                                <div>Total Leave Balance</div>
                                 <div>Leave Type</div>
                                 <div>Submitted On</div>
                                 <div>Dates</div>
@@ -83,6 +84,11 @@
                                     <!-- Leave Type -->
                                     <div class="hrmis-leave-row__cell">
                                         <t t-esc="lv.holiday_status_id.name"/>
+                                    </div>
+
+                                    <!-- Total Leave Balance -->
+                                    <div class="hrmis-leave-row__cell">
+                                        <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
                                     </div>
 
                                     <!-- Submitted On -->
@@ -171,6 +177,12 @@
                 <div class="hrmis-panel__body">
                     <div style="margin-bottom: 12px; font-weight: 600;">
                         History for: <t t-esc="employee.name"/>
+                        <t t-if="facility_name">, <t t-esc="facility_name"/></t>
+                        <t t-if="district_name">, <t t-esc="district_name"/></t>
+                        <span style="margin-left: 12px;">
+                            Total Leave Balance:
+                            <t t-esc="employee.employee_leave_balance_total or 0.0"/> days
+                        </span>
                     </div>
 
                     <t t-if="tab == 'leave'">
@@ -178,13 +190,14 @@
                             <div class="hrmis-empty">No leave history found for this employee.</div>
                         </t>
                         <t t-else="">
-                            <t t-set="grid_hist" t-value="'display:grid; grid-template-columns: 2fr 170px 1.2fr 1.2fr 1fr; column-gap: 12px; align-items: start;'"/>
+                            <t t-set="grid_hist" t-value="'display:grid; grid-template-columns: 1.6fr 170px 1.1fr 1.1fr 0.9fr 1fr; column-gap: 12px; align-items: start;'"/>
                             <div class="hrmis-table__head"
                                  t-att-style="grid_hist + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
                                 <div>Leave Type</div>
                                 <div>Submitted On</div>
                                 <div>From</div>
                                 <div>To</div>
+                                <div>Leave Taken</div>
                                 <div>Status</div>
                             </div>
                             <t t-foreach="leaves_history" t-as="lv">
@@ -193,6 +206,9 @@
                                     <div><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
                                     <div><t t-esc="lv.request_date_from or ''"/></div>
                                     <div><t t-esc="lv.request_date_to or ''"/></div>
+                                    <div>
+                                        <t t-esc="(leave_taken_by_type.get(lv.holiday_status_id.id, 0.0) if lv.holiday_status_id else 0.0)"/>
+                                    </div>
                                     <div>
                                         <t t-if="lv.state in ('confirm','validate1')">Pending</t>
                                         <t t-elif="lv.state in ('validate','validate2')">Approved</t>

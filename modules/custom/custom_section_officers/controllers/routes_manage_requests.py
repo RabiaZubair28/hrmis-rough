@@ -432,6 +432,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             pass
 
         leaves_history = request.env["hr.leave"].sudo().browse([])
+        leave_taken_by_type = {}
         if tab == "leave":
             leaves_history = request.env["hr.leave"].sudo().search(
                 [
@@ -442,6 +443,39 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 limit=300,
             )
 
+            # "Leave Taken": sum approved leaves per leave type for this person.
+            approved = request.env["hr.leave"].sudo().search(
+                [
+                    ("employee_id", "in", emp_ids),
+                    ("state", "in", ("validate", "validate2")),
+                ]
+            )
+            days_field = "number_of_days" if "number_of_days" in approved._fields else None
+            if days_field:
+                for lv in approved:
+                    lt = lv.holiday_status_id
+                    if not lt:
+                        continue
+                    leave_taken_by_type[lt.id] = float(leave_taken_by_type.get(lt.id, 0.0) + (getattr(lv, days_field) or 0.0))
+
+        # Facility/District display (best-effort across schemas)
+        facility_name = ""
+        district_name = ""
+        try:
+            if "facility_id" in emp._fields and emp.facility_id:
+                facility_name = emp.facility_id.name or ""
+            elif "hrmis_facility_id" in emp._fields and emp.hrmis_facility_id:
+                facility_name = emp.hrmis_facility_id.name or ""
+        except Exception:
+            facility_name = ""
+        try:
+            if "district_id" in emp._fields and emp.district_id:
+                district_name = emp.district_id.name or ""
+            elif "hrmis_district_id" in emp._fields and emp.hrmis_district_id:
+                district_name = emp.hrmis_district_id.name or ""
+        except Exception:
+            district_name = ""
+
         return request.render(
             "custom_section_officers.hrmis_manage_history",
             base_ctx(
@@ -450,6 +484,9 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 tab=tab,
                 employee=emp,
                 leaves_history=leaves_history,
+                leave_taken_by_type=leave_taken_by_type,
+                facility_name=facility_name,
+                district_name=district_name,
             ),
         )
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
