@@ -54,7 +54,7 @@
                             <div class="hrmis-empty">No leave requests pending your action.</div>
                         </t>
                         <t t-else="">
-                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.0fr 130px 1.1fr 100px 100px 3.0fr; column-gap: 12px; align-items: start;'"/>
+                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.0fr 130px 1.1fr 160px 120px 170px 140px; column-gap: 12px; align-items: start;'"/>
                             <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table"
                                  t-att-style="grid + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
                                 <div style="width:36px; max-width:36px;">#</div>
@@ -62,8 +62,9 @@
                                 <div>Total Leave Balance</div>
                                 <div>Submitted On</div>
                                 <div>Leave Type</div>
+                                <div>Leave Taken</div>
                                 <div>Dates</div>
-                                <div style="white-space: nowrap;">Comments / Actions</div>
+                                <div style="white-space: nowrap;">Action</div>
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]" />
@@ -85,11 +86,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Leave Type -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.holiday_status_id.name"/>
-                                    </div>
-
                                     <!-- Total Leave Balance -->
                                     <div class="hrmis-leave-row__cell">
                                         <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
@@ -98,6 +94,17 @@
                                     <!-- Submitted On -->
                                     <div class="hrmis-leave-row__cell">
                                         <t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/>
+                                    </div>
+
+                                    <!-- Leave Type -->
+                                    <div class="hrmis-leave-row__cell">
+                                        <t t-esc="lv.holiday_status_id.name"/>
+                                    </div>
+
+                                    <!-- Leave Taken (this employee + this leave type) -->
+                                    <div class="hrmis-leave-row__cell">
+                                        <t t-set="emp_taken" t-value="(leave_taken_map.get(lv.employee_id.id, {}) if lv.employee_id else {})"/>
+                                        <t t-esc="(emp_taken.get(lv.holiday_status_id.id, 0.0) if lv.holiday_status_id else 0.0)"/>
                                     </div>
 
                                     <!-- Dates -->
@@ -113,30 +120,115 @@
                                         </t>
                                     </div>
 
-                                    <!-- COMMENTS + ACTIONS -->
+                                    <!-- ACTIONS -->
                                     <div class="hrmis-leave-row__actions" style="display:grid; gap:8px;">
+                                        <button type="button"
+                                                class="hrmis-btn hrmis-btn--outline"
+                                                t-att-data-bs-target="'#hrmis-proceed-%s' % lv.id"
+                                                data-bs-toggle="modal"
+                                                style="width: fit-content;">
+                                            Proceed
+                                        </button>
+                                    </div>
+                                </div>
 
-                                       
-
-                                        <!-- Previous approvers comments -->
-                                        <t t-if="lv.message_ids and len(lv.message_ids)">
-                                            <div class="hrmis-comments" style="padding:4px 0; max-height:120px; overflow-y:auto; border-bottom:1px solid #eee;">
-                                                <t t-foreach="lv.message_ids" t-as="msg">
-                                                    <div class="hrmis-comment" style="font-size:12px; line-height:1.3; margin-bottom:4px;">
-                                                        <strong><t t-esc="msg.author_id.name"/></strong>:
-                                                        <t t-esc="msg.body"/>
-                                                    </div>
-                                                </t>
+                                <!-- Proceed Modal -->
+                                <div class="modal fade" t-att-id="'hrmis-proceed-%s' % lv.id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                                        <div class="modal-content" style="border:2px solid #2a2f31;">
+                                            <div class="modal-header" style="background:#064526; color:#fff;">
+                                                <h5 class="modal-title" style="font-weight:900;">Leave Request Details</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
-                                        </t>
 
-                                        <a class="hrmis-btn hrmis-btn--outline"
-                                           style="width: fit-content;">
-                                           Proceed
-                                        </a>
+                                            <div class="modal-body" style="font-size:14px;">
+                                                <t t-set="emp_taken" t-value="(leave_taken_map.get(lv.employee_id.id, {}) if lv.employee_id else {})"/>
+                                                <div class="hrmis-kv">
+                                                    <div class="hrmis-kv__row">
+                                                        <div class="hrmis-kv__k">Starting Date</div>
+                                                        <div class="hrmis-kv__v"><t t-esc="from_txt"/></div>
+                                                    </div>
+                                                    <div class="hrmis-kv__row">
+                                                        <div class="hrmis-kv__k">Ending Date</div>
+                                                        <div class="hrmis-kv__v"><t t-esc="to_txt"/></div>
+                                                    </div>
+                                                    <div class="hrmis-kv__row">
+                                                        <div class="hrmis-kv__k">Leave Type</div>
+                                                        <div class="hrmis-kv__v"><t t-esc="lv.holiday_status_id.name"/></div>
+                                                    </div>
+                                                    <div class="hrmis-kv__row">
+                                                        <div class="hrmis-kv__k">Total Leave Balance</div>
+                                                        <div class="hrmis-kv__v">
+                                                            <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
+                                                        </div>
+                                                    </div>
+                                                    <div class="hrmis-kv__row">
+                                                        <div class="hrmis-kv__k">Leave Taken</div>
+                                                        <div class="hrmis-kv__v">
+                                                            <t t-esc="(emp_taken.get(lv.holiday_status_id.id, 0.0) if lv.holiday_status_id else 0.0)"/>
+                                                        </div>
+                                                    </div>
+                                                    <div class="hrmis-kv__row">
+                                                        <div class="hrmis-kv__k">Remarks</div>
+                                                        <div class="hrmis-kv__v"><t t-esc="lv.name or ''"/></div>
+                                                    </div>
+                                                </div>
 
+                                                <div style="margin-top:14px;">
+                                                    <div style="font-weight:900; margin-bottom:6px;">Supporting Documents</div>
+                                                    <t t-set="docs" t-value="('supported_attachment_ids' in lv._fields and lv.supported_attachment_ids) or (('attachment_ids' in lv._fields and lv.attachment_ids) or [])"/>
+                                                    <t t-if="docs and len(docs)">
+                                                        <t t-foreach="docs" t-as="doc">
+                                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid #eee;">
+                                                                <div style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                                                    <t t-esc="doc.name"/>
+                                                                </div>
+                                                                <div style="display:flex; gap:8px; flex:0 0 auto;">
+                                                                    <a class="hrmis-btn hrmis-btn--outline" target="_blank" t-att-href="'/web/content/%s?download=0' % doc.id">View</a>
+                                                                    <a class="hrmis-btn hrmis-btn--primary" t-att-href="'/web/content/%s?download=1' % doc.id">Download</a>
+                                                                </div>
+                                                            </div>
+                                                        </t>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <div class="hrmis-empty" style="padding:10px 0;">No supporting documents.</div>
+                                                    </t>
+                                                </div>
 
+                                                <div style="margin-top:14px;">
+                                                    <div style="font-weight:900; margin-bottom:6px;">Previous Comments</div>
+                                                    <t t-if="lv.message_ids and len(lv.message_ids)">
+                                                        <div class="hrmis-comments" style="padding:4px 0; max-height:180px; overflow-y:auto; border-bottom:1px solid #eee;">
+                                                            <t t-foreach="lv.message_ids" t-as="msg">
+                                                                <div class="hrmis-comment" style="font-size:12px; line-height:1.3; margin-bottom:4px;">
+                                                                    <strong><t t-esc="msg.author_id.name"/></strong>:
+                                                                    <t t-esc="msg.body"/>
+                                                                </div>
+                                                            </t>
+                                                        </div>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <div class="hrmis-empty" style="padding:10px 0;">No previous comments.</div>
+                                                    </t>
+                                                </div>
 
+                                                <div style="margin-top:14px;">
+                                                    <div style="font-weight:900; margin-bottom:6px;">Add New Comment</div>
+                                                    <form t-att-action="'/hrmis/leave/%s/approve' % lv.id" method="post">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <textarea name="comment" rows="3"
+                                                                  style="width:100%; border:1px solid #cfd7da; border-radius:6px; padding:10px;"
+                                                                  placeholder="Add comment..."></textarea>
+                                                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+                                                            <button type="button" class="hrmis-btn hrmis-btn--outline" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="hrmis-btn hrmis-btn--primary">
+                                                                <t t-esc="('Approve' if show_approve_map.get(lv.id) else 'Forward')"/>
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                              
