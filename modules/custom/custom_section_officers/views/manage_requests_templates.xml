@@ -90,7 +90,7 @@
                                 <div class="hrmis-leave-row hrmis-manage-table__row"
                                      t-att-style="grid + 'font-size: 12px;'"
                                      t-att-data-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
-                                     t-att-onclick="'window.location.href=\\'/hrmis/manage/history/%s?tab=leave\\'' % (lv.employee_id.id)"
+                                     t-attf-onclick="window.location.href='/hrmis/manage/history/{{ lv.employee_id.id }}?tab=leave'"
                                      style="cursor:pointer;">
                                     <!-- Serial Number -->
                                     <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:36px; max-width:36px;">
