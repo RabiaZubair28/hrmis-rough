@@ -16,6 +16,49 @@ from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
+    def _employee_group_ids_for_person(self, employee):
+        """
+        Best-effort: return all hr.employee ids that represent the same person.
+
+        This matches the behavior used in the History page, so totals like
+        "Leave Taken" don't appear wrong when leave requests are attached to
+        different employee rows for the same user/service number.
+        """
+        if not employee:
+            return []
+        Emp = request.env["hr.employee"].sudo()
+        emp_ids = [employee.id]
+        try:
+            if getattr(employee, "user_id", False):
+                emp_ids = Emp.search([("user_id", "=", employee.user_id.id)]).ids or emp_ids
+            elif "hrmis_employee_id" in employee._fields and employee.hrmis_employee_id:
+                emp_ids = Emp.search([("hrmis_employee_id", "=", employee.hrmis_employee_id)]).ids or emp_ids
+        except Exception:
+            return emp_ids
+        return emp_ids
+
+    def _leave_days_value(self, leave) -> float:
+        """
+        Best-effort leave days value.
+        Prefer Odoo computed fields if available; fall back to calendar-day count.
+        """
+        if not leave:
+            return 0.0
+        for f in ("number_of_days_display", "number_of_days"):
+            try:
+                if f in leave._fields:
+                    v = getattr(leave, f, 0.0) or 0.0
+                    return float(v)
+            except Exception:
+                continue
+        try:
+            d_from = getattr(leave, "request_date_from", None)
+            d_to = getattr(leave, "request_date_to", None)
+            if d_from and d_to:
+                return float((d_to - d_from).days + 1)
+        except Exception:
+            pass
+        return 0.0
     def _section_officer_employee_ids(self):
         """Return hr.employee ids linked to current user.
 
@@ -201,18 +244,35 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "/hrmis/manage/requests?tab=leave&error=Leave Not Found"
             )
 
+        action = (post.get("action") or "approve").strip().lower()
         comment = (post.get("comment") or "").strip() or None
 
         try:
-            # --------------------------------------------------
-            # Delegate EVERYTHING to the model
-            # This enforces:
-            # - sequential / parallel rules
-            # - approval_step correctness
-            # - pending approver validation
-            # - final validation
-            # --------------------------------------------------
-            leave.action_approve_by_user(comment=comment)
+            if action == "dismiss":
+                # Best-effort: post comment then refuse.
+                if comment:
+                    try:
+                        leave.sudo().message_post(
+                            body=comment,
+                            message_type="comment",
+                            subtype_xmlid="mail.mt_comment",
+                            author_id=request.env.user.partner_id.id,
+                        )
+                    except Exception:
+                        pass
+
+                rec = leave.with_user(request.env.user)
+                if hasattr(rec, "action_refuse"):
+                    rec.action_refuse()
+                elif hasattr(rec, "action_reject"):
+                    rec.action_reject()
+                else:
+                    leave.sudo().write({"state": "refuse"})
+            else:
+                # --------------------------------------------------
+                # Delegate approval to the model (sequential/parallel aware)
+                # --------------------------------------------------
+                leave.action_approve_by_user(comment=comment)
 
         except UserError as e:
             # Expected authorization / workflow errors
@@ -228,7 +288,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             )
 
         return request.redirect(
-            "/hrmis/manage/requests?tab=leave&success=approved"
+            "/hrmis/manage/requests?tab=leave&success=%s" % ("dismissed" if action == "dismiss" else "approved")
         )
 
     @http.route(
@@ -374,7 +434,66 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         # leaves_debug = None
         tab = "leave"
 
-       
+        # ------------------------------------------------------------------
+        # Extra UI data for Manage Requests (Section Officer):
+        # - Leave taken per leave type for that employee
+        # - Supporting documents (attachments) for each leave
+        # ------------------------------------------------------------------
+        leave_taken_by_leave_id = {}
+        attachments_by_leave_id = {}
+        try:
+            if leaves:
+                leave_ids = leaves.ids
+                type_ids = leaves.mapped("holiday_status_id").ids
+
+                # Leave taken: sum approved leaves by (person, leave type).
+                # Use per-record sum (reliable across DBs where number_of_days is not stored)
+                # and include duplicate employee rows for the same person.
+                Emp = request.env["hr.employee"].sudo()
+                root_emp_ids = leaves.mapped("employee_id").ids
+                emp_id_to_root = {}
+                all_person_emp_ids = set()
+                for emp in Emp.browse(root_emp_ids):
+                    grp = self._employee_group_ids_for_person(emp)
+                    for e_id in grp:
+                        emp_id_to_root[e_id] = emp.id
+                        all_person_emp_ids.add(e_id)
+
+                taken_by_root_type = {}
+                if all_person_emp_ids and type_ids:
+                    approved = request.env["hr.leave"].sudo().search(
+                        [
+                            ("employee_id", "in", list(all_person_emp_ids)),
+                            ("holiday_status_id", "in", type_ids),
+                            ("state", "in", ("validate", "validate2")),
+                        ],
+                        order="id desc",
+                    )
+                    for alv in approved:
+                        root_id = emp_id_to_root.get(alv.employee_id.id, alv.employee_id.id)
+                        lt_id = alv.holiday_status_id.id if alv.holiday_status_id else None
+                        if not lt_id:
+                            continue
+                        taken_by_root_type[(root_id, lt_id)] = float(
+                            taken_by_root_type.get((root_id, lt_id), 0.0) + self._leave_days_value(alv)
+                        )
+
+                for lv in leaves:
+                    root_id = emp_id_to_root.get(lv.employee_id.id, lv.employee_id.id) if lv.employee_id else None
+                    lt_id = lv.holiday_status_id.id if lv.holiday_status_id else None
+                    leave_taken_by_leave_id[lv.id] = float(taken_by_root_type.get((root_id, lt_id), 0.0))
+
+                # Supporting documents: all attachments linked to the leave record.
+                Att = request.env["ir.attachment"].sudo()
+                atts = Att.search(
+                    [("res_model", "=", "hr.leave"), ("res_id", "in", leave_ids)],
+                    order="id desc",
+                )
+                for att in atts:
+                    attachments_by_leave_id.setdefault(att.res_id, Att.browse([]))
+                    attachments_by_leave_id[att.res_id] |= att
+        except Exception:
+            _logger.exception("Failed preparing Manage Requests UI data")
 
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -383,6 +502,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
+                leave_taken_by_leave_id=leave_taken_by_leave_id,
+                attachments_by_leave_id=attachments_by_leave_id,
                 success=success,
                 error=error,
             ),
