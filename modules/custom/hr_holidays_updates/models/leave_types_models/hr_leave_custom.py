@@ -76,9 +76,50 @@ class HrLeave(models.Model):
                 months -= 1
             rec.earned_leave_balance = max(0, months) * 4.0
 
+    def _hrmis_sandwich_weekend_days(self, day_from: date, day_to: date) -> int:
+        """
+        "Sandwich rule" for weekends:
+
+        Count Sat/Sun that fall strictly between the first and last weekday (Mon-Fri)
+        inside the requested period. This means weekend days at the edges of the
+        request are NOT counted, only the weekend(s) "in the middle".
+        """
+        if not day_from or not day_to or day_to <= day_from:
+            return 0
+
+        # Find first/last weekday in the range (Mon-Fri).
+        cur = day_from
+        first_weekday = None
+        while cur <= day_to:
+            if cur.weekday() < 5:
+                first_weekday = cur
+                break
+            cur = cur + relativedelta(days=1)
+
+        cur = day_to
+        last_weekday = None
+        while cur >= day_from:
+            if cur.weekday() < 5:
+                last_weekday = cur
+                break
+            cur = cur - relativedelta(days=1)
+
+        if not first_weekday or not last_weekday or first_weekday >= last_weekday:
+            return 0
+
+        # Count weekend days strictly between first_weekday and last_weekday.
+        total = 0
+        cur = first_weekday + relativedelta(days=1)
+        while cur < last_weekday:
+            if cur.weekday() >= 5:
+                total += 1
+            cur = cur + relativedelta(days=1)
+        return int(total)
+
     def _hrmis_effective_days(self, employee, day_from: date, day_to: date) -> float:
         """
-        Effective leave days, excluding weekends/holidays where possible.
+        Effective leave days, excluding weekends/holidays where possible,
+        but applying the "sandwich rule" for weekends.
 
         Uses Odoo's calendar-based computation when available, so public holidays
         and non-working days are excluded. Falls back to counting Mon-Fri.
@@ -91,27 +132,41 @@ class HrLeave(models.Model):
         dt_from = datetime.combine(day_from, time.min)
         dt_to = datetime.combine(day_to, time.max)
 
+        base_days = 0.0
+
         get_days = getattr(self, "_get_number_of_days", None)
         if callable(get_days):
             try:
                 days = get_days(dt_from, dt_to, employee.id)
-                return float(days or 0.0)
+                base_days = float(days or 0.0)
             except TypeError:
                 try:
                     days = get_days(dt_from, dt_to, employee)
-                    return float(days or 0.0)
+                    base_days = float(days or 0.0)
                 except Exception:
                     pass
             except Exception:
                 pass
 
-        cur = day_from
-        total = 0
-        while cur <= day_to:
-            if cur.weekday() < 5:
-                total += 1
-            cur = cur + relativedelta(days=1)
-        return float(total)
+        if not base_days:
+            cur = day_from
+            total = 0
+            while cur <= day_to:
+                if cur.weekday() < 5:
+                    total += 1
+                cur = cur + relativedelta(days=1)
+            base_days = float(total)
+
+        # Sandwich rule: if the leave spans across a weekend (Sat/Sun) that is
+        # strictly between weekdays inside the request, count those weekend days too.
+        sandwich = 0
+        # Avoid applying the sandwich rule to partial-day durations.
+        if abs(base_days - round(base_days)) < 1e-6:
+            sandwich = self._hrmis_sandwich_weekend_days(day_from, day_to)
+
+        # Never exceed the inclusive calendar-day span.
+        calendar_days = (day_to - day_from).days + 1
+        return float(min(base_days + float(sandwich or 0), float(calendar_days)))
 
     def _compute_number_of_days(self):
         """

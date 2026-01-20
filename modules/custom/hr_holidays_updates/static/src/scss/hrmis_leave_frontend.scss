@@ -362,11 +362,30 @@
   background: #d6e2e6;
   color: #1b1f20;
   font-weight: 600;
+  position: relative; /* for nav badge positioning */
 }
 .hrmis-nav__item.is-active {
   background: linear-gradient(180deg, #064526 0%, #064526 100%);
   color: #fff;
   border-color: #064526;
+}
+
+.hrmis-nav__badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #c92222;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #064526;
 }
 
 .hrmis-powered {

@@ -374,7 +374,46 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         # leaves_debug = None
         tab = "leave"
 
-       
+        # Pre-compute "leave taken" for each (employee, leave type) shown on the page.
+        # This is used both for the table column and for the Proceed modal.
+        leave_taken_map = {}
+        show_approve_map = {}
+        try:
+            emp_ids = [e.id for e in leaves.mapped("employee_id") if e]
+            type_ids = [t.id for t in leaves.mapped("holiday_status_id") if t]
+
+            # Determine if current user is the final approver (show "Approve" vs "Forward").
+            for lv in leaves:
+                show_approve = False
+                try:
+                    pending = getattr(lv, "pending_approver_ids", request.env["hr.leave"].browse([]))
+                    pending = pending.sorted(key=lambda r: r.id)
+                    show_approve = bool(pending and pending[-1].user_id.id == request.env.user.id)
+                except Exception:
+                    show_approve = False
+                show_approve_map[lv.id] = show_approve
+
+            if emp_ids and type_ids:
+                Leave = request.env["hr.leave"].sudo()
+                approved = Leave.search(
+                    [
+                        ("employee_id", "in", emp_ids),
+                        ("holiday_status_id", "in", type_ids),
+                        ("state", "in", ("validate", "validate2")),
+                    ]
+                )
+                days_field = "number_of_days" if "number_of_days" in approved._fields else (
+                    "number_of_days_display" if "number_of_days_display" in approved._fields else None
+                )
+                for lv in approved:
+                    if not lv.employee_id or not lv.holiday_status_id:
+                        continue
+                    days = float(getattr(lv, days_field) or 0.0) if days_field else 0.0
+                    emp_bucket = leave_taken_map.setdefault(lv.employee_id.id, {})
+                    emp_bucket[lv.holiday_status_id.id] = float(emp_bucket.get(lv.holiday_status_id.id, 0.0) + days)
+        except Exception:
+            leave_taken_map = {}
+            show_approve_map = {}
 
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -383,6 +422,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
+                leave_taken_map=leave_taken_map,
+                show_approve_map=show_approve_map,
                 success=success,
                 error=error,
             ),
