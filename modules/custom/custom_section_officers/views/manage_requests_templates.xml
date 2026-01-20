@@ -6,13 +6,17 @@
         <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                href="/hrmis/manage/requests?tab=leave">
-                Manage Requests
+                Leave Requests
+                <t t-if="pending_manage_leave_count and pending_manage_leave_count &gt; 0">
+                    <span class="hrmis-nav__badge2"><t t-esc="pending_manage_leave_count"/></span>
+                </t>
             </a>
+
             </t>
               <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
             <a t-attf-class="hrmis-nav__item" 
                href="#">
-                Initiate Disciplinary Actions
+                Disciplinary Actions
                 </a>
             </t>
             <t t-if="
@@ -62,22 +66,22 @@
                                 <div style="white-space: nowrap;">Comments / Actions</div>
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
-                                <t t-set="lv" t-value="leaves[idx0]"/>
+                                <t t-set="lv" t-value="leaves[idx0]" />
                                 <div class="hrmis-leave-row hrmis-manage-table__row"
-                                     t-att-style="grid + 'font-size: 12px;'">
+                                     t-att-style="grid + 'font-size: 12px;'"  t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;">
                                     <!-- Serial Number -->
                                     <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:36px; max-width:36px;">
-                                        <t t-esc="idx0 + 1"/>
+                                        <t t-esc="idx0 + 1" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
                                     </div>
 
                                     <!-- Employee / Facility / District -->
                                     <div class="hrmis-leave-row__cell">
                                         <div class="strong">
-                                            <t t-esc="lv.employee_id.name"/>,
-                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
+                                            <t t-esc="lv.employee_id.name" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;" />,
+                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
                                         </div>
                                         <div class="sub">
-                                            <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
+                                            <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;" />
                                         </div>
                                     </div>
 
@@ -98,7 +102,15 @@
 
                                     <!-- Dates -->
                                     <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.request_date_from"/> to <t t-esc="lv.request_date_to"/>
+                                        <t t-set="d_from" t-value="lv.request_date_from"/>
+                                        <t t-set="d_to" t-value="lv.request_date_to"/>
+                                        <t t-set="days_count" t-value="(d_to and d_from and ((d_to - d_from).days + 1)) or 0"/>
+                                        <t t-set="from_txt" t-value="(d_from and ('%s-%s-%s' % (d_from.day, d_from.month, d_from.year))) or ''"/>
+                                        <t t-set="to_txt" t-value="(d_to and ('%s-%s-%s' % (d_to.day, d_to.month, d_to.year))) or ''"/>
+                                        <t t-esc="from_txt"/> to <t t-esc="to_txt"/>
+                                        <t t-if="days_count">
+                                            (<t t-esc="days_count"/> <t t-esc="'day' if days_count == 1 else 'days'"/>)
+                                        </t>
                                     </div>
 
                                     <!-- COMMENTS + ACTIONS -->
@@ -118,36 +130,16 @@
                                             </div>
                                         </t>
 
-                                        <form t-att-action="'/hrmis/leave/%s/action' % lv.id"
-                                            method="post"
-                                            style="display:flex; gap:8px; align-items:center;">
-                                            <input type="text" name="comment"
-                                                placeholder="Add comment..."
-                                                style="flex:1; height:32px; border:1px solid #cfd7da; border-radius:4px; padding:0 8px;"/>
-                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                            <input type="hidden" name="action" value="approve"/>
-
-                                            <button type="submit" class="hrmis-btn hrmis-btn--primary"
-                                                    onclick="this.form.action.value = show_approve_text ? 'approve' : 'forward';">
-                                                <t t-esc="show_approve_text and 'Approve' or 'Forward'"/>
-                                            </button>
-
-
-                                            <button type="submit" class="hrmis-btn hrmis-btn--outline"
-                                                    onclick="this.form.action.value='dismiss';">
-                                                Dismiss
-                                            </button>
-                                        </form>
+                                        <a class="hrmis-btn hrmis-btn--outline"
+                                           style="width: fit-content;">
+                                           Proceed
+                                        </a>
 
 
 
                                     </div>
                                 </div>
-                                 <a class="hrmis-btn hrmis-btn--outline"
-                                           style="width: fit-content;"
-                                           t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)">
-                                            Go to History
-                                        </a>
+                             
                             </t>
                         </t>
                     </t>
