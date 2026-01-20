@@ -374,7 +374,63 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         # leaves_debug = None
         tab = "leave"
 
-       
+        # ------------------------------------------------------------------
+        # Extra UI data for Manage Requests (Section Officer):
+        # - Leave taken per leave type for that employee
+        # - Supporting documents (attachments) for each leave
+        # ------------------------------------------------------------------
+        leave_taken_by_leave_id = {}
+        attachments_by_leave_id = {}
+        try:
+            if leaves:
+                leave_ids = leaves.ids
+                emp_ids = leaves.mapped("employee_id").ids
+                type_ids = leaves.mapped("holiday_status_id").ids
+
+                # Leave taken: sum approved leaves by (employee, leave type).
+                taken_by_emp_type = {}
+                Leave = request.env["hr.leave"].sudo()
+                day_field = None
+                for f in ("number_of_days", "number_of_days_display"):
+                    if f in Leave._fields:
+                        day_field = f
+                        break
+
+                if emp_ids and type_ids and day_field:
+                    groups = Leave.read_group(
+                        [
+                            ("employee_id", "in", emp_ids),
+                            ("holiday_status_id", "in", type_ids),
+                            ("state", "in", ("validate", "validate2")),
+                        ],
+                        [day_field],
+                        ["employee_id", "holiday_status_id"],
+                    )
+                    for g in groups:
+                        e = g.get("employee_id")
+                        t = g.get("holiday_status_id")
+                        emp_id = e[0] if isinstance(e, (list, tuple)) and e else None
+                        lt_id = t[0] if isinstance(t, (list, tuple)) and t else None
+                        if not emp_id or not lt_id:
+                            continue
+                        taken_by_emp_type[(emp_id, lt_id)] = float(g.get(day_field) or 0.0)
+
+                for lv in leaves:
+                    emp_id = lv.employee_id.id if lv.employee_id else None
+                    lt_id = lv.holiday_status_id.id if lv.holiday_status_id else None
+                    leave_taken_by_leave_id[lv.id] = float(taken_by_emp_type.get((emp_id, lt_id), 0.0))
+
+                # Supporting documents: all attachments linked to the leave record.
+                Att = request.env["ir.attachment"].sudo()
+                atts = Att.search(
+                    [("res_model", "=", "hr.leave"), ("res_id", "in", leave_ids)],
+                    order="id desc",
+                )
+                for att in atts:
+                    attachments_by_leave_id.setdefault(att.res_id, Att.browse([]))
+                    attachments_by_leave_id[att.res_id] |= att
+        except Exception:
+            _logger.exception("Failed preparing Manage Requests UI data")
 
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -383,6 +439,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
+                leave_taken_by_leave_id=leave_taken_by_leave_id,
+                attachments_by_leave_id=attachments_by_leave_id,
                 success=success,
                 error=error,
             ),
