@@ -7,6 +7,9 @@
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                href="/hrmis/manage/requests?tab=leave">
                 Manage Requests
+                <t t-if="pending_manage_leave_count and pending_manage_leave_count &gt; 0">
+                    <span class="hrmis-nav__badge"><t t-esc="pending_manage_leave_count"/></span>
+                </t>
             </a>
             </t>
               <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
@@ -98,7 +101,15 @@
 
                                     <!-- Dates -->
                                     <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.request_date_from"/> to <t t-esc="lv.request_date_to"/>
+                                        <t t-set="d_from" t-value="lv.request_date_from"/>
+                                        <t t-set="d_to" t-value="lv.request_date_to"/>
+                                        <t t-set="days_count" t-value="(d_to and d_from and ((d_to - d_from).days + 1)) or 0"/>
+                                        <t t-set="from_txt" t-value="(d_from and ('%s-%s-%s' % (d_from.day, d_from.month, d_from.year))) or ''"/>
+                                        <t t-set="to_txt" t-value="(d_to and ('%s-%s-%s' % (d_to.day, d_to.month, d_to.year))) or ''"/>
+                                        <t t-esc="from_txt"/> to <t t-esc="to_txt"/>
+                                        <t t-if="days_count">
+                                            (<t t-esc="days_count"/> <t t-esc="'day' if days_count == 1 else 'days'"/>)
+                                        </t>
                                     </div>
 
                                     <!-- COMMENTS + ACTIONS -->
