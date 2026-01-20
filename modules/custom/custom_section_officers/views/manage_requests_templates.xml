@@ -88,7 +88,10 @@
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]" />
                                 <div class="hrmis-leave-row hrmis-manage-table__row"
-                                     t-att-style="grid + 'font-size: 12px;'"  t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;">
+                                     t-att-style="grid + 'font-size: 12px;'"
+                                     t-att-data-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                     t-att-onclick="'window.location.href=\\'/hrmis/manage/history/%s?tab=leave\\'' % (lv.employee_id.id)"
+                                     style="cursor:pointer;">
                                     <!-- Serial Number -->
                                     <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:36px; max-width:36px;">
                                         <t t-esc="idx0 + 1" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
@@ -97,11 +100,23 @@
                                     <!-- Employee / Facility / District -->
                                     <div class="hrmis-leave-row__cell">
                                         <div class="strong">
-                                            <t t-esc="lv.employee_id.name" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;" />,
-                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none;">
+                                                <t t-esc="lv.employee_id.name"/>
+                                            </a>,
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none;">
+                                                <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
+                                            </a>
                                         </div>
                                         <div class="sub">
-                                            <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;" />
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none;">
+                                                <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
+                                            </a>
                                         </div>
                                     </div>
 
@@ -140,6 +155,18 @@
 
                                     <!-- COMMENTS + ACTIONS -->
                                     <div class="hrmis-leave-row__actions" style="display:grid; gap:8px;">
+
+                                        <!-- Previous approvers comments (keep visible in list) -->
+                                        <t t-if="lv.message_ids and len(lv.message_ids)">
+                                            <div class="hrmis-comments" style="padding:4px 0; max-height:120px; overflow-y:auto; border-bottom:1px solid #eee;">
+                                                <t t-foreach="lv.message_ids" t-as="msg">
+                                                    <div class="hrmis-comment" style="font-size:12px; line-height:1.3; margin-bottom:4px;">
+                                                        <strong><t t-esc="msg.author_id.name"/></strong>:
+                                                        <t t-esc="msg.body"/>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </t>
 
                                         <a class="hrmis-btn hrmis-btn--outline"
                                            style="width: fit-content;"
@@ -250,13 +277,21 @@
                                               method="post"
                                               class="hrmis-modal__section">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <input type="hidden" name="action" value="approve"/>
                                             <div class="hrmis-modal__label" style="margin-bottom:6px;">Add New Comment</div>
                                             <textarea class="hrmis-input hrmis-input--wide"
                                                       name="comment"
                                                       rows="3"
                                                       placeholder="Add new comment..."></textarea>
                                             <div class="hrmis-modal__actions">
-                                                <button class="hrmis-btn hrmis-btn--primary" type="submit">Forward</button>
+                                                <button class="hrmis-btn hrmis-btn--primary" type="submit"
+                                                        onclick="this.form.action.value='approve';">
+                                                    Forward
+                                                </button>
+                                                <button type="submit" class="hrmis-btn hrmis-btn--outline"
+                                                        onclick="this.form.action.value='dismiss';">
+                                                    Dismiss
+                                                </button>
                                             </div>
                                         </form>
                                     </div>
