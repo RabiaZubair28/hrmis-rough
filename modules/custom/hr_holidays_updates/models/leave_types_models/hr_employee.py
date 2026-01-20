@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import math
 
 from odoo import api, fields, models
 
@@ -40,34 +41,77 @@ class HrEmployee(models.Model):
         """
         Keep depends simple (avoid missing-field depends during module load).
         """
-        Allocation = self.env["hr.leave.allocation"].sudo()
         Leave = self.env["hr.leave"].sudo()
-
-        alloc_days_field = "number_of_days" if "number_of_days" in Allocation._fields else None
-        leave_days_field = "number_of_days" if "number_of_days" in Leave._fields else None
 
         for emp in self:
             if not emp:
                 emp.employee_leave_balance_total = 0.0
                 continue
 
-            # Ensure allocations exist for this employee so balance isn't 0/0.
-            try:
-                self.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(emp)
-            except Exception:
-                pass
+            # Business definition:
+            # Total leave balance starts from Earned Leave Balance and is reduced ONLY by the
+            # following leave types:
+            # - Full deduction (effective days, excluding holidays/weekends):
+            #   Study Leave (Full Pay), LPR, Ex-Pakistan (Full Pay), Earned Leave (Full Pay)
+            # - Half deduction (effective days * 0.5):
+            #   Leave on Half Pay, Study Leave (Half Pay), Ex-Pakistan (Half Pay)
+            # All other leave types do NOT affect total leave balance.
+            base_total = float(getattr(emp, "earned_leave_balance", 0.0) or 0.0)
 
-            allocated = 0.0
-            taken = 0.0
+            # Resolve leave types (ignore if not present on this DB).
+            full_types = [
+                self.env.ref("hr_holidays_updates.leave_type_study_full_pay", raise_if_not_found=False),
+                self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False),
+                self.env.ref("hr_holidays_updates.leave_type_ex_pakistan_full_pay", raise_if_not_found=False),
+                self.env.ref("hr_holidays_updates.leave_type_earned_full_pay", raise_if_not_found=False),
+            ]
+            half_types = [
+                self.env.ref("hr_holidays_updates.leave_type_half_pay", raise_if_not_found=False),
+                self.env.ref("hr_holidays_updates.leave_type_study_half_pay", raise_if_not_found=False),
+                self.env.ref("hr_holidays_updates.leave_type_ex_pakistan_half_pay", raise_if_not_found=False),
+            ]
+            full_ids = {lt.id for lt in full_types if lt}
+            half_ids = {lt.id for lt in half_types if lt}
 
-            if alloc_days_field:
-                allocs = Allocation.search([("employee_id", "=", emp.id), ("state", "=", "validate")])
-                allocated = sum(allocs.mapped(alloc_days_field)) or 0.0
+            if not full_ids and not half_ids:
+                emp.employee_leave_balance_total = base_total
+                continue
 
-            if leave_days_field:
-                leaves = Leave.search([("employee_id", "=", emp.id), ("state", "in", ("validate", "validate1", "validate2"))])
-                taken = sum(leaves.mapped(leave_days_field)) or 0.0
+            # Count validated and in-approval leaves (matches previous behavior).
+            leaves = Leave.search(
+                [
+                    ("employee_id", "=", emp.id),
+                    ("state", "in", ("validate", "validate1", "validate2")),
+                    ("holiday_status_id", "in", list(full_ids | half_ids)),
+                ]
+            )
 
-            emp.employee_leave_balance_total = allocated - taken
+            def _date_range(lv):
+                d_from = None
+                d_to = None
+                if "request_date_from" in lv._fields and "request_date_to" in lv._fields:
+                    d_from = fields.Date.to_date(getattr(lv, "request_date_from", None))
+                    d_to = fields.Date.to_date(getattr(lv, "request_date_to", None))
+                if (not d_from or not d_to) and "date_from" in lv._fields and "date_to" in lv._fields:
+                    dt_from = fields.Datetime.to_datetime(getattr(lv, "date_from", None))
+                    dt_to = fields.Datetime.to_datetime(getattr(lv, "date_to", None))
+                    d_from = dt_from.date() if dt_from else d_from
+                    d_to = dt_to.date() if dt_to else d_to
+                return d_from, d_to
+
+            deducted = 0.0
+            for lv in leaves:
+                d_from, d_to = _date_range(lv)
+                if not d_from or not d_to:
+                    continue
+                # Reuse the hr.leave helper that excludes holidays/weekends where possible.
+                eff = float(Leave._hrmis_effective_days(emp, d_from, d_to) or 0.0) if hasattr(Leave, "_hrmis_effective_days") else float((d_to - d_from).days + 1)
+                if lv.holiday_status_id and lv.holiday_status_id.id in half_ids:
+                    # Upper-bound half (e.g., 9 -> 5).
+                    deducted += float(math.ceil(eff / 2.0))
+                else:
+                    deducted += eff
+
+            emp.employee_leave_balance_total = base_total - deducted
     
  

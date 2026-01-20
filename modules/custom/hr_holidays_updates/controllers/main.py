@@ -26,7 +26,7 @@ def _safe_int(v, default=None):
 
 _DATE_DMY_RE = re.compile(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$")
 _OVERLAP_ERR_RE = re.compile(r"(overlap|overlapping|already\s+taken|conflict)", re.IGNORECASE)
-_OVERLAP_FRIENDLY_MSG = "Leave already taken for this duration"
+_OVERLAP_FRIENDLY_MSG = "this leave request is overlapping with existing leave"
 _EXISTING_DAY_MSG = "You cannot take existing day's leave"
 
 
@@ -197,9 +197,89 @@ def _leave_pending_for_current_user(leave) -> bool:
 
 def _allowed_leave_type_domain(employee, request_date_from=None):
     """
-    No eligibility restrictions: show all leave types.
+    Eligibility restrictions for the HRMIS website dropdown.
+
+    Current rules:
+    - Maternity Leave is visible only for female employees.
+    - Maternity Leave is hidden after 3 approved maternity leaves.
+    - LPR Leave is hidden after 1 approved LPR leave.
     """
-    return []
+    domain = []
+    try:
+        maternity = request.env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+        lpr = request.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        # Some deployments use `gender`, others use `hrmis_gender`. Keep both.
+        gender = getattr(employee, "gender", False) or getattr(employee, "hrmis_gender", False)
+
+        Leave = request.env["hr.leave"].sudo()
+        approved_states = ("validate", "validate2")
+
+        maternity_taken = 0
+        if maternity:
+            maternity_taken = Leave.search_count(
+                [
+                    ("employee_id", "=", employee.id),
+                    ("holiday_status_id", "=", maternity.id),
+                    ("state", "in", approved_states),
+                ]
+            )
+
+        lpr_taken = 0
+        if lpr:
+            lpr_taken = Leave.search_count(
+                [
+                    ("employee_id", "=", employee.id),
+                    ("holiday_status_id", "=", lpr.id),
+                    ("state", "in", approved_states),
+                ]
+            )
+
+        # Maternity visibility rules
+        if maternity:
+            if not gender or gender != "female":
+                domain.append(("id", "!=", maternity.id))
+            elif maternity_taken >= 3:
+                domain.append(("id", "!=", maternity.id))
+
+        # LPR visibility rules
+        if lpr:
+            if lpr_taken >= 1:
+                domain.append(("id", "!=", lpr.id))
+            else:
+                # Date eligibility: only allow applying for LPR within the employee's
+                # age 59-60 window (based on DOB).
+                try:
+                    from dateutil.relativedelta import relativedelta
+
+                    dob = None
+                    # Common DOB fields across deployments
+                    for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
+                        if f in getattr(employee, "_fields", {}):
+                            dob = fields.Date.to_date(getattr(employee, f, None))
+                            if dob:
+                                break
+                        else:
+                            # Best-effort fallback for non-standard attrs
+                            dob = fields.Date.to_date(getattr(employee, f, None))
+                            if dob:
+                                break
+
+                    req_dt = _safe_date(request_date_from) if request_date_from else None
+                    if not dob or not req_dt:
+                        # No DOB or no requested start date: hide to avoid invalid requests.
+                        domain.append(("id", "!=", lpr.id))
+                    else:
+                        start_allowed = dob + relativedelta(years=59)
+                        end_exclusive = dob + relativedelta(years=60)
+                        if not (start_allowed <= req_dt < end_exclusive):
+                            domain.append(("id", "!=", lpr.id))
+                except Exception:
+                    # If we can't compute eligibility, keep LPR visible (constraint will still enforce).
+                    pass
+    except Exception:
+        # Never break the form because of an eligibility rule.
+        pass
+    return domain
 
 
 def _leave_types_for_employee(employee, request_date_from=None):
@@ -416,7 +496,10 @@ class HrmisLeaveFrontendController(http.Controller):
 
         # Ensure allocations exist for this employee so balances display correctly.
         try:
-            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
+            # Use the selected date to ensure future-year allocations exist so
+            # balances do not show "0 remaining out of 0".
+            dt_leave = _safe_date(kw.get("date_from"))
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee, target_date=dt_leave)
         except Exception:
             pass
 
@@ -462,42 +545,45 @@ class HrmisLeaveFrontendController(http.Controller):
         Small helper endpoint for the custom UI: returns allowed leave types
         for a given employee and start date.
         """
-        employee_id = _safe_int(kw.get("employee_id"))
-        employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
-        if not employee or not _can_manage_employee_leave(employee):
-            payload = {"ok": False, "error": "not_allowed", "leave_types": []}
-            return request.make_response(
-                json.dumps(payload), headers=[("Content-Type", "application/json")]
-            )
-
-        # Ensure allocations exist for this employee so balances display correctly.
         try:
-            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee)
-        except Exception:
-            pass
+            employee_id = _safe_int(kw.get("employee_id"))
+            employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
+            if not employee or not _can_manage_employee_leave(employee):
+                return self._json({"ok": False, "error": "not_allowed", "leave_types": []}, status=200)
 
-        d_from = _safe_date(kw.get("date_from"))
-        leave_types = _dedupe_leave_types_for_ui(
-            _leave_types_for_employee(employee, request_date_from=d_from)
-        )
-        payload = {
-            "ok": True,
-            "leave_types": [
-                {
-                    "id": lt.id,
-                    # Use display_name which includes balances in context
-                    # (e.g. "Casual Leave (2 remaining out of 2 days)").
-                    "name": lt.display_name,
-                    # No leave-type conditions: keep fields optional for UI compatibility.
-                    "support_document": bool(getattr(lt, "support_document", False)),
-                    "support_document_note": getattr(lt, "support_document_note", "") or "",
-                }
-                for lt in leave_types
-            ],
-        }
-        return request.make_response(
-            json.dumps(payload), headers=[("Content-Type", "application/json")]
-        )
+            d_from = _safe_date(kw.get("date_from"))
+
+            # Ensure allocations exist for this employee so balances display correctly.
+            try:
+                request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(
+                    employee, target_date=d_from
+                )
+            except Exception:
+                # Keep the endpoint stable; balances might be 0/0 but the UI must still work.
+                pass
+
+            leave_types = _dedupe_leave_types_for_ui(
+                _leave_types_for_employee(employee, request_date_from=d_from)
+            )
+            payload = {
+                "ok": True,
+                "leave_types": [
+                    {
+                        "id": lt.id,
+                        # Use display_name which includes balances in context
+                        # (e.g. "Casual Leave (2 remaining out of 2 days)").
+                        "name": lt.display_name,
+                        # Keep fields optional for UI compatibility.
+                        "support_document": bool(getattr(lt, "support_document", False)),
+                        "support_document_note": getattr(lt, "support_document_note", "") or "",
+                    }
+                    for lt in leave_types
+                ],
+            }
+            return self._json(payload, status=200)
+        except Exception:
+            _logger.exception("HRMIS leave types API failed")
+            return self._json({"ok": False, "error": "leave_types_failed", "leave_types": []}, status=200)
 
     @http.route(
         ["/hrmis/api/leave/approvers"],
@@ -512,96 +598,110 @@ class HrmisLeaveFrontendController(http.Controller):
         Return the configured approval chain for a leave type so the custom UI
         can show the approvers list immediately when a leave type is selected.
         """
-        employee_id = _safe_int(kw.get("employee_id"))
-        leave_type_id = _safe_int(kw.get("leave_type_id"))
+        try:
+            employee_id = _safe_int(kw.get("employee_id"))
+            leave_type_id = _safe_int(kw.get("leave_type_id"))
 
-        employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
-        if not employee or not _can_manage_employee_leave(employee):
-            payload = {"ok": False, "error": "not_allowed", "steps": []}
-            return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
+            employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
+            if not employee or not _can_manage_employee_leave(employee):
+                return self._json({"ok": False, "error": "not_allowed", "steps": []}, status=200)
 
-        lt = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
-        if not lt:
-            payload = {"ok": False, "error": "invalid_leave_type", "steps": []}
-            return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
+            lt = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
+            if not lt:
+                return self._json({"ok": False, "error": "invalid_leave_type", "steps": []}, status=200)
 
-        # Prefer explicit custom flows when configured.
-        Flow = request.env["hr.leave.approval.flow"].sudo()
-        flows = Flow.search([("leave_type_id", "=", lt.id)], order="sequence")
+            # Prefer explicit custom flows when configured.
+            Flow = request.env["hr.leave.approval.flow"].sudo()
+            flows = Flow.search([("leave_type_id", "=", lt.id)], order="sequence")
 
-        def _user_info(user):
-            info = {
-                "user_id": user.id,
-                "name": user.name,
-                "job_title": "",
-                "department": "",
-            }
-            # Best-effort: enrich with employee info when available
-            emp = getattr(user, "employee_id", False)
-            if emp:
-                info["job_title"] = (getattr(emp, "job_title", False) or (getattr(emp, "job_id", False) and emp.job_id.name) or "") or ""
-                info["department"] = (getattr(emp, "department_id", False) and emp.department_id.name) or ""
-            return info
+            def _user_info(user):
+                info = {
+                    "user_id": user.id,
+                    "name": user.name,
+                    "job_title": "",
+                    "department": "",
+                }
+                # Best-effort: enrich with employee info when available
+                emp = getattr(user, "employee_id", False)
+                if emp:
+                    info["job_title"] = (
+                        getattr(emp, "job_title", False)
+                        or (getattr(emp, "job_id", False) and emp.job_id.name)
+                        or ""
+                    ) or ""
+                    info["department"] = (
+                        (getattr(emp, "department_id", False) and emp.department_id.name) or ""
+                    )
+                return info
 
-        steps = []
-        if flows:
-            for flow in flows:
+            steps = []
+            if flows:
+                for flow in flows:
+                    approvers = []
+                    if getattr(flow, "approver_line_ids", False):
+                        ordered = flow.approver_line_ids.sorted(lambda l: (l.sequence, l.id))
+                        for line in ordered:
+                            u = line.user_id
+                            if not u:
+                                continue
+                            approvers.append(
+                                {
+                                    "sequence": line.sequence,
+                                    "sequence_type": line.sequence_type or (flow.mode or "sequential"),
+                                    "bps_from": getattr(line, "bps_from", 0),
+                                    "bps_to": getattr(line, "bps_to", 999),
+                                    **_user_info(u),
+                                }
+                            )
+                    else:
+                        # Legacy fallback on the flow itself
+                        for idx, u in enumerate(
+                            (flow.approver_ids or request.env["res.users"]).sorted(lambda r: r.id),
+                            start=1,
+                        ):
+                            approvers.append(
+                                {
+                                    "sequence": idx * 10,
+                                    "sequence_type": flow.mode or "sequential",
+                                    **_user_info(u),
+                                }
+                            )
+                    if approvers:
+                        steps.append({"step": flow.sequence, "approvers": approvers})
+
+            # If no flows are configured, use the leave-type validators list (OpenHRMS).
+            if (
+                not steps
+                and getattr(lt, "leave_validation_type", False) == "multi"
+                and getattr(lt, "validator_ids", False)
+            ):
+                validators = lt.validator_ids.sorted(lambda v: (getattr(v, "sequence", 10), v.id))
                 approvers = []
-                if getattr(flow, "approver_line_ids", False):
-                    ordered = flow.approver_line_ids.sorted(lambda l: (l.sequence, l.id))
-                    for line in ordered:
-                        u = line.user_id
-                        if not u:
-                            continue
-                        approvers.append(
-                            {
-                                "sequence": line.sequence,
-                                "sequence_type": line.sequence_type or (flow.mode or "sequential"),
-                                "bps_from": getattr(line, "bps_from", 0),
-                                "bps_to": getattr(line, "bps_to", 999),
-                                **_user_info(u),
-                            }
-                        )
-                else:
-                    # Legacy fallback on the flow itself
-                    for idx, u in enumerate((flow.approver_ids or request.env["res.users"]).sorted(lambda r: r.id), start=1):
-                        approvers.append(
-                            {
-                                "sequence": idx * 10,
-                                "sequence_type": flow.mode or "sequential",
-                                **_user_info(u),
-                            }
-                        )
+                for v in validators:
+                    u = getattr(v, "user_id", False)
+                    if not u:
+                        continue
+                    approvers.append(
+                        {
+                            "sequence": getattr(v, "sequence", 10),
+                            "sequence_type": getattr(v, "sequence_type", False) or "sequential",
+                            "bps_from": getattr(v, "bps_from", 6),
+                            "bps_to": getattr(v, "bps_to", 22),
+                            **_user_info(u),
+                        }
+                    )
                 if approvers:
-                    steps.append({"step": flow.sequence, "approvers": approvers})
+                    steps.append({"step": 1, "approvers": approvers})
 
-        # If no flows are configured, use the leave-type validators list (OpenHRMS).
-        if not steps and getattr(lt, "leave_validation_type", False) == "multi" and getattr(lt, "validator_ids", False):
-            validators = lt.validator_ids.sorted(lambda v: (getattr(v, "sequence", 10), v.id))
-            approvers = []
-            for v in validators:
-                u = getattr(v, "user_id", False)
-                if not u:
-                    continue
-                approvers.append(
-                    {
-                        "sequence": getattr(v, "sequence", 10),
-                        "sequence_type": getattr(v, "sequence_type", False) or "sequential",
-                        "bps_from": getattr(v, "bps_from", 6),
-                        "bps_to": getattr(v, "bps_to", 22),
-                        # "action_type": getattr(v, "action_type", False) or "approve",
-                        **_user_info(u),
-                    }
-                )
-            if approvers:
-                steps.append({"step": 1, "approvers": approvers})
-
-        payload = {
-            "ok": True,
-            "leave_type": {"id": lt.id, "name": lt.name},
-            "steps": steps,
-        }
-        return request.make_response(json.dumps(payload), headers=[("Content-Type", "application/json")])
+            payload = {
+                "ok": True,
+                "leave_type": {"id": lt.id, "name": lt.name},
+                "steps": steps,
+            }
+            return self._json(payload, status=200)
+        except Exception:
+            _logger.exception("HRMIS leave approvers API failed")
+            return self._json({"ok": False, "error": "approvers_failed", "steps": []}, status=200)
 
     @http.route(
         ["/hrmis/staff/<int:employee_id>/leave/submit"],
@@ -664,6 +764,14 @@ class HrmisLeaveFrontendController(http.Controller):
                     f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_past_msg)}"
                 )
 
+            # Business requirement: cannot apply for any leave that includes today's date.
+            if d_from <= today <= d_to:
+                if self._wants_json():
+                    return self._json({"ok": False, "error": friendly_existing_day_msg}, status=400)
+                return request.redirect(
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                )
+
             leave_type = request.env["hr.leave.type"].sudo().browse(leave_type_id).exists()
             if not leave_type:
                 msg = "Invalid leave type"
@@ -688,8 +796,10 @@ class HrmisLeaveFrontendController(http.Controller):
                 dt_end = datetime.combine(d_to, time.max)
                 overlap_domain += [("date_from", "<=", dt_end), ("date_to", ">=", dt_start)]
             if Leave.search(overlap_domain, limit=1):
+                if self._wants_json():
+                    return self._json({"ok": False, "error": friendly_overlap_msg}, status=400)
                 return request.redirect(
-                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_existing_day_msg)}"
+                    f"/hrmis/staff/{employee.id}/leave?tab=new&error={quote_plus(friendly_overlap_msg)}"
                 )
 
             # IMPORTANT: use a savepoint so partial creates are rolled back on any error.

@@ -24,20 +24,25 @@ class HrLeaveAllocation(models.Model):
                 pass
 
     @api.model
-    def hrmis_ensure_allocations_for_employees(self, employees):
-        """Create/update allocations for the given employee(s) only."""
+    def hrmis_ensure_allocations_for_employees(self, employees, target_date=None):
+        """
+        Create/update allocations for the given employee(s) for the year/month
+        matching `target_date` (used for future-year balance display).
+
+        If `target_date` is not provided, defaults to "today".
+        """
         employees = employees.sudo()
         if not employees:
             return
 
-        today = fields.Date.context_today(self)
-        year_start = date(today.year, 1, 1)
-        year_end = date(today.year, 12, 31)
-        month_start = date(today.year, today.month, 1)
-        if today.month == 12:
-            next_month_first = date(today.year + 1, 1, 1)
+        d = fields.Date.to_date(target_date) if target_date else fields.Date.context_today(self)
+        year_start = date(d.year, 1, 1)
+        year_end = date(d.year, 12, 31)
+        month_start = date(d.year, d.month, 1)
+        if d.month == 12:
+            next_month_first = date(d.year + 1, 1, 1)
         else:
-            next_month_first = date(today.year, today.month + 1, 1)
+            next_month_first = date(d.year, d.month + 1, 1)
         month_end = next_month_first - timedelta(days=1)
 
         casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
@@ -102,13 +107,26 @@ class HrLeaveAllocation(models.Model):
                 else:
                     alloc = self.sudo().create(vals)
 
+                # Best-effort validation: different Odoo/custom versions have slightly
+                # different workflows/permissions for allocations. We want these
+                # allocations to count toward balances, so validate them as robustly
+                # as possible (and never crash the website).
                 try:
                     if hasattr(alloc, "action_confirm"):
                         alloc.action_confirm()
+                except Exception:
+                    pass
+                try:
                     if hasattr(alloc, "action_validate"):
                         alloc.action_validate()
+                except Exception:
+                    pass
+                try:
                     if hasattr(alloc, "action_approve"):
                         alloc.action_approve()
+                except Exception:
+                    pass
+                try:
                     if "state" in alloc._fields and alloc.state not in ("validate", "validate1", "validate2"):
                         alloc.sudo().write({"state": "validate"})
                 except Exception:

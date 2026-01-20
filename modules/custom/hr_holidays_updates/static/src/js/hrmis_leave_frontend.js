@@ -67,7 +67,7 @@ function _renderApproverSteps(panelEl, steps) {
     html.push(
       `<div class="hrmis-approver-step">
         <div class="hrmis-approver-step__title">Step ${_escapeHtml(
-          stepNo
+          stepNo,
         )}</div>
         <div class="hrmis-approver-step__list">
           ${approvers
@@ -84,13 +84,13 @@ function _renderApproverSteps(panelEl, steps) {
                   <div class="hrmis-approver-step__badge">${stype}</div>
                 </div>
                 <div class="hrmis-approver-step__sub">Seq: ${seq}${
-                meta ? ` — ${meta}` : ""
-              }</div>
+                  meta ? ` — ${meta}` : ""
+                }</div>
               </div>`;
             })
             .join("")}
         </div>
-      </div>`
+      </div>`,
     );
   }
   stepsEl.innerHTML = html.join("");
@@ -157,7 +157,7 @@ async function _refreshApprovers(formEl) {
       _renderApproverSteps(panelEl, []);
       return;
     }
-    const data = await resp.json();
+    const data = await resp.json().catch(() => null);
     if (!data || !data.ok) {
       _renderApproverSteps(panelEl, []);
       return;
@@ -187,7 +187,7 @@ async function _refreshLeaveTypes(formEl) {
       headers: { Accept: "application/json" },
     });
     if (!resp.ok) return;
-    const data = await resp.json();
+    const data = await resp.json().catch(() => null);
     if (!data || !data.ok) return;
     _setSelectOptions(selectEl, data.leave_types || [], true);
     _updateSupportDocUI(formEl);
@@ -254,10 +254,41 @@ function _syncProfileTabsActiveClass() {
     // Bootstrap applies `.active` after click; defer to next tick.
     setTimeout(() => {
       setActive(
-        root.querySelector(".hrmis-tabs--profile .hrmis-tab.active") || btn
+        root.querySelector(".hrmis-tabs--profile .hrmis-tab.active") || btn,
       );
     }, 0);
   });
+}
+
+function _syncEndDateMin(formEl) {
+  const dateFromEl = _qs(formEl, ".js-hrmis-date-from");
+  const dateToEl = _qs(formEl, ".js-hrmis-date-to");
+  if (!dateFromEl || !dateToEl) return;
+
+  const fromVal = (dateFromEl.value || "").trim();
+  if (!fromVal) return;
+
+  // HTML date input uses YYYY-MM-DD.
+  const fromDate = new Date(`${fromVal}T00:00:00`);
+  if (Number.isNaN(fromDate.getTime())) return;
+
+  // End date must be >= start date (allow 1-day leave).
+  const minTo = new Date(fromDate);
+  const yyyy = String(minTo.getFullYear()).padStart(4, "0");
+  const mm = String(minTo.getMonth() + 1).padStart(2, "0");
+  const dd = String(minTo.getDate()).padStart(2, "0");
+  const minVal = `${yyyy}-${mm}-${dd}`;
+
+  dateToEl.min = minVal;
+
+  const curTo = (dateToEl.value || "").trim();
+  if (curTo && curTo < minVal) {
+    dateToEl.value = minVal;
+  }
+  if (!curTo) {
+    // If empty, keep it empty; user will pick. (Template defaults to today though.)
+    // No-op.
+  }
 }
 
 function _init() {
@@ -282,11 +313,29 @@ function _init() {
         method: "POST",
         body: fd,
         credentials: "same-origin",
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
       });
       const data = await resp.json().catch(() => null);
       if (!resp.ok || !data || data.ok === false) {
-        const msg = data?.error || "Could not submit leave request";
+        // If the server returns HTML (e.g., proxy/CSRF errors), JSON parsing fails
+        // and `data` will be null. Provide a slightly more useful fallback.
+        let msg = data?.error;
+        // If we got redirected to an HTML page with ?error=..., surface that message.
+        if (!msg) {
+          try {
+            const u = new URL(resp?.url || "", window.location.origin);
+            const err = u.searchParams.get("error");
+            if (err) msg = err;
+          } catch {
+            // ignore
+          }
+        }
+        if (!msg) {
+          msg = `Could not submit leave request${resp?.status ? ` (HTTP ${resp.status})` : ""}`;
+        }
         _showInlineAlert(formEl, "error", msg);
         return;
       }
@@ -310,8 +359,14 @@ function _init() {
 
   const dateFromEl = _qs(formEl, ".js-hrmis-date-from");
   if (dateFromEl) {
-    dateFromEl.addEventListener("change", () => _refreshLeaveTypes(formEl));
-    dateFromEl.addEventListener("blur", () => _refreshLeaveTypes(formEl));
+    dateFromEl.addEventListener("change", () => {
+      _syncEndDateMin(formEl);
+      _refreshLeaveTypes(formEl);
+    });
+    dateFromEl.addEventListener("blur", () => {
+      _syncEndDateMin(formEl);
+      _refreshLeaveTypes(formEl);
+    });
   }
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
@@ -324,6 +379,7 @@ function _init() {
   // Ensure the leave-type dropdown reflects newly approved allocations
   // even when the user navigates back to this page (BFCache) or doesn't
   // change the date field after approvals.
+  _syncEndDateMin(formEl);
   _refreshLeaveTypes(formEl);
 }
 
@@ -339,5 +395,4 @@ window.addEventListener("pageshow", () => {
   const formEl = document.querySelector(".hrmis-leave-request-form");
   if (!formEl) return;
   _refreshLeaveTypes(formEl);
-  
 });

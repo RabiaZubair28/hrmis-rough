@@ -17,6 +17,7 @@ function _renderNotificationItem(n) {
   const item = document.createElement("div");
   item.className = `hrmis-notif-item ${n.is_read ? "" : "is-unread"}`.trim();
   item.dataset.notificationId = String(n.id);
+  item.title = "Open notifications";
 
   const main = document.createElement("div");
   main.className = "hrmis-notif-item__main";
@@ -53,7 +54,7 @@ function _renderNotificationItem(n) {
 
 async function _fetchNotifications(limit = 20) {
   const url = `/hrmis/api/notifications?limit=${encodeURIComponent(
-    String(limit)
+    String(limit),
   )}`;
   const resp = await fetch(url, {
     method: "GET",
@@ -166,6 +167,16 @@ function _wireNotificationsDropdown(root = document) {
   });
 
   list.addEventListener("click", async (e) => {
+    // Clicking a notification (except its action button) opens the notifications page.
+    const dismissBtn = e.target.closest(".js-hrmis-notif-dismiss");
+    if (!dismissBtn) {
+      const item = e.target.closest(".hrmis-notif-item");
+      if (item) {
+        window.location.href = "/hrmis/notifications";
+        return;
+      }
+    }
+
     const btn = e.target.closest(".js-hrmis-notif-dismiss");
     if (!btn) return;
     const item = e.target.closest(".hrmis-notif-item");

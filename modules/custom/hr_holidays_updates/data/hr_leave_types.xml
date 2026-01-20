@@ -38,6 +38,18 @@
         <field name="name">Study Leave</field>
     </record>
 
+    <record id="leave_type_study_full_pay" model="hr.leave.type">
+        <field name="name">Study Leave (Full Pay)</field>
+    </record>
+
+    <record id="leave_type_study_half_pay" model="hr.leave.type">
+        <field name="name">Study Leave (Half Pay)</field>
+    </record>
+
+    <record id="leave_type_study_eol" model="hr.leave.type">
+        <field name="name">Study Leave (EOL)</field>
+    </record>
+
     <record id="leave_type_lpr" model="hr.leave.type">
         <field name="name">Leave Preparatory to Retirement (LPR)</field>
     </record>

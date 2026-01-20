@@ -387,6 +387,108 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 error=error,
             ),
         )
+
+    @http.route(
+        ["/hrmis/manage/history/<int:employee_id>"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["GET"],
+        csrf=False,
+    )
+    def hrmis_manage_history(self, employee_id: int, tab: str = "leave", **kw):
+        """
+        Section Officer history page (3 tabs):
+        - Leave Requests History (implemented)
+        - Transfer Requests History (placeholder)
+        - Disciplinary Actions History (placeholder)
+        """
+        tab = (tab or "leave").strip().lower()
+        if tab not in ("leave", "transfer", "disciplinary"):
+            tab = "leave"
+
+        # Only Section Officers should use this page.
+        if not request.env.user.has_group("custom_login.group_section_officer"):
+            return request.redirect("/hrmis/services?error=not_allowed")
+
+        Emp = request.env["hr.employee"].sudo()
+        emp = Emp.browse(employee_id).exists()
+        if not emp:
+            return request.not_found()
+
+        # Access control: only allow history for employees managed by current SO.
+        if not self._is_managed_by_current_user(emp) and emp.id not in set(self._managed_employee_ids()):
+            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
+
+        # Include duplicate employee rows for the same real person when possible,
+        # because leave requests can be attached to different hr.employee rows.
+        emp_ids = [emp.id]
+        try:
+            if getattr(emp, "user_id", False):
+                emp_ids = Emp.search([("user_id", "=", emp.user_id.id)]).ids or emp_ids
+            elif "hrmis_employee_id" in emp._fields and emp.hrmis_employee_id:
+                emp_ids = Emp.search([("hrmis_employee_id", "=", emp.hrmis_employee_id)]).ids or emp_ids
+        except Exception:
+            pass
+
+        leaves_history = request.env["hr.leave"].sudo().browse([])
+        leave_taken_by_type = {}
+        if tab == "leave":
+            leaves_history = request.env["hr.leave"].sudo().search(
+                [
+                    ("employee_id", "in", emp_ids),
+                    ("state", "in", ("confirm", "validate1", "validate", "validate2", "refuse")),
+                ],
+                order="create_date desc, id desc",
+                limit=300,
+            )
+
+            # "Leave Taken": sum approved leaves per leave type for this person.
+            approved = request.env["hr.leave"].sudo().search(
+                [
+                    ("employee_id", "in", emp_ids),
+                    ("state", "in", ("validate", "validate2")),
+                ]
+            )
+            days_field = "number_of_days" if "number_of_days" in approved._fields else None
+            if days_field:
+                for lv in approved:
+                    lt = lv.holiday_status_id
+                    if not lt:
+                        continue
+                    leave_taken_by_type[lt.id] = float(leave_taken_by_type.get(lt.id, 0.0) + (getattr(lv, days_field) or 0.0))
+
+        # Facility/District display (best-effort across schemas)
+        facility_name = ""
+        district_name = ""
+        try:
+            if "facility_id" in emp._fields and emp.facility_id:
+                facility_name = emp.facility_id.name or ""
+            elif "hrmis_facility_id" in emp._fields and emp.hrmis_facility_id:
+                facility_name = emp.hrmis_facility_id.name or ""
+        except Exception:
+            facility_name = ""
+        try:
+            if "district_id" in emp._fields and emp.district_id:
+                district_name = emp.district_id.name or ""
+            elif "hrmis_district_id" in emp._fields and emp.hrmis_district_id:
+                district_name = emp.hrmis_district_id.name or ""
+        except Exception:
+            district_name = ""
+
+        return request.render(
+            "custom_section_officers.hrmis_manage_history",
+            base_ctx(
+                "History",
+                "manage_requests",
+                tab=tab,
+                employee=emp,
+                leaves_history=leaves_history,
+                leave_taken_by_type=leave_taken_by_type,
+                facility_name=facility_name,
+                district_name=district_name,
+            ),
+        )
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()

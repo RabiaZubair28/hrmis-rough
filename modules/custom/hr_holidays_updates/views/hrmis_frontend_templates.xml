@@ -692,11 +692,18 @@
 
                         <t t-if="tab == 'history'">
                             <t t-set="earned_leave_balance" t-value="employee.earned_leave_balance or 0.0"/>
+                            <t t-set="total_leave_balance" t-value="employee.employee_leave_balance_total or 0.0"/>
                             <div class="hrmis-kv" style="margin-bottom: 12px;">
                                 <div class="hrmis-kv__row">
                                     <div class="hrmis-kv__k">Earned leave balance</div>
                                     <div class="hrmis-kv__v">
                                         <t t-esc="earned_leave_balance"/> days
+                                    </div>
+                                </div>
+                                <div class="hrmis-kv__row">
+                                    <div class="hrmis-kv__k">Total leave balance</div>
+                                    <div class="hrmis-kv__v">
+                                        <t t-esc="total_leave_balance"/> days
                                     </div>
                                 </div>
                             </div>
