@@ -5,6 +5,56 @@ from odoo import api, fields, models
 class HrLeaveAttachments(models.Model):
     _inherit = "hr.leave"
 
+    hrmis_supporting_attachment_ids = fields.Many2many(
+        "ir.attachment",
+        compute="_compute_hrmis_supporting_attachment_ids",
+        compute_sudo=True,
+        string="Supporting Documents",
+        help="All files uploaded/attached against this leave request.",
+    )
+
+    hrmis_supporting_attachment_count = fields.Integer(
+        compute="_compute_hrmis_supporting_attachment_ids",
+        compute_sudo=True,
+        string="Supporting Documents Count",
+    )
+
+    @api.depends("message_main_attachment_id")
+    def _compute_hrmis_supporting_attachment_ids(self):
+        """
+        Provide a single place to read attachments for a leave record so website
+        templates (e.g., Section Officer modal) can display them without extra
+        controller-side queries/mappings.
+        """
+        # Default empty
+        for leave in self:
+            leave.hrmis_supporting_attachment_ids = self.env["ir.attachment"].browse([])
+            leave.hrmis_supporting_attachment_count = 0
+
+        if not self.ids:
+            return
+
+        Att = self.env["ir.attachment"].sudo()
+        atts = Att.search(
+            [
+                ("res_model", "=", "hr.leave"),
+                ("res_id", "in", self.ids),
+            ],
+            order="id desc",
+        )
+        by_leave = {}
+        for att in atts:
+            by_leave.setdefault(att.res_id, Att.browse([]))
+            by_leave[att.res_id] |= att
+
+        for leave in self:
+            docs = by_leave.get(leave.id, Att.browse([]))
+            # Prefer/union the standard field if present (some builds use it).
+            if "supported_attachment_ids" in leave._fields and getattr(leave, "supported_attachment_ids", False):
+                docs |= leave.supported_attachment_ids.sudo()
+            leave.hrmis_supporting_attachment_ids = docs
+            leave.hrmis_supporting_attachment_count = len(docs)
+
     def _vals_include_any_attachment(self, vals):
         """
         Detect attachments being added in the same create/write call.

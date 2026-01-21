@@ -800,6 +800,12 @@ class HrmisLeaveFrontendController(http.Controller):
                     # so it also shows up in the native Odoo form view.
                     if "supported_attachment_ids" in leave._fields:
                         leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+                    # Also set as main attachment when available (helps quick access in some UIs).
+                    if "message_main_attachment_id" in leave._fields:
+                        try:
+                            leave.sudo().write({"message_main_attachment_id": att.id})
+                        except Exception:
+                            pass
 
             # Confirm regardless of whether a supporting document was uploaded.
             # (Previous indentation meant many requests stayed in draft and could bypass checks.)

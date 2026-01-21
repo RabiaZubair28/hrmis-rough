@@ -296,7 +296,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         leaves = []
         leave_history = []
         leave_taken_by_leave_id = {}
-        attachments_by_leave_id = {}
 
         # Decide which tab is active
         tab = tab or "leave"
@@ -361,20 +360,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                             taken_by_root_type.get((root_id, lt_id), 0.0)
                         )
 
-                    # Attachments
-                    Att = request.env["ir.attachment"].sudo()
-                    atts = Att.search(
-                        [
-                            ("res_model", "=", "hr.leave"),
-                            ("res_id", "in", leave_ids),
-                        ],
-                        order="id desc",
-                    )
-
-                    for att in atts:
-                        attachments_by_leave_id.setdefault(att.res_id, Att.browse([]))
-                        attachments_by_leave_id[att.res_id] |= att
-
             except Exception:
                 _logger.exception("Failed preparing Manage Requests UI data")
 
@@ -395,7 +380,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 leaves=leaves,
                 leave_history=leave_history,
                 leave_taken_by_leave_id=leave_taken_by_leave_id,
-                attachments_by_leave_id=attachments_by_leave_id,
                 success=success,
                 error=error,
             ),

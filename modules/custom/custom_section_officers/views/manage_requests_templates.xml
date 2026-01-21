@@ -267,7 +267,8 @@
 
                                         <div class="hrmis-modal__section">
                                             <div class="hrmis-modal__label" style="margin-bottom:6px;">Supporting Documents</div>
-                                            <t t-set="atts" t-value="(attachments_by_leave_id.get(lv.id) if attachments_by_leave_id else False)"/>
+                                            <t t-set="atts"
+                                               t-value="(lv.hrmis_supporting_attachment_ids if 'hrmis_supporting_attachment_ids' in lv._fields else (attachments_by_leave_id.get(lv.id) if attachments_by_leave_id else False))"/>
                                             <t t-if="atts and len(atts)">
                                                 <t t-foreach="atts" t-as="att">
                                                     <div class="hrmis-attachment">
