@@ -326,13 +326,20 @@ def _dedupe_leave_types_for_ui(leave_types):
     UI-only dedupe: keep first record per normalized name to avoid showing duplicates
     even if the DB has multiple leave types with near-identical names.
     """
+    # Also hide specific leave types from the HRMIS dropdown (business requirement).
+    blocked = {
+        "compensatorydays",
+        "paidtimeoff",
+        "sicktimeoff",
+        "unpaid",
+    }
     seen = set()
     # Preserve env/context from the incoming recordset; name_get() uses context
     # (employee/date/request_type) to compute the displayed balance.
     kept = leave_types.browse([])
     for lt in leave_types:
         key = _norm_leave_type_name(lt.name)
-        if not key or key in seen:
+        if not key or key in blocked or key in seen:
             continue
         seen.add(key)
         kept |= lt

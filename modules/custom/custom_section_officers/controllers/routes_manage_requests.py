@@ -409,7 +409,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
 
         tab = (tab or "leave").strip().lower()
-        if tab not in ("leave", "history", "transfer", "disciplinary"):
+        if tab not in ("leave", "history", "transfer", "disciplinary", "profile"):
             tab = "leave"
 
         # Facility / district labels (best-effort across schemas)
@@ -450,6 +450,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 order="request_date_from desc, id desc",
                 limit=200,
             )
+        # tab == "profile": no extra queries required (employee is enough)
 
         return request.render(
             "custom_section_officers.hrmis_manage_history",
