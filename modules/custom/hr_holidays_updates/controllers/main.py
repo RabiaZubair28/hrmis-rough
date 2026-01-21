@@ -278,6 +278,38 @@ def _leave_types_for_employee(employee, request_date_from=None):
     )
     return recs
 
+def _support_doc_rule_for_leave_type(leave_type):
+    """
+    Business rule for supporting documents.
+
+    Returns: (required: bool, label: str)
+    """
+    try:
+        env = request.env
+        # Resolve configured leave types (ignore if missing).
+        maternity = env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+        quarantine = env.ref("hr_holidays_updates.leave_type_special_quarantine", raise_if_not_found=False)
+        study_full = env.ref("hr_holidays_updates.leave_type_study_full_pay", raise_if_not_found=False)
+        study_half = env.ref("hr_holidays_updates.leave_type_study_half_pay", raise_if_not_found=False)
+        study_eol = env.ref("hr_holidays_updates.leave_type_study_eol", raise_if_not_found=False)
+        medical = env.ref("hr_holidays_updates.leave_type_medical_long", raise_if_not_found=False)
+
+        rules = {
+            getattr(maternity, "id", None): "Medical certificate",
+            getattr(quarantine, "id", None): "Quarantine order",
+            getattr(study_full, "id", None): "Admission letter / Course Details",
+            getattr(study_half, "id", None): "Admission letter / Course Details",
+            getattr(study_eol, "id", None): "Admission letter / Course Details",
+            getattr(medical, "id", None): "Medical Certificate",
+        }
+        label = rules.get(getattr(leave_type, "id", None))
+        if label:
+            return True, label
+    except Exception:
+        pass
+    # Default: not required
+    return False, ""
+
 
 def _norm_leave_type_name(name: str) -> str:
     # Collapse to an ASCII-ish comparable key: lower, remove punctuation/spaces differences.
@@ -544,8 +576,12 @@ class HrmisLeaveFrontendController(http.Controller):
                         # (e.g. "Casual Leave (2 remaining out of 2 days)").
                         "name": lt.display_name,
                         # Keep fields optional for UI compatibility.
-                        "support_document": bool(getattr(lt, "support_document", False)),
-                        "support_document_note": getattr(lt, "support_document_note", "") or "",
+                        # Business rule overrides (do not depend on DB fields existing/being configured).
+                        **(
+                            (lambda req, note: {"support_document": bool(req), "support_document_note": note})(
+                                *_support_doc_rule_for_leave_type(lt)
+                            )
+                        ),
                     }
                     for lt in leave_types
                 ],

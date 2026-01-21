@@ -1,5 +1,6 @@
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class HrLeaveAttachments(models.Model):
@@ -95,10 +96,60 @@ class HrLeaveAttachments(models.Model):
         """
         Enforce supporting documents for leave types that require them.
 
-        NOTE: currently disabled (kept for later enablement).
+        Rules:
+        - Maternity: Medical certificate
+        - Special Leave (Quarantine): Quarantine order
+        - Study leaves (Full/Half/EOL): Admission letter / Course Details
+        - Medical Leave (Long Term): Medical Certificate
         """
-        # TEMPORARILY DISABLED (per request): supporting documents enforcement
-        return
+        def _rule(leave_type):
+            if not leave_type:
+                return False, ""
+            env = self.env
+            maternity = env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+            quarantine = env.ref("hr_holidays_updates.leave_type_special_quarantine", raise_if_not_found=False)
+            study_full = env.ref("hr_holidays_updates.leave_type_study_full_pay", raise_if_not_found=False)
+            study_half = env.ref("hr_holidays_updates.leave_type_study_half_pay", raise_if_not_found=False)
+            study_eol = env.ref("hr_holidays_updates.leave_type_study_eol", raise_if_not_found=False)
+            medical = env.ref("hr_holidays_updates.leave_type_medical_long", raise_if_not_found=False)
+
+            rules = {
+                getattr(maternity, "id", None): "Medical certificate",
+                getattr(quarantine, "id", None): "Quarantine order",
+                getattr(study_full, "id", None): "Admission letter / Course Details",
+                getattr(study_half, "id", None): "Admission letter / Course Details",
+                getattr(study_eol, "id", None): "Admission letter / Course Details",
+                getattr(medical, "id", None): "Medical Certificate",
+            }
+            label = rules.get(getattr(leave_type, "id", None))
+            return (bool(label), label or "")
+
+        def _has_any_attachment(leave):
+            # Prefer standard fields if present
+            if "supported_attachment_ids" in leave._fields and getattr(leave, "supported_attachment_ids", False):
+                return True
+            if getattr(leave, "message_main_attachment_id", False):
+                return True
+            # Fallback: any attachment linked to this leave
+            cnt = self.env["ir.attachment"].sudo().search_count(
+                [("res_model", "=", "hr.leave"), ("res_id", "=", leave.id)]
+            )
+            return cnt > 0
+
+        for leave in self:
+            required, label = _rule(leave.holiday_status_id)
+            if not required:
+                continue
+            # Enforce only when the request is being submitted/approved, not while drafting.
+            if getattr(leave, "state", None) in ("draft", "cancel", "refuse"):
+                continue
+            if not _has_any_attachment(leave):
+                raise ValidationError(f"Supporting document is required: {label}")
+
+    @api.constrains("holiday_status_id", "state", "message_main_attachment_id")
+    def _check_supporting_docs_required(self):
+        # Central enforcement entrypoint.
+        self._enforce_supporting_documents_required()
 
     @api.model_create_multi
     def create(self, vals_list):
