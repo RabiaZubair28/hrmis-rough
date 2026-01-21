@@ -20,28 +20,30 @@ class HrLeaveOnchange(models.Model):
             gender = getattr(self.employee_id, "gender", False) or getattr(self.employee_id, "hrmis_gender", False)
 
             Leave = self.env["hr.leave"].sudo()
-            # Treat any non-cancelled/non-refused request as "taken" (pending or approved).
-            active_states = ("draft", "confirm", "validate1", "validate", "validate2")
+            approved_states = ("validate", "validate2")
 
             maternity_taken = 0
             if maternity:
-                maternity_taken = Leave.search_count(
-                    [
-                        ("employee_id", "=", self.employee_id.id),
-                        ("holiday_status_id", "=", maternity.id),
-                        ("state", "in", active_states),
-                    ]
-                )
+                dom = [
+                    ("employee_id", "=", self.employee_id.id),
+                    ("holiday_status_id", "=", maternity.id),
+                    ("state", "in", approved_states),
+                ]
+                if self.id:
+                    dom.append(("id", "!=", self.id))
+                maternity_taken = Leave.search_count(dom)
 
             lpr_taken = 0
             if lpr:
-                lpr_taken = Leave.search_count(
-                    [
-                        ("employee_id", "=", self.employee_id.id),
-                        ("holiday_status_id", "=", lpr.id),
-                        ("state", "in", active_states),
-                    ]
-                )
+                # Treat any non-cancelled/non-refused request as "taken" (pending or approved).
+                dom = [
+                    ("employee_id", "=", self.employee_id.id),
+                    ("holiday_status_id", "=", lpr.id),
+                    ("state", "not in", ("cancel", "refuse")),
+                ]
+                if self.id:
+                    dom.append(("id", "!=", self.id))
+                lpr_taken = Leave.search_count(dom)
 
             if maternity:
                 if not gender or gender != "female" or maternity_taken >= 3:
