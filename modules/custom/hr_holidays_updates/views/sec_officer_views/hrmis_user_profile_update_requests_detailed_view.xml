@@ -3,7 +3,10 @@
     <t t-call="hr_holidays_updates.hrmis_ui_layout">
 
         <div class="hrmis-panel">
-
+            <!-- Breadcrumb -->
+            <div class="hrmis-breadcrumb">
+                <a t-att-href="'/hrmis/profile-update-requests'">&lt; Back to Requests</a>
+            </div>
             <!-- Header -->
             <div class="hrmis-panel__header">
                 <div class="hrmis-panel__title">Approve Profile Update Request</div>
@@ -55,6 +58,23 @@
                             </select>
                         </div>
 
+
+                        <div class="hrmis-field">
+                            <label>Date of Birth</label>
+                            <input class="hrmis-input"
+                                   type="date"
+                                   name="birthday"
+                                   t-att-value="req.birthday"/>
+                        </div>
+
+
+                        <div class="hrmis-field">
+                            <label>Commision Date</label>
+                            <input class="hrmis-input"
+                                   type="date"
+                                   name="hrmis_commission_date"
+                                   t-att-value="req.hrmis_commission_date"/>
+                        </div>
                         <!-- Service -->
                         <div class="hrmis-field">
                             <label>Joining Date</label>
@@ -119,6 +139,14 @@
                                     </option>
                                 </t>
                             </select>
+                        </div>
+                        <div class="hrmis-field">
+                            <label>Total Leaves Taken (Days)</label>
+                            <input class="hrmis-input"
+                                   type="numbner"
+                                   steps="0.1"
+                                   name="hrmis_leaves_taken"
+                                   t-att-value="req.hrmis_leaves_taken"/>
                         </div>
 
                         <!-- Contact -->

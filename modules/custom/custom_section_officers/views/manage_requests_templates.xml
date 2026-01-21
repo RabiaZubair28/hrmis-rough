@@ -40,26 +40,72 @@
                     </div>
                 </t>
                 <div class="hrmis-panel_header hrmis-panelheader--tabs hrmis-panel_header--tabs--manage">
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage is-active"
-                       t-att-href="'/hrmis/manage/requests?tab=leave'" style="border-bottom: 2px solid black;">
-                        Leave Requests
-                    </a>
-                </div>
+                <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'leave' else ''}"
+                   t-att-href="'/hrmis/manage/requests?tab=leave'" style="border-bottom: 2px solid black;">
+                    Leave Requests
+                </a>
+
+                <!-- New tab: Leave Request History -->
+                <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'history' else ''}"
+                   t-att-href="'/hrmis/manage/requests?tab=history'" style="border-bottom: 2px solid black;">
+                    Leave Status
+                </a>
+            </div>
 
                 <div class="hrmis-panel__body">
+                    <div class="hrmis-filters">
+                        <input type="text"
+                            class="hrmis-filter__search"
+                            placeholder="Search (min 3 characters)..."/>
 
-                    <!-- Leave Requests -->
-                    <t t-if="tab == 'leave'">
-                        <t t-if="not leaves">
-                            <div class="hrmis-empty">No leave requests pending your action.</div>
-                        </t>
+                        <select class="hrmis-filter__select" data-filter="status">
+                            <option value="">All Statuses</option>
+                            <option value="validate">Approved</option>
+                            <option value="refuse">Rejected</option>
+                            <option value="cancel">Cancelled</option>
+                            <option value="confirm">Pending</option>
+                        </select>
+
+                        <select class="hrmis-filter__select" data-filter="date">
+                            <option value="">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="2days">Last 2 Days</option>
+                            <option value="week">Last Week</option>
+                        </select>
+                    </div>
+
+                <!-- Leave Requests -->
+                <t t-if="tab == 'leave'">
+                    <t t-if="not leaves">
+                        <div class="hrmis-empty">No leave requests pending your action.</div>
+                    </t>
                         <t t-else="">
-                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.0fr 130px 1.1fr 100px 100px 3.0fr; column-gap: 12px; align-items: start;'"/>
+                            <!-- CSS-only modal (opens via URL fragment + :target) -->
+                            <style>
+                                .hrmis-modal { display:none; position:fixed; inset:0; z-index:1000; }
+                                .hrmis-modal:target { display:flex; }
+                                .hrmis-modal__backdrop { position:absolute; inset:0; background:rgba(0,0,0,.45); }
+                                .hrmis-modal__dialog { position:relative; margin:auto; width:min(900px, 94vw); max-height:90vh; overflow:auto; background:#fff; border-radius:12px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+                                .hrmis-modal__head { display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:12px; }
+                                .hrmis-modal__title { font-weight:800; font-size:16px; }
+                                .hrmis-modal__close { text-decoration:none; font-weight:700; padding:6px 10px; border-radius:8px; border:1px solid #ddd; color:#111; }
+                                .hrmis-modal__grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px; }
+                                .hrmis-modal__field { display:flex; flex-direction:column; gap:4px; }
+                                .hrmis-modal__label { font-size:12px; color:#666; font-weight:700; }
+                                .hrmis-modal__value { font-size:13px; color:#111; }
+                                .hrmis-modal__section { margin-top:12px; }
+                                .hrmis-modal__actions { display:flex; gap:10px; align-items:center; justify-content:flex-end; margin-top:14px; }
+                                .hrmis-attachment { display:flex; gap:8px; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:13px; }
+                                .hrmis-attachment__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 520px; }
+                            </style>
+
+                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.0fr 130px 110px 1.1fr 130px 140px 3.0fr; column-gap: 12px; align-items: start;'"/>
                             <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table"
                                  t-att-style="grid + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
                                 <div style="width:36px; max-width:36px;">#</div>
                                 <div>Staff / Facility / District</div>
                                 <div>Total Leave Balance</div>
+                                <div>Leave Taken</div>
                                 <div>Submitted On</div>
                                 <div>Leave Type</div>
                                 <div>Dates</div>
@@ -68,8 +114,21 @@
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]" />
                                 <div class="hrmis-leave-row hrmis-manage-table__row"
-                                     t-att-style="grid + 'font-size: 12px;'"  t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;">
-                                    <!-- Serial Number -->
+				     style="cursor:pointer;"
+				     t-att-style="grid + 'font-size: 12px;'"
+				     t-att-data-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+				     t-attf-onclick="window.location.href='/hrmis/manage/history/{{ lv.employee_id.id }}?tab=leave'"
+				     t-att-data-status="lv.state"
+				     t-att-data-date="lv.request_date_from"
+				     t-att-data-search="
+				        '%s %s %s %s' % (
+				            lv.employee_id.name or '',
+				            lv.holiday_status_id.name or '',
+				            lv.request_date_from or '',
+				            lv.request_date_to or ''
+				        )
+				     ">
+
                                     <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:36px; max-width:36px;">
                                         <t t-esc="idx0 + 1" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
                                     </div>
@@ -77,17 +136,24 @@
                                     <!-- Employee / Facility / District -->
                                     <div class="hrmis-leave-row__cell">
                                         <div class="strong">
-                                            <t t-esc="lv.employee_id.name" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;" />,
-                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none;">
+                                                <t t-esc="lv.employee_id.name"/>,
+                                            </a>,
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none;">
+                                                <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
+                                            </a>
                                         </div>
                                         <div class="sub">
-                                            <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;" />
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none;">
+                                                <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
+                                            </a>
                                         </div>
-                                    </div>
-
-                                    <!-- Leave Type -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.holiday_status_id.name"/>
                                     </div>
 
                                     <!-- Total Leave Balance -->
@@ -95,9 +161,19 @@
                                         <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
                                     </div>
 
+                                    <!-- Leave Taken (this type / this employee) -->
+                                    <div class="hrmis-leave-row__cell">
+                                        <t t-esc="(leave_taken_by_leave_id.get(lv.id, 0.0) if leave_taken_by_leave_id else 0.0)"/> days
+                                    </div>
+
                                     <!-- Submitted On -->
                                     <div class="hrmis-leave-row__cell">
                                         <t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/>
+                                    </div>
+
+                                    <!-- Leave Type -->
+                                    <div class="hrmis-leave-row__cell">
+                                        <t t-esc="lv.holiday_status_id.name"/>
                                     </div>
 
                                     <!-- Dates -->
@@ -116,9 +192,7 @@
                                     <!-- COMMENTS + ACTIONS -->
                                     <div class="hrmis-leave-row__actions" style="display:grid; gap:8px;">
 
-                                       
-
-                                        <!-- Previous approvers comments -->
+                                        <!-- Previous approvers comments (keep visible in list) -->
                                         <t t-if="lv.message_ids and len(lv.message_ids)">
                                             <div class="hrmis-comments" style="padding:4px 0; max-height:120px; overflow-y:auto; border-bottom:1px solid #eee;">
                                                 <t t-foreach="lv.message_ids" t-as="msg">
@@ -131,12 +205,131 @@
                                         </t>
 
                                         <a class="hrmis-btn hrmis-btn--outline"
-                                           style="width: fit-content;">
-                                           Proceed
+                                           style="width: fit-content;"
+                                           t-att-href="'#lv-modal-%s' % lv.id"
+                                           onclick="event.stopPropagation();">
+                                            Proceed
                                         </a>
 
 
 
+                                    </div>
+                                </div>
+
+                                <!-- Proceed Modal -->
+                                <div class="hrmis-modal" t-att-id="'lv-modal-%s' % lv.id">
+                                    <a class="hrmis-modal__backdrop" href="#" aria-label="Close"></a>
+                                    <div class="hrmis-modal__dialog" role="dialog" aria-modal="true">
+                                        <div class="hrmis-modal__head">
+                                            <div class="hrmis-modal__title">
+                                                Leave Request — <t t-esc="lv.employee_id.name"/>
+                                            </div>
+                                            <a class="hrmis-modal__close" href="#" aria-label="Close">Close</a>
+                                        </div>
+
+                                        <div class="hrmis-modal__grid">
+                                            <div class="hrmis-modal__field">
+                                                <div class="hrmis-modal__label">Starting Date</div>
+                                                <div class="hrmis-modal__value"><t t-esc="lv.request_date_from or ''"/></div>
+                                            </div>
+                                            <div class="hrmis-modal__field">
+                                                <div class="hrmis-modal__label">Ending Date</div>
+                                                <div class="hrmis-modal__value"><t t-esc="lv.request_date_to or ''"/></div>
+                                            </div>
+
+                                            <div class="hrmis-modal__field">
+                                                <div class="hrmis-modal__label">Leave Type</div>
+                                                <div class="hrmis-modal__value"><t t-esc="(lv.holiday_status_id and lv.holiday_status_id.name) or ''"/></div>
+                                            </div>
+                                            <div class="hrmis-modal__field">
+                                                <div class="hrmis-modal__label">Total Leave Balance</div>
+                                                <div class="hrmis-modal__value">
+                                                    <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
+                                                </div>
+                                            </div>
+
+                                            <div class="hrmis-modal__field">
+                                                <div class="hrmis-modal__label">Leave Taken (this type)</div>
+                                                <div class="hrmis-modal__value">
+                                                    <t t-esc="(leave_taken_by_leave_id.get(lv.id, 0.0) if leave_taken_by_leave_id else 0.0)"/> days
+                                                </div>
+                                            </div>
+                                            <div class="hrmis-modal__field">
+                                                <div class="hrmis-modal__label">Submitted On</div>
+                                                <div class="hrmis-modal__value"><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
+                                            </div>
+
+                                            <div class="hrmis-modal__field" style="grid-column:1 / -1;">
+                                                <div class="hrmis-modal__label">Remarks</div>
+                                                <div class="hrmis-modal__value"><t t-esc="lv.name or ''"/></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="hrmis-modal__section">
+                                            <div class="hrmis-modal__label" style="margin-bottom:6px;">Supporting Documents</div>
+                                            <t t-set="atts" t-value="(attachments_by_leave_id.get(lv.id) if attachments_by_leave_id else False)"/>
+                                            <t t-if="atts and len(atts)">
+                                                <t t-foreach="atts" t-as="att">
+                                                    <div class="hrmis-attachment">
+                                                        <div class="hrmis-attachment__name">
+                                                            <t t-esc="att.name or ('Attachment %s' % att.id)"/>
+                                                        </div>
+                                                        <div style="display:flex; gap:8px; align-items:center;">
+                                                            <a class="hrmis-btn hrmis-btn--outline"
+                                                               style="padding:6px 10px;"
+                                                               t-att-href="'/web/content/%s' % att.id"
+                                                               target="_blank">View</a>
+                                                            <a class="hrmis-btn hrmis-btn--outline"
+                                                               style="padding:6px 10px;"
+                                                               t-att-href="'/web/content/%s?download=true' % att.id"
+                                                               target="_blank">Download</a>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="hrmis-empty" style="margin:0;">No supporting documents.</div>
+                                            </t>
+                                        </div>
+
+                                        <div class="hrmis-modal__section">
+                                            <div class="hrmis-modal__label" style="margin-bottom:6px;">Previous comments</div>
+                                            <t t-if="lv.message_ids and len(lv.message_ids)">
+                                                <div class="hrmis-comments" style="padding:4px 0; max-height:160px; overflow-y:auto; border:1px solid #eee; border-radius:8px; padding:8px;">
+                                                    <t t-foreach="lv.message_ids" t-as="msg">
+                                                        <div class="hrmis-comment" style="font-size:12px; line-height:1.35; margin-bottom:6px;">
+                                                            <strong><t t-esc="msg.author_id.name"/></strong>:
+                                                            <t t-esc="msg.body"/>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="hrmis-empty" style="margin:0;">No comments yet.</div>
+                                            </t>
+                                        </div>
+
+                                        <form t-att-action="'/hrmis/leave/%s/approve' % lv.id"
+                                              method="post"
+                                              class="hrmis-modal__section">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <input type="hidden" name="action" value="approve"/>
+                                            <div class="hrmis-modal__label" style="margin-bottom:6px;">Add New Comment</div>
+                                            <textarea class="hrmis-input hrmis-input--wide"
+                                                      name="comment"
+                                                      rows="3"
+                                                      placeholder="Add new comment..."></textarea>
+                                            <div class="hrmis-modal__actions">
+                                                <button class="hrmis-btn hrmis-btn--primary" type="submit"
+                                                        onclick="this.form.action.value='approve';">
+                                                    Forward
+                                                </button>
+                                                <button type="submit" class="hrmis-btn hrmis-btn--outline"
+                                                        onclick="this.form.action.value='dismiss';">
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                              
@@ -150,84 +343,175 @@
     </template>
 
     <template id="hrmis_manage_history" name="HRMIS Manage History (Section Officer)">
-        <t t-call="hr_holidays_updates.hrmis_ui_layout">
-            <div class="hrmis-panel">
-                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'leave' else ''}"
-                       t-att-href="'/hrmis/manage/history/%s?tab=leave' % employee.id">
-                        Leave Requests History
-                    </a>
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'transfer' else ''}"
-                       t-att-href="'/hrmis/manage/history/%s?tab=transfer' % employee.id">
-                        Transfer Requests History
-                    </a>
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'disciplinary' else ''}"
-                       t-att-href="'/hrmis/manage/history/%s?tab=disciplinary' % employee.id">
-                        Disciplinary Actions History
-                    </a>
+    <t t-call="hr_holidays_updates.hrmis_ui_layout">
+        <div class="hrmis-panel">
+
+            <!-- Tabs -->
+            <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
+                <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'leave' else ''}"
+                   t-att-href="'/hrmis/manage/history/%s?tab=leave' % employee.id">
+                    Leave Requests History
+                </a>
+                <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'history' else ''}"
+                   t-att-href="'/hrmis/manage/history/%s?tab=history' % employee.id">
+                    All Leave History
+                </a>
+                <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'transfer' else ''}"
+                   t-att-href="'/hrmis/manage/history/%s?tab=transfer' % employee.id">
+                    Transfer Requests History
+                </a>
+                <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'disciplinary' else ''}"
+                   t-att-href="'/hrmis/manage/history/%s?tab=disciplinary' % employee.id">
+                    Disciplinary Actions History
+                </a>
+            </div>
+
+            <div class="hrmis-panel__body">
+
+                <!-- Employee Summary -->
+                <div style="margin-bottom:18px;font-weight:900;font-size:15px;gap:12px">
+                    <div>Name: <t t-esc="employee.name"/></div>
+                    <div>Facility:
+                        <t t-if="facility_name"> <t t-esc="facility_name"/></t>
+                    </div>
+                    <div>District:
+                        <t t-if="district_name"> <t t-esc="district_name"/></t>
+                    </div>
+                    <div>
+                        Total Leave Balance:
+                        <t t-esc="employee.employee_leave_balance_total or 0.0"/> days
+                    </div>
                 </div>
 
-                <div class="hrmis-panel__body">
-                    <div style="margin-bottom: 18px; font-weight: 900; font-size: 15px;gap:12px">
-                        <div>Name:<t t-esc="employee.name"/></div> <div>Facility:
-                        <t t-if="facility_name">, <t t-esc="facility_name"/></t> </div><div>District:
-                        <t t-if="district_name">, <t t-esc="district_name"/></t></div>
-                       <div> 
-                            Total Leave Balance:
-                            <t t-esc="employee.employee_leave_balance_total or 0.0"/> days
-                       </div>
-                    </div>
+                <!-- ===================================================== -->
+                <!-- EMPLOYEE LEAVE HISTORY (existing grid view) -->
+                <!-- ===================================================== -->
+                <t t-if="tab == 'leave'">
+                    <t t-if="not leaves_history">
+                        <div class="hrmis-empty">No leave history found for this employee.</div>
+                    </t>
+                    <t t-else="">
+                        <t t-set="grid_hist"
+                           t-value="'display:grid; grid-template-columns: 1.6fr 170px 1.1fr 1.1fr 0.9fr 1fr; column-gap:12px;'"/>
 
-                    <t t-if="tab == 'leave'">
-                        <t t-if="not leaves_history">
-                            <div class="hrmis-empty">No leave history found for this employee.</div>
-                        </t>
-                        <t t-else="">
-                            <t t-set="grid_hist" t-value="'display:grid; grid-template-columns: 1.6fr 170px 1.1fr 1.1fr 0.9fr 1fr; column-gap: 12px; align-items: start;'"/>
-                            <div class="hrmis-table__head"
-                                 t-att-style="grid_hist + 'font-size: 18px; font-weight: 900; white-space: nowrap; padding-block: 12px;'">
-                                <div>Leave Type</div>
-                                <div>Submitted On</div>
-                                <div>From</div>
-                                <div>To</div>
-                                <div>Leave Taken</div>
-                                <div>Status</div>
+                        <div class="hrmis-table__head"
+                             t-att-style="grid_hist + 'font-size:18px;font-weight:900;padding-block:12px;'">
+                            <div>Leave Type</div>
+                            <div>Submitted On</div>
+                            <div>From</div>
+                            <div>To</div>
+                            <div>Leave Taken</div>
+                            <div>Status</div>
+                        </div>
+
+                        <t t-foreach="leaves_history" t-as="lv">
+                            <div class="hrmis-table__row"
+                                 t-att-style="grid_hist + 'font-size:15px;margin-top:8px;border-bottom:1px solid #eee;'">
+                                <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                <div><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
+                                <div><t t-esc="lv.request_date_from"/></div>
+                                <div><t t-esc="lv.request_date_to"/></div>
+                                <div>
+                                    <t t-esc="leave_taken_by_type.get(lv.holiday_status_id.id, 0.0)"/>
+                                </div>
+                                <div>
+                                    <t t-if="lv.state in ('confirm','validate1')">Pending</t>
+                                    <t t-elif="lv.state in ('validate','validate2')">Approved</t>
+                                    <t t-elif="lv.state == 'refuse'">Rejected</t>
+                                    <t t-else=""><t t-esc="lv.state"/></t>
+                                </div>
                             </div>
-                            <t t-foreach="leaves_history" t-as="lv">
-                                <div class="hrmis-table__row" t-att-style="grid_hist + 'font-size: 15px; margin-top: 8px border-bottom:1px solid #eee;'">
-                                    <div><t t-esc="lv.holiday_status_id.name"/></div>
-                                    <div><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
-                                    <div><t t-esc="lv.request_date_from or ''"/></div>
-                                    <div><t t-esc="lv.request_date_to or ''"/></div>
+                        </t>
+                    </t>
+                </t>
+
+                <!-- ===================================================== -->
+                <!-- MANAGE REQUESTS → HISTORY TAB (merged block) -->
+                <!-- ===================================================== -->
+                <t t-if="tab == 'history'">
+                    <t t-if="not leave_history">
+                        <div class="hrmis-empty">No leave request history available.</div>
+                    </t>
+                    <t t-else="">
+                        <div class="hrmis-leave-history">
+                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table">
+                                <div>#</div>
+                                <div>Staff / Facility / District</div>
+                                <div>Leave Type</div>
+                                <div>Dates</div>
+                                <div>Status</div>
+                                <div>Pending With</div>
+                                <div>Notifications</div>
+                            </div>
+
+                            <t t-foreach="range(len(leave_history))" t-as="idx0">
+                                <t t-set="lv" t-value="leave_history[idx0]"/>
+
+                                <div class="hrmis-leave-row hrmis-manage-table__row"
+                                     t-att-data-status="lv.state"
+                                     t-att-data-date="lv.request_date_from"
+                                     t-att-data-search="
+                                        '%s %s %s %s' % (
+                                            lv.employee_id.name or '',
+                                            lv.holiday_status_id.name or '',
+                                            lv.request_date_from or '',
+                                            lv.request_date_to or ''
+                                        )
+                                     ">
+                                    <div><t t-esc="idx0 + 1"/></div>
                                     <div>
-                                        <t t-esc="(leave_taken_by_type.get(lv.holiday_status_id.id, 0.0) if lv.holiday_status_id else 0.0)"/>
+                                        <strong><t t-esc="lv.employee_id.name"/></strong><br/>
+                                        <small>
+                                            <t t-esc="(lv.employee_id.hrmis_facility_id.name if lv.employee_id.hrmis_facility_id else '')"/>
+                                            ,
+                                            <t t-esc="(lv.employee_id.hrmis_district_id.name if lv.employee_id.hrmis_district_id else '')"/>
+                                        </small>
+                                    </div>
+                                    <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                    <div>
+                                        <t t-esc="lv.request_date_from"/> →
+                                        <t t-esc="lv.request_date_to"/>
                                     </div>
                                     <div>
-                                        <t t-if="lv.state in ('confirm','validate1')">Pending</t>
-                                        <t t-elif="lv.state in ('validate','validate2')">Approved</t>
+                                        <t t-if="lv.state == 'confirm'">Pending</t>
+                                        <t t-elif="lv.state == 'validate'">Approved</t>
                                         <t t-elif="lv.state == 'refuse'">Rejected</t>
                                         <t t-else=""><t t-esc="lv.state"/></t>
                                     </div>
+                                    <div>
+                                        <t t-if="lv.pending_approver_ids">
+                                            <t t-esc="', '.join(lv.pending_approver_ids.mapped('name'))"/>
+                                        </t>
+                                        <t t-else="">—</t>
+                                    </div>
+                                    <div></div>
                                 </div>
                             </t>
-                        </t>
+                        </div>
                     </t>
+                </t>
 
-                    <t t-if="tab == 'transfer'">
-                        <div class="hrmis-empty">No transfer requests history available yet.</div>
-                    </t>
+                <!-- Other Tabs -->
+                <t t-if="tab == 'transfer'">
+                    <div class="hrmis-empty">No transfer requests history available yet.</div>
+                </t>
 
-                    <t t-if="tab == 'disciplinary'">
-                        <div class="hrmis-empty">No disciplinary actions history available yet.</div>
-                    </t>
+                <t t-if="tab == 'disciplinary'">
+                    <div class="hrmis-empty">No disciplinary actions history available yet.</div>
+                </t>
 
-                    <div class="hrmis-form__actions" style="margin-top: 16px;">
-                        <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/manage/requests?tab=leave">Back to Manage Requests</a>
-                    </div>
+                <div class="hrmis-form__actions" style="margin-top:16px;">
+                    <a class="hrmis-btn hrmis-btn--outline"
+                       href="/hrmis/manage/requests?tab=leave">
+                        Back to Manage Requests
+                    </a>
                 </div>
+
             </div>
-        </t>
-    </template>
+        </div>
+    </t>
+</template>
+
 
     <template id="hrmis_confirm_dismiss" name="HRMIS Confirm Dismiss (Section Officer)">
         <t t-call="hr_holidays_updates.hrmis_ui_layout">

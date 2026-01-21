@@ -1,0 +1,72 @@
+<odoo>
+    <template id="leave_notification_pdf">
+        <t t-call="web.basic_layout">
+            <t t-set="docs" t-value="docs"/>
+            <t t-foreach="docs" t-as="doc">
+                <div class="page" style="padding:30px; font-family:Arial, sans-serif; font-size:14pt;">
+
+                    <!-- Header with table for logo and govt info -->
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:25px;">
+                        <tr>
+                            <!-- Logo -->
+                            <td style="width:120px; vertical-align:top;">
+                                <img src="/leave_letter/static/src/img/logo.png" style="height:120px;"/>
+                            </td>
+                            <!-- Govt Info -->
+                            <td style="vertical-align:top; text-align:left; padding-left:10px;">
+                                <div style="font-weight:bold; font-size:18pt; margin-bottom:2px;">GOVERNMENT OF SINDH</div>
+                                <div style="font-weight:bold; font-size:16pt; margin-bottom:2px;">HEALTH DEPARTMENT</div>
+                                <div style="font-size:14pt;">Karachi, dated: <t t-esc="doc.issue_date"/></div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Title -->
+                    <h2 style="text-align:center; text-decoration:underline; margin-top:10px; font-size:16pt;">NOTIFICATION</h2>
+
+                    <!-- Main Notification Paragraph -->
+                    <p style="margin-top:20px; line-height:1.8; text-align:justify; font-size:14pt;">
+                        <strong>NO. <t t-esc="doc.name"/>:</strong> 
+                        <t t-esc="doc.hrmis_employee_id"/> D/o or S/o <t t-esc="doc.hrmis_father_name"/>, 
+                        <t t-esc="doc.hrmis_designation"/> (<t t-esc="doc.hrmis_bps"/>) 
+                        <t t-esc="doc.facility_id.name"/> is hereby granted 
+                        <t t-esc="doc.leave_duration or 'Ninety (90) Days'"/> 
+                        <t t-esc="doc.leave_type_id.name or 'Leave'"/> w.e.f <t t-esc="doc.leave_start_date or doc.issue_date"/>.
+                    </p>
+
+                    <!-- CNIC on separate line -->
+                    <p style="margin-top:10px; font-weight:bold; font-size:14pt;">
+                        CNIC: <t t-esc="doc.hrmis_cnic"/>
+                    </p>
+
+                    <!-- Signature and Location on left -->
+                    <table style="width:100%; margin-top:40px;">
+                        <tr>
+                            <td style="text-align:left; font-size:14pt;">
+                                <div><strong>REHAN IQBAL BALOCH</strong></div>
+                                <div>SECRETARY HEALTH</div>
+                                <div style="margin-top:5px;">Karachi, <t t-esc="doc.issue_date"/></div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Distribution List -->
+                    <p style="margin-top:30px; font-size:12pt;">
+                        A copy is forwarded for information and necessary action to:
+                        <ol style="margin-left:20px;">
+                            <li>The Accountant General Sindh Karachi.</li>
+                            <li>The Director General, Health Services Sindh, Hyderabad.</li>
+                            <li>The Director, Health Services Karachi Division Karachi.</li>
+                            <li>The District Health Officer (concerned).</li>
+                            <li>The Medical Superintendent, <t t-esc="doc.facility_id.name"/>.</li>
+
+                            <li>Doctor concerned.</li>
+                            <li>Notification file.</li>
+                        </ol>
+                    </p>
+
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

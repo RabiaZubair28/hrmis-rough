@@ -5,7 +5,7 @@
     </record>
 
     <record id="leave_type_earned_full_pay" model="hr.leave.type">
-        <field name="name">Earned Leave (Full Pay)</field>
+        <field name="name">Leave On Full Pay</field>
     </record>
 
     <record id="leave_type_half_pay" model="hr.leave.type">
@@ -34,9 +34,9 @@
         <field name="name">Special Leave (Quarantine)</field>
     </record>
 
-    <record id="leave_type_study" model="hr.leave.type">
+    <!-- <record id="leave_type_study" model="hr.leave.type">
         <field name="name">Study Leave</field>
-    </record>
+    </record> -->
 
     <record id="leave_type_study_full_pay" model="hr.leave.type">
         <field name="name">Study Leave (Full Pay)</field>

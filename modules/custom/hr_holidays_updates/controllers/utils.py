@@ -67,6 +67,20 @@ def base_ctx(page_title: str, active_menu: str, **extra):
         "active_menu": active_menu,
         "current_employee": current_employee(),
     }
+    # Section Officer UX: show pending leave count badge on "Manage Requests".
+    try:
+        if request.env.user and request.env.user.has_group("custom_login.group_section_officer"):
+            from odoo.addons.hr_holidays_updates.controllers.leave_data import (
+                pending_leave_requests_for_user,
+            )
+
+            pending = pending_leave_requests_for_user(request.env.user.id)
+            ctx["pending_manage_leave_count"] = len(pending)
+        else:
+            ctx["pending_manage_leave_count"] = 0
+    except Exception:
+        # Never break page render due to badge computation.
+        ctx["pending_manage_leave_count"] = 0
     ctx.update(extra)
     return ctx
 
@@ -82,4 +96,3 @@ def can_manage_employee_leave(employee) -> bool:
         user.has_group("hr_holidays.group_hr_holidays_user")
         or user.has_group("hr_holidays.group_hr_holidays_manager")
     )
-

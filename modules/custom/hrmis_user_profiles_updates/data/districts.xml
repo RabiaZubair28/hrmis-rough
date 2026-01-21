@@ -1,62 +1,183 @@
 <odoo>
- 
-    <!-- ================= SINDH (South) ================= -->
-<record id="district_karachi" model="hrmis.district.master">
-<field name="name">Karachi</field>
-<field name="code">KHI</field>
+
+<record id="district_badin" model="hrmis.district.master">
+<field name="name">Badin</field>
+<field name="code">BAD</field>
 <field name="region">south</field>
 </record>
- 
-    <record id="district_hyderabad" model="hrmis.district.master">
-<field name="name">Hyderabad</field>
-<field name="code">HYD</field>
-<field name="region">south</field>
-</record>
- 
-    <record id="district_sukkur" model="hrmis.district.master">
-<field name="name">Sukkur</field>
-<field name="code">SKR</field>
-<field name="region">south</field>
-</record>
- 
-    <record id="district_larkana" model="hrmis.district.master">
-<field name="name">Larkana</field>
-<field name="code">LAR</field>
-<field name="region">south</field>
-</record>
- 
-    <record id="district_dadu" model="hrmis.district.master">
+
+<record id="district_dadu" model="hrmis.district.master">
 <field name="name">Dadu</field>
 <field name="code">DAD</field>
 <field name="region">south</field>
 </record>
- 
-    <record id="district_badin" model="hrmis.district.master">
-<field name="name">Badin</field>
-<field name="code">BDN</field>
+
+<record id="district_ghotki" model="hrmis.district.master">
+<field name="name">Ghotki</field>
+<field name="code">GHO</field>
 <field name="region">south</field>
 </record>
- 
-    <record id="district_mirpurkhas" model="hrmis.district.master">
-<field name="name">Mirpur Khas</field>
-<field name="code">MPK</field>
+
+<record id="district_hyderabad" model="hrmis.district.master">
+<field name="name">Hyderabad</field>
+<field name="code">HYD</field>
 <field name="region">south</field>
 </record>
- 
-    <record id="district_nawabshah" model="hrmis.district.master">
-<field name="name">Shaheed Benazirabad</field>
-<field name="code">SBA</field>
+
+<record id="district_jacobabad" model="hrmis.district.master">
+<field name="name">Jacobabad</field>
+<field name="code">JAC</field>
 <field name="region">south</field>
 </record>
- 
-    <record id="district_thatta" model="hrmis.district.master">
-<field name="name">Thatta</field>
-<field name="code">THT</field>
+
+<record id="district_jamshoro" model="hrmis.district.master">
+<field name="name">Jamshoro</field>
+<field name="code">JAM</field>
 <field name="region">south</field>
 </record>
- 
-    <record id="district_sanghar" model="hrmis.district.master">
+
+<record id="district_kamber" model="hrmis.district.master">
+<field name="name">Kamber</field>
+<field name="code">KAM</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_central" model="hrmis.district.master">
+<field name="name">Karachi Central</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_east" model="hrmis.district.master">
+<field name="name">Karachi East</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_west" model="hrmis.district.master">
+<field name="name">Karachi West</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_kemari" model="hrmis.district.master">
+<field name="name">Karachi Kemari</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_korangi" model="hrmis.district.master">
+<field name="name">Karachi Korangi</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_malir" model="hrmis.district.master">
+<field name="name">Karachi Malir</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_karachi_south" model="hrmis.district.master">
+<field name="name">Karachi South</field>
+<field name="code">KAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_kashmore" model="hrmis.district.master">
+<field name="name">Kashmore</field>
+<field name="code">KAS</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_khairpur" model="hrmis.district.master">
+<field name="name">Khairpur</field>
+<field name="code">KHA</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_larkana" model="hrmis.district.master">
+<field name="name">Larkana</field>
+<field name="code">LAR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_matiari" model="hrmis.district.master">
+<field name="name">Matiari</field>
+<field name="code">MAT</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_mirpurkhas" model="hrmis.district.master">
+<field name="name">Mirpurkhas</field>
+<field name="code">MIR</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_naushero_feroz" model="hrmis.district.master">
+<field name="name">Naushero Feroz</field>
+<field name="code">NAU</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_sanghar" model="hrmis.district.master">
 <field name="name">Sanghar</field>
-<field name="code">SGR</field>
+<field name="code">SAN</field>
 <field name="region">south</field>
-</record> </odoo>
+</record>
+
+<record id="district_shaheed_benazirabad" model="hrmis.district.master">
+<field name="name">Shaheed Benazirabad</field>
+<field name="code">SHA</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_shikarpur" model="hrmis.district.master">
+<field name="name">Shikarpur</field>
+<field name="code">SHI</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_sujawal" model="hrmis.district.master">
+<field name="name">Sujawal</field>
+<field name="code">SUJ</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_sukkur" model="hrmis.district.master">
+<field name="name">Sukkur</field>
+<field name="code">SUK</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_tando_allahyar" model="hrmis.district.master">
+<field name="name">Tando Allahyar</field>
+<field name="code">TAN</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_tando_muhammad_khan" model="hrmis.district.master">
+<field name="name">Tando Muhammad Khan</field>
+<field name="code">TAN</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_tharparkar" model="hrmis.district.master">
+<field name="name">Tharparkar</field>
+<field name="code">THA</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_thatta" model="hrmis.district.master">
+<field name="name">Thatta</field>
+<field name="code">THA</field>
+<field name="region">south</field>
+</record>
+
+<record id="district_umerkot" model="hrmis.district.master">
+<field name="name">Umerkot</field>
+<field name="code">UME</field>
+<field name="region">south</field>
+</record>
+
+</odoo>

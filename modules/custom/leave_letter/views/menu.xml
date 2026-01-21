@@ -1,0 +1,13 @@
+<odoo>
+
+    <menuitem id="menu_leave_notification_root"
+              name="Notifications"
+              sequence="10"/>
+
+    <menuitem id="menu_leave_notification"
+              name="Leave Notifications"
+              parent="menu_leave_notification_root"
+              action="action_leave_notification"
+              sequence="10"/>
+
+</odoo>

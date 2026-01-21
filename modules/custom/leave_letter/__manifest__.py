@@ -1,0 +1,22 @@
+{
+    "name": "Leave Notifications",
+    "version": "1.0",
+    "category": "HRMIS",
+    "summary": "System generated leave approval notifications",
+    "author": "HRMIS",
+    "depends": ["hr_holidays", "hr", "hr_holidays_multilevel_hierarchy", "custom_section_officers"],
+    "data": [
+        "security/ir.model.access.csv",
+        # "views/leave_notification_views.xml",
+        "views/hrmis_leave_notification_pdf.xml",
+        "views/leave_notification_report.xml",
+        # "report/leave_notification_report_action.xml",
+        # "views/leave_notification_views.xml",
+        # "views/menu.xml",
+        # "report/leave_notification_template.xml",
+        "data/sequence.xml",
+        "views/leave_letter_custom_ui_employee.xml",
+        # "views/leave_letter_custom_ui_so.xml",
+    ],
+    "application": True,
+}

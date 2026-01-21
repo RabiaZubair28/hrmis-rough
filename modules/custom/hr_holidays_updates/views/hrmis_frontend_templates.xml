@@ -401,10 +401,10 @@
 
 
     <!-- TAB CONTENT -->
-    <div class="tab-content hrmis-panel__body ">
+<div id="hrmis_user_profile_block">
+<div class="tab-content hrmis-panel__body ">
 
-        <!-- 🔹 TAB 1: USER PROFILE (YOUR ORIGINAL CONTENT) -->
-        <div class="tab-pane fade show active" id="personal_data">
+    <div class="tab-pane fade show active" id="personal_data">
 
             <div class="hrmis-kv hrmis-kv--grid">
 <div class="hrmis-kv__item">
@@ -428,6 +428,21 @@
         <t t-esc="(('facility_id' in employee._fields and employee.facility_id and employee.facility_id.name) or ('hrmis_facility_id' in employee._fields and employee.hrmis_facility_id and employee.hrmis_facility_id.name) or '')"/>
     </div>
 </div>
+
+<div class="hrmis-kv__item">
+    <div class="hrmis-kv__k">Date of Birth</div>
+    <div class="hrmis-kv__v">
+        <t t-esc="('birthday' in employee._fields and employee.birthday) or ''"/>
+    </div>
+</div>
+
+<div class="hrmis-kv__item">
+    <div class="hrmis-kv__k">Commission Date</div>
+    <div class="hrmis-kv__v">
+        <t t-esc="('hrmis_commission_date' in employee._fields and employee.hrmis_commission_date) or ''"/>
+    </div>
+</div>
+
 
 <div class="hrmis-kv__item">
     <div class="hrmis-kv__k">Joining Date</div>
@@ -468,9 +483,13 @@
 
 <!-- Row 5 -->
 <div class="hrmis-kv__item">
-    <div class="hrmis-kv__k">Department</div>
+    <!-- <div class="hrmis-kv__k">Department</div>
     <div class="hrmis-kv__v">
         <t t-esc="(employee.department_id and employee.department_id.name) or ''"/>
+    </div> -->
+    <div class="hrmis-kv__k">Cadre</div>
+    <div class="hrmis-kv__v">
+        <t t-esc="(employee.hrmis_cadre and employee.hrmis_cadre.name) or ''"/>
     </div>
 </div>
 
@@ -488,20 +507,20 @@
         <t t-esc="employee.mobile_phone or (('hrmis_contact_info' in employee._fields and employee.hrmis_contact_info) or '')"/>
     </div>
 </div>
-
 <div class="hrmis-kv__item">
-    <div class="hrmis-kv__k">Section Officer</div>
+    <div class="hrmis-kv__k">Taken Leaves</div>
     <div class="hrmis-kv__v">
-        <t t-esc="(employee.parent_id and employee.parent_id.name) or (('coach_id' in employee._fields and employee.coach_id and employee.coach_id.name) or '')"/>
+        <t t-esc="employee.hrmis_leaves_taken or '' "/>
     </div>
 </div>
+
 
 
                 <!-- keep all remaining kv rows here as-is -->
 
             </div>
         </div>
-
+</div>
         <!-- 🔹 TAB 2: POSTING -->
         <div class="tab-pane fade" id="posting">
             <table class="table table-bordered table-sm">

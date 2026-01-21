@@ -20,6 +20,12 @@
         'data/facilities.xml',
         'data/hrmis_cadre.xml',
     ],
+    'assets': {
+        'web.assets_frontend': [
+            'hrmis_user_profiles_updates/static/src/js/facility_filter.js',
+            'hrmis_user_profiles_updates/static/src/js/hrmis_profile_validation.js',
+        ],
+    },
     'installable': True,
     'application': False,
 }

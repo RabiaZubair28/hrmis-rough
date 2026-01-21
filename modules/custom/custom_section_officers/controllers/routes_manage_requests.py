@@ -11,11 +11,55 @@ _logger = logging.getLogger(__name__)
 from odoo.addons.hr_holidays_updates.controllers.leave_data import (
     leave_pending_for_current_user,
     pending_leave_requests_for_user,
+    leave_request_history_for_user,
 )
 from odoo.addons.hr_holidays_updates.controllers.utils import base_ctx
 
 
 class HrmisSectionOfficerManageRequestsController(http.Controller):
+    def _employee_group_ids_for_person(self, employee):
+        """
+        Best-effort: return all hr.employee ids that represent the same person.
+
+        This matches the behavior used in the History page, so totals like
+        "Leave Taken" don't appear wrong when leave requests are attached to
+        different employee rows for the same user/service number.
+        """
+        if not employee:
+            return []
+        Emp = request.env["hr.employee"].sudo()
+        emp_ids = [employee.id]
+        try:
+            if getattr(employee, "user_id", False):
+                emp_ids = Emp.search([("user_id", "=", employee.user_id.id)]).ids or emp_ids
+            elif "hrmis_employee_id" in employee._fields and employee.hrmis_employee_id:
+                emp_ids = Emp.search([("hrmis_employee_id", "=", employee.hrmis_employee_id)]).ids or emp_ids
+        except Exception:
+            return emp_ids
+        return emp_ids
+
+    def _leave_days_value(self, leave) -> float:
+        """
+        Best-effort leave days value.
+        Prefer Odoo computed fields if available; fall back to calendar-day count.
+        """
+        if not leave:
+            return 0.0
+        for f in ("number_of_days_display", "number_of_days"):
+            try:
+                if f in leave._fields:
+                    v = getattr(leave, f, 0.0) or 0.0
+                    return float(v)
+            except Exception:
+                continue
+        try:
+            d_from = getattr(leave, "request_date_from", None)
+            d_to = getattr(leave, "request_date_to", None)
+            if d_from and d_to:
+                return float((d_to - d_from).days + 1)
+        except Exception:
+            pass
+        return 0.0
     def _section_officer_employee_ids(self):
         """Return hr.employee ids linked to current user.
 
@@ -143,40 +187,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             base_ctx("Leave request", "manage_requests", leave=lv, show_approve_text=show_approve_text,),
         )
 
-    # @http.route(
-    #     ["/hrmis/leave/<int:leave_id>/approve"],
-    #     type="http",
-    #     auth="user",
-    #     website=True,
-    #     methods=["POST"],
-    #     csrf=True,
-    # )
-    # def hrmis_leave_approve(self, leave_id: int, **post):
-    #     lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
-    #     if not lv:
-    #         return request.not_found()
-
-    #     # For SO Manage Requests, allow only managed employees.
-    #     # Allow approval only when it's pending for the current user.
-    #     # This matches the custom multi-level approval engine (pending_approver_ids).
-    #     if not leave_pending_for_current_user(lv):
-    #         return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
-
-    #     try:
-    #         comment = (post.get("comment") or "").strip()
-    #         if hasattr(lv.with_user(request.env.user), "action_approve_by_user"):
-    #             lv.with_user(request.env.user).action_approve_by_user(comment=comment or None)
-    #         elif hasattr(lv.with_user(request.env.user), "action_approve"):
-    #             lv.with_user(request.env.user).action_approve()
-    #         elif hasattr(lv.with_user(request.env.user), "action_validate"):
-    #             lv.with_user(request.env.user).action_validate()
-    #         else:
-    #             lv.sudo().write({"state": "validate"})
-    #     except Exception:
-    #         return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
-
-    #     return request.redirect("/hrmis/manage/requests?tab=leave&success=approved")
-
     @http.route(
         ["/hrmis/leave/<int:leave_id>/approve"],
         type="http",
@@ -201,18 +211,35 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "/hrmis/manage/requests?tab=leave&error=Leave Not Found"
             )
 
+        action = (post.get("action") or "approve").strip().lower()
         comment = (post.get("comment") or "").strip() or None
 
         try:
-            # --------------------------------------------------
-            # Delegate EVERYTHING to the model
-            # This enforces:
-            # - sequential / parallel rules
-            # - approval_step correctness
-            # - pending approver validation
-            # - final validation
-            # --------------------------------------------------
-            leave.action_approve_by_user(comment=comment)
+            if action == "dismiss":
+                # Best-effort: post comment then refuse.
+                if comment:
+                    try:
+                        leave.sudo().message_post(
+                            body=comment,
+                            message_type="comment",
+                            subtype_xmlid="mail.mt_comment",
+                            author_id=request.env.user.partner_id.id,
+                        )
+                    except Exception:
+                        pass
+
+                rec = leave.with_user(request.env.user)
+                if hasattr(rec, "action_refuse"):
+                    rec.action_refuse()
+                elif hasattr(rec, "action_reject"):
+                    rec.action_reject()
+                else:
+                    leave.sudo().write({"state": "refuse"})
+            else:
+                # --------------------------------------------------
+                # Delegate approval to the model (sequential/parallel aware)
+                # --------------------------------------------------
+                leave.action_approve_by_user(comment=comment)
 
         except UserError as e:
             # Expected authorization / workflow errors
@@ -228,7 +255,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             )
 
         return request.redirect(
-            "/hrmis/manage/requests?tab=leave&success=approved"
+            "/hrmis/manage/requests?tab=leave&success=%s" % ("dismissed" if action == "dismiss" else "approved")
         )
 
     @http.route(
@@ -262,119 +289,102 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             },
         )
 
-
-    # @http.route(
-    #     ["/hrmis/leave/<int:leave_id>/dismiss"],
-    #     type="http",
-    #     auth="user",
-    #     website=True,
-    #     methods=["GET", "POST"],
-    #     csrf=True,
-    # )
-    # def hrmis_leave_dismiss(self, leave_id: int, **post):
-    #     # Get the leave record
-    #     lv = request.env["hr.leave"].sudo().browse(leave_id).exists()
-    #     if not lv:
-    #         return request.not_found()
-
-    #     # Ensure the leave is pending for current user
-    #     if not leave_pending_for_current_user(lv):
-    #         return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
-
-    #     # GET: render confirmation page
-    #     if request.httprequest.method == "GET":
-    #         return request.render(
-    #             "custom_section_officers.hrmis_confirm_dismiss",
-    #             base_ctx(
-    #                 "Confirm dismiss",
-    #                 "manage_requests",
-    #                 kind="leave",
-    #                 record=lv,
-    #                 post_url=f"/hrmis/leave/{lv.id}/dismiss",
-    #                 back_url="/hrmis/manage/requests?tab=leave",
-    #             ),
-    #         )
-
-    #     # POST: perform dismissal
-    #     # Ensure we get the comment from POST data
-    #     comment = post.get("comment")
-    #     if not comment or not comment.strip():
-    #         comment = "User rejected your approval without a comment"
-    #     else:
-    #         comment = comment.strip()
-
-    #     try:
-    #         lv_sudo = lv.sudo()
-
-    #         # Post the comment
-    #         lv_sudo.message_post(
-    #             body=comment,
-    #             message_type="comment",
-    #             subtype_xmlid="mail.mt_comment",
-    #             author_id=request.env.user.partner_id.id,
-    #         )
-
-    #         # Dismiss (refuse) the leave
-    #         if hasattr(lv_sudo, "action_refuse"):
-    #             lv_sudo.action_refuse()
-    #         elif hasattr(lv_sudo, "action_reject"):
-    #             lv_sudo.action_reject()
-    #         else:
-    #             lv_sudo.write({"state": "refuse"})
-
-    #     except Exception:
-    #         _logger.exception("Dismiss failed for leave %s", leave_id)
-    #         return request.redirect("/hrmis/manage/requests?tab=leave&error=dismiss_failed")
-
-    #     return request.redirect("/hrmis/manage/requests?tab=leave&success=dismissed")
-
-
-    # @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
-    # def hrmis_manage_requests(self, tab: str = "leave", **kw):
-    #     # Show requests pending the current user's action (multi-level + manager fallbacks).
-    #     uid = request.env.user.id
-    #     leaves = pending_leave_requests_for_user(uid)
-    #     allocations = pending_allocation_requests_for_user(uid)
-    #     # leaves_json = [
-    #     #     {
-    #     #         "id": lv.id,
-    #     #         "employee": lv.employee_id.name if lv.employee_id else False,
-    #     #         "state": lv.state,
-    #     #         "request_date_from": str(lv.request_date_from),
-    #     #         "request_date_to": str(lv.request_date_to),
-    #     #         "holiday_status": lv.holiday_status_id.name if lv.holiday_status_id else False,
-    #     #         "pending_approver_ids": lv.pending_approver_ids.ids if hasattr(lv, "pending_approver_ids") else [],
-    #     #     }
-    #     #     for lv in leaves
-    #     # ]
-
-    #     # Optionally include debug info
-    #     # debug_json = getattr(leaves, "debug", None)
-
-    #     # Return as JSON on the page
-    #     # return request.make_response(
-    #     #     json.dumps({
-    #     #         "leaves": leaves,  
-    #     #         "debug": debug_json or [],
-    #     #     }, indent=2),
-    #     #     headers=[("Content-Type", "application/json")]
-    #     # )
-    #     tab = tab if tab in ("leave", "allocation") else "leave"
-    #     return request.render(
-    #         "custom_section_officers.hrmis_manage_requests",
-    #         base_ctx("Manage Requests", "manage_requests", tab=tab, leaves=leaves, allocations=allocations),
-    #     )
-
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", success=None, error=None, **kw):
         uid = request.env.user.id
 
-    
-        leaves = pending_leave_requests_for_user(uid)
-        # leaves_debug = None
-        tab = "leave"
+        leaves = []
+        leave_history = []
+        leave_taken_by_leave_id = {}
+        attachments_by_leave_id = {}
 
-       
+        # Decide which tab is active
+        tab = tab or "leave"
+
+        if tab == "leave":
+            leaves = pending_leave_requests_for_user(uid)
+
+            # --------------------------------------------------------------
+            # Extra UI data for Manage Requests (Section Officer):
+            # - Leave taken per leave type for that employee
+            # - Supporting documents (attachments) for each leave
+            # --------------------------------------------------------------
+            try:
+                if leaves:
+                    leave_ids = leaves.ids
+                    type_ids = leaves.mapped("holiday_status_id").ids
+
+                    Emp = request.env["hr.employee"].sudo()
+                    root_emp_ids = leaves.mapped("employee_id").ids
+
+                    emp_id_to_root = {}
+                    all_person_emp_ids = set()
+
+                    for emp in Emp.browse(root_emp_ids):
+                        grp = self._employee_group_ids_for_person(emp)
+                        for e_id in grp:
+                            emp_id_to_root[e_id] = emp.id
+                            all_person_emp_ids.add(e_id)
+
+                    taken_by_root_type = {}
+
+                    if all_person_emp_ids and type_ids:
+                        approved = request.env["hr.leave"].sudo().search(
+                            [
+                                ("employee_id", "in", list(all_person_emp_ids)),
+                                ("holiday_status_id", "in", type_ids),
+                                ("state", "in", ("validate", "validate2")),
+                            ]
+                        )
+
+                        for alv in approved:
+                            root_id = emp_id_to_root.get(
+                                alv.employee_id.id, alv.employee_id.id
+                            )
+                            lt_id = alv.holiday_status_id.id if alv.holiday_status_id else None
+                            if not lt_id:
+                                continue
+
+                            taken_by_root_type[(root_id, lt_id)] = (
+                                taken_by_root_type.get((root_id, lt_id), 0.0)
+                                + self._leave_days_value(alv)
+                            )
+
+                    for lv in leaves:
+                        root_id = (
+                            emp_id_to_root.get(lv.employee_id.id, lv.employee_id.id)
+                            if lv.employee_id
+                            else None
+                        )
+                        lt_id = lv.holiday_status_id.id if lv.holiday_status_id else None
+                        leave_taken_by_leave_id[lv.id] = float(
+                            taken_by_root_type.get((root_id, lt_id), 0.0)
+                        )
+
+                    # Attachments
+                    Att = request.env["ir.attachment"].sudo()
+                    atts = Att.search(
+                        [
+                            ("res_model", "=", "hr.leave"),
+                            ("res_id", "in", leave_ids),
+                        ],
+                        order="id desc",
+                    )
+
+                    for att in atts:
+                        attachments_by_leave_id.setdefault(att.res_id, Att.browse([]))
+                        attachments_by_leave_id[att.res_id] |= att
+
+            except Exception:
+                _logger.exception("Failed preparing Manage Requests UI data")
+
+        elif tab == "history":
+            leave_history = leave_request_history_for_user(uid)
+
+        else:
+            # fallback safety
+            tab = "leave"
+            leaves = pending_leave_requests_for_user(uid)
 
         return request.render(
             "custom_section_officers.hrmis_manage_requests",
@@ -383,112 +393,14 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 "manage_requests",
                 tab=tab,
                 leaves=leaves,
+                leave_history=leave_history,
+                leave_taken_by_leave_id=leave_taken_by_leave_id,
+                attachments_by_leave_id=attachments_by_leave_id,
                 success=success,
                 error=error,
             ),
         )
 
-    @http.route(
-        ["/hrmis/manage/history/<int:employee_id>"],
-        type="http",
-        auth="user",
-        website=True,
-        methods=["GET"],
-        csrf=False,
-    )
-    def hrmis_manage_history(self, employee_id: int, tab: str = "leave", **kw):
-        """
-        Section Officer history page (3 tabs):
-        - Leave Requests History (implemented)
-        - Transfer Requests History (placeholder)
-        - Disciplinary Actions History (placeholder)
-        """
-        tab = (tab or "leave").strip().lower()
-        if tab not in ("leave", "transfer", "disciplinary"):
-            tab = "leave"
-
-        # Only Section Officers should use this page.
-        if not request.env.user.has_group("custom_login.group_section_officer"):
-            return request.redirect("/hrmis/services?error=not_allowed")
-
-        Emp = request.env["hr.employee"].sudo()
-        emp = Emp.browse(employee_id).exists()
-        if not emp:
-            return request.not_found()
-
-        # Access control: only allow history for employees managed by current SO.
-        if not self._is_managed_by_current_user(emp) and emp.id not in set(self._managed_employee_ids()):
-            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
-
-        # Include duplicate employee rows for the same real person when possible,
-        # because leave requests can be attached to different hr.employee rows.
-        emp_ids = [emp.id]
-        try:
-            if getattr(emp, "user_id", False):
-                emp_ids = Emp.search([("user_id", "=", emp.user_id.id)]).ids or emp_ids
-            elif "hrmis_employee_id" in emp._fields and emp.hrmis_employee_id:
-                emp_ids = Emp.search([("hrmis_employee_id", "=", emp.hrmis_employee_id)]).ids or emp_ids
-        except Exception:
-            pass
-
-        leaves_history = request.env["hr.leave"].sudo().browse([])
-        leave_taken_by_type = {}
-        if tab == "leave":
-            leaves_history = request.env["hr.leave"].sudo().search(
-                [
-                    ("employee_id", "in", emp_ids),
-                    ("state", "in", ("confirm", "validate1", "validate", "validate2", "refuse")),
-                ],
-                order="create_date desc, id desc",
-                limit=300,
-            )
-
-            # "Leave Taken": sum approved leaves per leave type for this person.
-            approved = request.env["hr.leave"].sudo().search(
-                [
-                    ("employee_id", "in", emp_ids),
-                    ("state", "in", ("validate", "validate2")),
-                ]
-            )
-            days_field = "number_of_days" if "number_of_days" in approved._fields else None
-            if days_field:
-                for lv in approved:
-                    lt = lv.holiday_status_id
-                    if not lt:
-                        continue
-                    leave_taken_by_type[lt.id] = float(leave_taken_by_type.get(lt.id, 0.0) + (getattr(lv, days_field) or 0.0))
-
-        # Facility/District display (best-effort across schemas)
-        facility_name = ""
-        district_name = ""
-        try:
-            if "facility_id" in emp._fields and emp.facility_id:
-                facility_name = emp.facility_id.name or ""
-            elif "hrmis_facility_id" in emp._fields and emp.hrmis_facility_id:
-                facility_name = emp.hrmis_facility_id.name or ""
-        except Exception:
-            facility_name = ""
-        try:
-            if "district_id" in emp._fields and emp.district_id:
-                district_name = emp.district_id.name or ""
-            elif "hrmis_district_id" in emp._fields and emp.hrmis_district_id:
-                district_name = emp.hrmis_district_id.name or ""
-        except Exception:
-            district_name = ""
-
-        return request.render(
-            "custom_section_officers.hrmis_manage_history",
-            base_ctx(
-                "History",
-                "manage_requests",
-                tab=tab,
-                employee=emp,
-                leaves_history=leaves_history,
-                leave_taken_by_type=leave_taken_by_type,
-                facility_name=facility_name,
-                district_name=district_name,
-            ),
-        )
         alloc = request.env["hr.leave.allocation"].sudo().browse(allocation_id).exists()
         if not alloc:
             return request.not_found()
@@ -503,6 +415,54 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             "custom_section_officers.hrmis_allocation_view",
             base_ctx("Allocation request", "manage_requests", allocation=alloc),
         )
+
+    def leave_request_history_for_user(user_id: int, limit: int = 200):
+        """
+        Fetch leave requests already acted upon by the user or generally completed,
+        to populate the 'Leave Request History' tab.
+        """
+        Leave = request.env["hr.leave"].sudo()
+
+        domains = []
+
+        # Include leaves where the user was an approver
+        if "pending_approver_ids" in Leave._fields:
+            domains.append([("state", "in", ("validate", "refuse")), ("pending_approver_ids", "in", [user_id])])
+
+        if "validation_status_ids" in Leave._fields and "pending_approver_ids" not in Leave._fields:
+            domains.append(
+                [
+                    ("state", "in", ("validate", "refuse")),
+                    ("validation_status_ids.user_id", "=", user_id),
+                ]
+            )
+
+        # Include user's own leaves
+        if "employee_id" in Leave._fields:
+            domains.append([("employee_id.user_id", "=", user_id)])
+
+        # Fallback for HR / manager users to see all completed leaves
+        if (
+            request.env.user
+            and (
+                request.env.user.has_group("hr_holidays.group_hr_holidays_user")
+                or request.env.user.has_group("hr_holidays.group_hr_holidays_manager")
+            )
+        ):
+            domains.append([("state", "in", ("validate", "refuse"))])
+
+        if not domains:
+            return Leave.browse([])
+
+        # Combine domains with OR logic if multiple
+        if len(domains) == 1:
+            return Leave.search(domains[0], order="request_date_from desc, id desc", limit=limit)
+
+        domain = ["|"] + domains[0] + domains[1]
+        for extra in domains[2:]:
+            domain = ["|"] + domain + extra
+
+        return Leave.search(domain, order="request_date_from desc, id desc", limit=limit)
 
     # REAL APPROVAL METHOD
     # @http.route(

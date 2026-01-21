@@ -82,3 +82,44 @@ def leave_pending_for_current_user(leave) -> bool:
         return bool(leave.id in set(pending.ids))
     except Exception:
         return False
+    
+
+def leave_request_history_for_user(user_id: int, limit=200):
+    Leave = request.env["hr.leave"].sudo()
+    FlowLine = request.env["hr.leave.approval.flow.line"].sudo()
+
+    # --------------------------------------------
+    # Step 1: Fetch ALL leaves
+    # --------------------------------------------
+    leaves = Leave.search(
+        [],
+        order="request_date_from desc, id desc",
+        limit=limit,
+    )
+
+    # --------------------------------------------
+    # Step 2: Visibility rule
+    # Manager OR valid approver by BPS
+    # --------------------------------------------
+    def _can_see(leave):
+        emp = leave.employee_id
+        if not emp:
+            return False
+
+        # (A) Manager
+        if emp.parent_id and emp.parent_id.user_id and emp.parent_id.user_id.id == user_id:
+            return True
+
+        # (B) Approver by BPS + flow
+        if emp.hrmis_bps is None:
+            return False
+
+        return bool(FlowLine.search_count([
+            ("flow_id.leave_type_id", "=", leave.holiday_status_id.id),
+            ("user_id", "=", user_id),
+            ("bps_from", "<=", emp.hrmis_bps),
+            ("bps_to", ">=", emp.hrmis_bps),
+        ]))
+
+    return leaves.filtered(_can_see)
+

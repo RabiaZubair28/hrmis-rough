@@ -15,7 +15,14 @@
         'views/section_officer_menu.xml',
         'views/section_officer_template.xml',
         'views/manage_requests_templates.xml',
+        'views/user_profile_so.xml',
+        'views/staff_search.xml',
     ],
+    "assets": {
+        "web.assets_frontend": [
+            "custom_section_officers/static/src/scss/search_staff.scss",
+        ],
+    },
     'installable': True,
     'application': False,
 }

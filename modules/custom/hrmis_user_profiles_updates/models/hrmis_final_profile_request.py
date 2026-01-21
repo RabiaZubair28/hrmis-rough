@@ -46,6 +46,11 @@ class EmployeeProfileRequest(models.Model):
         string="Father's Name",
     )
 
+    birthday = fields.Date(
+        string="Date of Birth",
+    )
+    hrmis_commission_date = fields.Date(string="Commision Date")
+   
     hrmis_joining_date = fields.Date(
         string="Joining Date",
     )
@@ -59,7 +64,6 @@ class EmployeeProfileRequest(models.Model):
     hrmis_cadre = fields.Many2one(
     'hrmis.cadre',
     string='Cadre',
-    # required=True
     )
 
 
@@ -82,7 +86,9 @@ class EmployeeProfileRequest(models.Model):
         required=False,
         domain="[('district_id','=',district_id)]"
     )
-
+    hrmis_leaves_taken = fields.Float(
+        string="Total Leaves Taken (Days)"
+    )
     approved_by = fields.Many2one(
     'res.users',
     string="Approved By",
@@ -113,6 +119,7 @@ class EmployeeProfileRequest(models.Model):
             'district_id': employee.district_id.id,
             'facility_id': employee.facility_id.id,
             'hrmis_contact_info': employee.hrmis_contact_info,
+            "hrmis_leaves_taken": employee.hrmis_leaves_taken,
         })
         return res
 
@@ -126,19 +133,6 @@ class EmployeeProfileRequest(models.Model):
                 }
             }
 
-    # @api.constrains('hrmis_joining_date')
-    # def _check_joining_date(self):
-    #     today = date.today()
-    #     for rec in self:
-    #         if rec.hrmis_joining_date and rec.hrmis_joining_date > today:
-    #             raise ValidationError("Joining Date cannot be in the future.")
-
-    # @api.constrains('hrmis_bps')
-    # def _check_bps(self):
-    #     for rec in self:
-    #         if rec.hrmis_bps < 6 or rec.hrmis_bps > 22:
-    #             raise ValidationError("BPS must be between 6 and 22.")
-
     # -------------------------------------------------
     # ACTIONS
     # -------------------------------------------------
@@ -148,6 +142,7 @@ class EmployeeProfileRequest(models.Model):
         self.ensure_one()
         parent = self.employee_id.parent_id
         return parent and parent.user_id == self.env.user
+    
     def action_submit(self):
         self.ensure_one()
 
@@ -162,6 +157,7 @@ class EmployeeProfileRequest(models.Model):
             'hrmis_cadre',
             'hrmis_designation',
             'hrmis_bps',
+            'hrmis_leaves_taken',
         ]
 
         missing = [
@@ -223,11 +219,14 @@ class EmployeeProfileRequest(models.Model):
             'hrmis_joining_date': self.hrmis_joining_date,
             'hrmis_bps': self.hrmis_bps,
             'gender': self.gender,
+            'birthday': self.birthday,
+            'hrmis_commission_date': self.hrmis_commission_date,
             'hrmis_cadre': self.hrmis_cadre.id if self.hrmis_cadre else False,
             'hrmis_designation': self.hrmis_designation,
             'district_id': self.district_id.id if self.district_id else False,
             'facility_id': self.facility_id.id if self.facility_id else False,
             'hrmis_contact_info': self.hrmis_contact_info,
+            'hrmis_leaves_taken': self.hrmis_leaves_taken,
         })
 
         self.approved_by = self.env.user.id

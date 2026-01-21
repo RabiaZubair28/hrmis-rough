@@ -2,7 +2,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import date
 
-# Testing commnet for development branch
+#This model will store the data for request approval temporarily
 class HREmployee(models.Model):
     _inherit = 'hr.employee'
 
@@ -22,6 +22,11 @@ class HREmployee(models.Model):
     copy=False
     )
     hrmis_cnic = fields.Char(string="CNIC")
+    birthday = fields.Date(
+        string="Date of Birth",
+        required=True
+    )
+    hrmis_commission_date = fields.Date(string="Commision Date")
     hrmis_father_name = fields.Char(string="Father's Name")
     hrmis_joining_date = fields.Date(string="Joining Date")
     gender = fields.Selection([
@@ -29,14 +34,7 @@ class HREmployee(models.Model):
         ('female', 'Female'),
         ('other', 'Other')
     ], string="Gender")
-    # hrmis_cadre = fields.Selection(
-    # [
-    #     ('anesthesia', 'Anesthesia'),
-    #     ('public_health', 'Public Health'),
-    #     ('medical', 'Medical'),
-    # ],
-    # string="Cadre"
-    # )
+    
     hrmis_cadre = fields.Many2one(
     'hrmis.cadre',
     string='Cadre',
@@ -61,7 +59,9 @@ class HREmployee(models.Model):
 
 
     hrmis_contact_info = fields.Char(string="Contact Info")
-
+    hrmis_leaves_taken = fields.Float(
+        string="Total Leaves Taken (Days)"
+    )
 
     service_postings_district_id = fields.Many2one(related="hrmis_service_history_ids.district_id", readonly=True)
     service_postings_facility_id = fields.Many2one(related="hrmis_service_history_ids.facility_id", readonly=True)
@@ -83,70 +83,3 @@ class HREmployee(models.Model):
                 'default_employee_id': self.id
             }
         }
-
-    # _sql_constraints = [
-    #     ('cnic_unique', 'unique(hrmis_cnic)', 'CNIC must be unique!'),
-    #     ('employee_id_unique', 'unique(hrmis_employee_id)', 'Employee ID must be unique!')
-    # ]
-    
-
-    # @api.model_create_multi
-    # def create(self, vals_list):
-    #     employees = super().create(vals_list)
-
-    #     for emp in employees:
-    #         if emp.user_id:
-    #             emp.message_post(
-    #                 body="Your employee profile has been created.",
-    #                 partner_ids=[emp.user_id.partner_id.id],
-    #                 message_type="comment",
-    #                 subtype_xmlid="mail.mt_comment",
-    #             )
-
-    #     return employees
-    
-    # def write(self, vals):
-    #     res = super().write(vals)
-
-    #     for emp in self:
-    #         if emp.user_id:
-    #             emp.message_post(
-    #                 body="Your employee profile has been updated.",
-    #                 partner_ids=[emp.user_id.partner_id.id],
-    #                 message_type="comment",
-    #                 subtype_xmlid="mail.mt_comment",
-    #             )
-
-    #     return res
-
-
-    # @api.onchange('district_id')
-    # def _onchange_district(self):
-    #     self.facility_id = False
-
-    #     if self.district_id:
-    #         return {
-    #             'domain': {
-    #                 'facility_id': [('district_id', '=', self.district_id.id)]
-    #             }
-    #         }
-    #     return {
-    #         'domain': {
-    #             'facility_id': []
-    #         }
-    #     }
-
-    # @api.constrains('hrmis_joining_date', 'birthday')
-    # def _check_date_range(self):
-    #     today = date.today()
-    #     for rec in self:
-    #         if rec.hrmis_joining_date and rec.hrmis_joining_date > today:
-    #             raise ValidationError("Joining Date cannot be in the future.")
-    #         if rec.birthday and rec.birthday > today:
-    #             raise ValidationError("Date of Birth cannot be in the future.")
-            
-    # @api.constrains('hrmis_bps')
-    # def _check_bps(self):
-    #     for rec in self:
-    #         if rec.hrmis_bps < 6 or rec.hrmis_bps > 22:
-    #             raise ValidationError("BPS must be between 6 and 22.")

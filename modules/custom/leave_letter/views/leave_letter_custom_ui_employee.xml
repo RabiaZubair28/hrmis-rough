@@ -1,0 +1,21 @@
+<odoo>
+
+    <!-- First template: Leave form -->
+    <template id="leave_letter_add_download_notification_form"
+              inherit_id="hr_holidays_updates.hrmis_leave_form">
+        <xpath expr="//div[@class='hrmis-table__row']/div[last()]" position="inside">
+           <t t-if="lv.state in ('validate','validate2') and lv.leave_notification_id">
+                <a t-att-href="'/report/pdf/leave_letter.leave_notification_pdf/%s' % lv.leave_notification_id.id"
+                   class="btn btn-primary btn-sm"
+                   target="_blank">
+                    Download Notification
+                </a>
+           </t>
+        </xpath>
+    </template>
+
+
+
+
+
+</odoo>

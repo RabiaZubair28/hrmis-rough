@@ -362,11 +362,46 @@
   background: #d6e2e6;
   color: #1b1f20;
   font-weight: 600;
+  position: relative; /* for nav badge positioning */
 }
 .hrmis-nav__item.is-active {
   background: linear-gradient(180deg, #064526 0%, #064526 100%);
   color: #fff;
   border-color: #064526;
+}
+
+.hrmis-nav__badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #c92222;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #064526;
+}
+
+.hrmis-nav__badge2 {
+  
+  min-width: 25px;
+  height: 25px;
+  padding: 8px 8px;
+  border-radius: 100%;
+  background: #c92222;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #064526;
 }
 
 .hrmis-powered {
@@ -931,6 +966,57 @@
   min-width: 0;
 }
 
+/* === Leave History Table ONLY === */
+.hrmis-leave-history .hrmis-leave-row,
+.hrmis-leave-history .hrmis-manage-table__row {
+  display: grid;
+  grid-template-columns:
+    64px     /* # */
+    1.6fr    /* Staff / Facility / District */
+    1fr      /* Leave Type */
+    1.2fr    /* Dates */
+    1fr      /* Status */
+    1.6fr    /* Pending With */
+    1fr;     /* NEW column */
+    
+  gap: 16px;
+  align-items: start;
+}
+
+.hrmis-leave-history .hrmis-leave-row__cell:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* single line or change to normal for wrapping */
+}
+
+.hrmis-leave-history .hrmis-table__head.hrmis-leave-row {
+  display: grid;
+  grid-template-columns:
+    64px     /* # */
+    1.6fr    /* Staff / Facility / District */
+    1fr      /* Leave Type */
+    1.2fr    /* Dates */
+    1fr      /* Status */
+    1.6fr    /* Pending With */
+    1fr;     /* NEW column */
+
+  gap: 16px;
+  align-items: center;
+}
+
+/* Left align all header cells */
+// .hrmis-leave-history .hrmis-table__head.hrmis-leave-row > div {
+//   text-align: left;
+// }
+
+/* Prevent row cells from overflowing */
+.hrmis-leave-history .hrmis-manage-table__row > div {
+  min-width: 0;
+}
+
+
+
 /* =========================================
    Comments area (scoped)
    ========================================= */
@@ -977,6 +1063,69 @@
   text-align: center;
 }
 
+.hrmis-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  font-weight: 600;
+  color: #000; // text color
+}
+
+.hrmis-status--pending {
+  background-color: rgba(255, 255, 0, 0.2);
+}
+
+.hrmis-status--approved {
+  background-color: rgba(0, 255, 0, 0.2);
+}
+
+.hrmis-status--rejected {
+  background-color: rgba(255, 0, 0, 0.2);
+}
+
+.hrmis-status--cancelled {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+.hrmis-panel,
+.hrmis-panel__body,
+.hrmis-panel__header,
+.hrmis-leave-row,
+.hrmis-table__head {
+    text-align: left;
+}
+
+.hrmis-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.hrmis-filter__search {
+    flex: 1;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #cfd7da;
+    border-radius: 4px;
+}
+
+.hrmis-filter__select {
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid #cfd7da;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.hrmis-error {
+    color: #d9534f;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.hrmis-input.has-error {
+    border: 1px solid #d9534f;
+    background-color: #fff5f5;
+}
 
 
 @media (max-width: 768px) {

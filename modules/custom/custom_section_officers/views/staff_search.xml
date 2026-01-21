@@ -1,0 +1,102 @@
+<odoo>
+<template id="hrmis_ui_layout_section_officer_search_staff"
+          inherit_id="hr_holidays_updates.hrmis_ui_layout">
+  <xpath expr="(//nav[contains(@class,'hrmis-nav')]//a)[1]" position="after">
+    <t t-if="request.env.user.has_group('custom_login.group_section_officer')">
+        <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'staff' else ''}"
+           href="/hrmis/staff">
+            Search staff
+        </a>
+    </t>
+  </xpath>
+</template>
+
+<template id="hrmis_staff_search" name="HRMIS Staff Search">
+  <t t-if="not request.env.user.has_group('custom_login.group_hrmis_employee_self')"> 
+    <t t-call="hr_holidays_updates.hrmis_ui_layout">
+      
+      <div class="hrmis-panel">
+        <div class="hrmis-panel__header">
+          <div class="hrmis-panel__title">Search staff</div>
+        </div>
+        <div class="hrmis-panel__body">
+      <form class="hrmis-form" action="/hrmis/staff" method="get" 
+      style="display:flex; flex-wrap:wrap; gap:25px; align-items:flex-end;">
+
+  <!-- CNIC -->
+  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+    <label style="font-weight:bold;">CNIC</label>
+    <input class="hrmis-input" type="text" name="cnic" t-att-value="cnic" placeholder="Type CNIC..." style="padding:8px;"/>
+  </div>
+
+  <!-- Designation -->
+  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+    <label style="font-weight:bold;">Designation</label>
+    <input class="hrmis-input" type="text" name="designation" t-att-value="designation" placeholder="Type designation..." style="padding:8px;"/>
+  </div>
+
+  <!-- District -->
+  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+    <label style="font-weight:bold;">District</label>
+    <input class="hrmis-input" type="text" name="district" t-att-value="district" placeholder="Type district..." style="padding:8px;"/>
+  </div>
+
+  <!-- Facility -->
+  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+    <label style="font-weight:bold;">Facility</label>
+    <input class="hrmis-input" type="text" name="facility" t-att-value="facility" placeholder="Type facility..." style="padding:8px;"/>
+  </div>
+
+  <!-- Search Button -->
+  <div style="display:flex; align-items:center;">
+    <button type="submit" class="hrmis-btn hrmis-btn--icon" title="Search">
+      <i class="fa fa-search" style="color:#064526;"></i>
+    </button>
+  </div>
+
+</form>
+
+        </div>
+      </div>
+
+      <!-- Search Results -->
+      <div class="hrmis-panel" t-if="cnic or designation or district or facility">
+        <div class="hrmis-panel__header">
+          <div class="hrmis-panel__title">Search results</div>
+        </div>
+        <div class="hrmis-panel__body">
+
+          <t t-if="not employees">
+            <div class="hrmis-empty">No staff found.</div>
+          </t>
+
+          <t t-foreach="employees" t-as="emp">
+            <div class="hrmis-result">
+              <div class="hrmis-result__avatar">
+                <img t-att-alt="emp.name"
+                     t-att-src="'/web/image/hr.employee.public/%s/avatar_1024/' % emp.id"/>
+              </div>
+              <div class="hrmis-result__meta">
+                <div class="hrmis-result__name">
+                  <t t-esc="emp.name"/>
+                  <t t-if="emp.hrmis_bps">, BPS <t t-esc="emp.hrmis_bps"/></t>
+                </div>
+                <div class="hrmis-result__sub">
+                  <t t-esc="(
+                    ('facility_id' in emp._fields and emp.facility_id and emp.facility_id.name) 
+                    or ('hrmis_facility_id' in emp._fields and emp.hrmis_facility_id and emp.hrmis_facility_id.name) 
+                    or 'Place of posting'
+                  )"/>
+                </div>
+              </div>
+              <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/staff/%s' % emp.id">View Profile</a>
+            </div>
+          </t>
+
+        </div>
+      </div>
+
+    </t>
+  </t>
+</template>
+</odoo>

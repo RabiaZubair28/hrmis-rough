@@ -4,5 +4,5 @@ from . import hrmis_training_record
 from . import hrmis_district
 from . import hrmis_facility_type
 from . import res_users_inherit
-from . import hrmis_profile_request
+from . import hrmis_final_profile_request
 from . import hrmis_cadre

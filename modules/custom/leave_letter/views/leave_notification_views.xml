@@ -1,0 +1,47 @@
+<odoo>
+    <!-- Form View -->
+    <record id="view_leave_notification_form" model="ir.ui.view">
+        <field name="name">leave.notification.form</field>
+        <field name="model">leave.notification</field>
+        <field name="arch" type="xml">
+            <form string="Leave Notification">
+                <header>
+                    <button name="action_download_pdf" string="Download" type="object" class="btn-primary" />
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="category"/>
+                        <field name="employee_id"/>
+                        <field name="issue_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_leave_notification_list" model="ir.ui.view">
+        <field name="name">leave.notification.list</field>
+        <field name="model">leave.notification</field>
+        <field name="arch" type="xml">
+            <list string="Leave Notifications">
+                <field name="name"/>
+                <field name="category"/>
+                <field name="employee_id"/>
+                <field name="issue_date"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_leave_notification" model="ir.actions.act_window">
+        <field name="name">Leave Notifications</field>
+        <field name="res_model">leave.notification</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_leave_notification_root" name="Notifications" sequence="10"/>
+    <menuitem id="menu_leave_notification" name="Leave Notifications" parent="menu_leave_notification_root" action="action_leave_notification" sequence="10"/>
+</odoo>
