@@ -124,12 +124,44 @@ class HrLeaveAttachments(models.Model):
             label = rules.get(getattr(leave_type, "id", None))
             return (bool(label), label or "")
 
-        def _has_any_attachment(leave):
+        def _has_any_attachment(leave, vals=None):
+            # If attachments are being set in the same write/create call, treat as present.
+            try:
+                if vals and self._vals_include_any_attachment(vals):
+                    return True
+            except Exception:
+                pass
+
+            # Fast path: our aggregated/computed list (covers hr.leave-linked and supported_attachment_ids).
+            try:
+                if "hrmis_supporting_attachment_count" in leave._fields and (leave.hrmis_supporting_attachment_count or 0) > 0:
+                    return True
+            except Exception:
+                pass
+
             # Prefer standard fields if present
             if "supported_attachment_ids" in leave._fields and getattr(leave, "supported_attachment_ids", False):
                 return True
             if getattr(leave, "message_main_attachment_id", False):
                 return True
+
+            # Odoo chatter attachments are often linked to mail.message, not hr.leave.
+            try:
+                if "message_ids" in leave._fields and leave.message_ids:
+                    # In-memory check
+                    if any(getattr(m, "attachment_ids", False) for m in leave.message_ids):
+                        return True
+                    # DB-level check (robust across versions)
+                    msg_ids = leave.message_ids.ids
+                    if msg_ids:
+                        cnt_msg = self.env["ir.attachment"].sudo().search_count(
+                            [("res_model", "=", "mail.message"), ("res_id", "in", msg_ids)]
+                        )
+                        if cnt_msg:
+                            return True
+            except Exception:
+                pass
+
             # Fallback: any attachment linked to this leave
             cnt = self.env["ir.attachment"].sudo().search_count(
                 [("res_model", "=", "hr.leave"), ("res_id", "=", leave.id)]
@@ -143,7 +175,7 @@ class HrLeaveAttachments(models.Model):
             # Enforce only when the request is being submitted/approved, not while drafting.
             if getattr(leave, "state", None) in ("draft", "cancel", "refuse"):
                 continue
-            if not _has_any_attachment(leave):
+            if not _has_any_attachment(leave, incoming_vals):
                 raise ValidationError(f"Supporting document is required: {label}")
 
     @api.constrains("holiday_status_id", "state", "message_main_attachment_id")
