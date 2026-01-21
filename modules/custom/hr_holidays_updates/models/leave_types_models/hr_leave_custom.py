@@ -384,16 +384,9 @@ class HrLeave(models.Model):
         def _employee_dob(emp):
             if not emp:
                 return None
-            for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
-                if f in getattr(emp, "_fields", {}):
-                    d = fields.Date.to_date(getattr(emp, f, None))
-                    if d:
-                        return d
-                else:
-                    d = fields.Date.to_date(getattr(emp, f, None))
-                    if d:
-                        return d
-            return None
+            # Per HRMIS requirement: take birthday from hr_employee_inherit
+            # (hrmis_user_profiles_updates) which defines `birthday`.
+            return fields.Date.to_date(getattr(emp, "birthday", None))
 
         def _date_range(leave):
             d_from = None
@@ -424,5 +417,33 @@ class HrLeave(models.Model):
             # Allow only dates in [start_allowed, end_exclusive)
             if d_from < start_allowed or d_to >= end_exclusive:
                 raise ValidationError(
-                    "You can only apply for LPR leave between your 59th and 60th birthday."
+                    "you cannot take LPR in these dates"
                 )
+
+    @api.constrains("holiday_status_id", "employee_id", "state")
+    def _check_lpr_single_request_any_state(self):
+        """
+        LPR rule: once an employee has *any* LPR leave that is pending/approved
+        (i.e., not refused/cancelled), they cannot apply for LPR again.
+        """
+        lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        if not lpr_leave_type:
+            return
+
+        for leave in self:
+            if not leave.employee_id or leave.holiday_status_id != lpr_leave_type:
+                continue
+            # Only enforce against "active" requests (pending/approved).
+            if getattr(leave, "state", None) in ("cancel", "refuse"):
+                continue
+
+            exists = self.sudo().search_count(
+                [
+                    ("id", "!=", leave.id),
+                    ("employee_id", "=", leave.employee_id.id),
+                    ("holiday_status_id", "=", lpr_leave_type.id),
+                    ("state", "not in", ("cancel", "refuse")),
+                ]
+            )
+            if exists:
+                raise ValidationError("LPR can only be taken once.")
