@@ -404,7 +404,7 @@
 <div id="hrmis_user_profile_block">
 <div class="tab-content hrmis-panel__body ">
 
-    <div class="tab-pane fade show active" id="personal_data">
+    <div t-attf-class="tab-pane fade #{'show active' if tab == 'personal' else ''}" id="personal_data">
 
             <div class="hrmis-kv hrmis-kv--grid">
 <div class="hrmis-kv__item">
@@ -522,40 +522,16 @@
         </div>
 </div>
         <!-- 🔹 TAB 2: POSTING -->
-        <div class="tab-pane fade" id="posting">
-            <table class="table table-bordered table-sm">
-                    <thead class="table-light">
-                        <tr>
-                            <th>From Date</th>
-                            <th>To Date</th>
-                            <th>Commission Date</th>
-                            <th>District</th>
-                            <th>Facility</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <t t-if="service_history">
-                            <t t-foreach="employee.service_history_ids" t-as="history">
-                                <tr>
-                                    <td><t t-esc="history.from_date or ''"/></td>
-                                    <td><t t-esc="history.end_date or ''"/></td>
-                                    <td><t t-esc="history.commission_date or ''"/></td>
-                                    <td><t t-esc="history.district_id.name or 'N/A'"/></td>
-                                    <td><t t-esc="history.facility_id.name or 'N/A'"/></td>
-                                </tr>
-                            </t>
-                        </t>
-                        <t t-if="not service_history">
-                            <tr>
-                                <td colspan="5" class="text-center text-muted">No service history available.</td>
-                            </tr>
-                        </t>
-                    </tbody>
-                </table>
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'posting' else ''}" id="posting">
+            <div style="display:flex; justify-content:center; align-items:center; padding: 24px 0;">
+                <img src="/hr_holidays_updates/static/src/img/under_construction.svg"
+                     alt="This page is under construction"
+                     style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 12px;"/>
+            </div>
         </div>
 
         <!-- 🔹 TAB 3: DISCIPLINARY -->
-        <div class="tab-pane fade" id="disciplinary">
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'disciplinary' else ''}" id="disciplinary">
             <table class="table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
@@ -575,45 +551,12 @@
         </div>
 
         <!-- 🔹 TAB 4: QUALIFICATIONS -->
-        <div class="tab-pane fade" id="qualifications">
-            <table class="table table-bordered table-sm">
-    <thead class="table-light">
-        <tr>
-            <th>Type</th>
-            <th>Training/Degree Name</th>
-            <th>Venue</th>
-            <th>Completion Date</th>
-            <th>Certificate</th>
-        </tr>
-    </thead>
-    <tbody>
-        <t t-set="training_records" t-value="request.env['hrmis.training.record'].sudo().search([('employee_id','=',employee.id)])"/>
-<t t-if="training_records">
-    <t t-foreach="training_records" t-as="record">
-        <tr>
-            <td><t t-esc="dict(record._fields['record_type'].selection).get(record.record_type) or 'N/A'"/></td>
-            <td><t t-esc="record.name or 'N/A'"/></td>
-            <td><t t-esc="record.venue or 'N/A'"/></td>
-            <td><t t-esc="record.completion_date or ''"/></td>
-            <td>
-                <t t-if="record.certificate_uploaded">
-                    <a t-att-href="'/web/content/hrmis.training.record/%s/certificate_file?download=true' % record.id"
-                       class="btn btn-sm btn-outline-primary">Download</a>
-                </t>
-                <t t-else=""><span class="text-muted">Not Uploaded</span></t>
-            </td>
-        </tr>
-    </t>
-</t>
-<t t-if="not training_records">
-    <tr>
-        <td colspan="5" class="text-center text-muted">No training records available.</td>
-    </tr>
-</t>
-
-    </tbody>
-</table>
-
+        <div t-attf-class="tab-pane fade #{'show active' if tab == 'qualifications' else ''}" id="qualifications">
+            <div style="display:flex; justify-content:center; align-items:center; padding: 24px 0;">
+                <img src="/hr_holidays_updates/static/src/img/under_construction.svg"
+                     alt="This page is under construction"
+                     style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 12px;"/>
+            </div>
         </div>
 
     </div>
