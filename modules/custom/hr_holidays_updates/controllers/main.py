@@ -817,7 +817,13 @@ class HrmisLeaveFrontendController(http.Controller):
                     "request_date_to": dt_to,
                     "name": remarks,
                 }
-                leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
+                # Defer supporting-doc checks until after the upload is linked.
+                leave = (
+                    request.env["hr.leave"]
+                    .with_user(request.env.user)
+                    .with_context(hrmis_defer_support_doc_check=True)
+                    .create(vals)
+                )
 
             if uploaded:
                 data = uploaded.read()
@@ -846,7 +852,8 @@ class HrmisLeaveFrontendController(http.Controller):
             # Confirm regardless of whether a supporting document was uploaded.
             # (Previous indentation meant many requests stayed in draft and could bypass checks.)
             if hasattr(leave, "action_confirm"):
-                leave.action_confirm()
+                # Confirm WITHOUT the defer flag so validations run with attachments present.
+                leave.with_context(hrmis_defer_support_doc_check=False).action_confirm()
 
                 # Force constraint checks inside the savepoint (so failures roll back).
                 request.env.cr.flush()

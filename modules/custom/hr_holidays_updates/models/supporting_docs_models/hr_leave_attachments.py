@@ -102,6 +102,11 @@ class HrLeaveAttachments(models.Model):
         - Study leaves (Full/Half/EOL): Admission letter / Course Details
         - Medical Leave (Long Term): Medical Certificate
         """
+        # HRMIS website flow creates the leave record first, then links the uploaded
+        # attachment, then confirms. During that short window we must not enforce.
+        if self.env.context.get("hrmis_defer_support_doc_check"):
+            return
+
         def _rule(leave_type):
             if not leave_type:
                 return False, ""
