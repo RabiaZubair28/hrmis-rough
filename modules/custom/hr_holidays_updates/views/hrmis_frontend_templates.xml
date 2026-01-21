@@ -656,19 +656,13 @@
                                   t-att-data-employee-id="employee.id"
                                   t-att-data-leave-types-url="'/hrmis/api/leave/types'"
                                   t-att-data-leave-approvers-url="'/hrmis/api/leave/approvers'"
+                                  t-att-data-employee-dob="('birthday' in employee._fields and employee.birthday) or ''"
+                                  t-att-data-lpr-leave-type-id="request.env.ref('hr_holidays_updates.leave_type_lpr', raise_if_not_found=False) and request.env.ref('hr_holidays_updates.leave_type_lpr').id or ''"
                                   method="post"
                                   enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                                 <div class="hrmis-form__grid">
-                                    <div class="hrmis-field">
-                                        <label>Starting date<span class="req">*</span></label>
-                                        <input class="hrmis-input js-hrmis-date-from" type="date" name="date_from" t-att-value="today" t-att-min="today"/>
-                                    </div>
-                                    <div class="hrmis-field">
-                                        <label>Ending date<span class="req">*</span></label>
-                                        <input class="hrmis-input js-hrmis-date-to" type="date" name="date_to" t-att-value="today" t-att-min="today"/>
-                                    </div>
                                     <div class="hrmis-field">
                                         <label>Leave type<span class="req">*</span></label>
                                         <select class="hrmis-input js-hrmis-leave-type" name="leave_type_id" required="required">
@@ -683,6 +677,14 @@
                                                 </option>
                                             </t>
                                         </select>
+                                    </div>
+                                    <div class="hrmis-field">
+                                        <label>Starting date<span class="req">*</span></label>
+                                        <input class="hrmis-input js-hrmis-date-from" type="date" name="date_from" t-att-value="today" t-att-min="today" disabled="disabled"/>
+                                    </div>
+                                    <div class="hrmis-field">
+                                        <label>Ending date<span class="req">*</span></label>
+                                        <input class="hrmis-input js-hrmis-date-to" type="date" name="date_to" t-att-value="today" t-att-min="today" disabled="disabled"/>
                                     </div>
                                     <div class="hrmis-field hrmis-field--wide">
                                         <label>Reason<span class="req">*</span></label>
