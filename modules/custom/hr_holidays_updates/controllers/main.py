@@ -431,36 +431,6 @@ class HrmisLeaveFrontendController(http.Controller):
             _base_ctx("Services", "services"),
         )
 
-    @http.route(["/hrmis/transfer"], type="http", auth="user", website=True)
-    def hrmis_transfer_requests(self, tab: str = "history", **kw):
-        tab = (tab or "history").strip().lower()
-        if tab not in ("history", "new"):
-            tab = "history"
-        return request.render(
-            "hr_holidays_updates.hrmis_transfer_requests",
-            _base_ctx("Transfer Requests", "transfer_requests", tab=tab),
-        )
-
-    @http.route(["/hrmis/promotion"], type="http", auth="user", website=True)
-    def hrmis_promotion_requests(self, tab: str = "history", **kw):
-        tab = (tab or "history").strip().lower()
-        if tab not in ("history", "new"):
-            tab = "history"
-        return request.render(
-            "hr_holidays_updates.hrmis_promotion_requests",
-            _base_ctx("Promotion Requests", "promotion_requests", tab=tab),
-        )
-
-    @http.route(["/hrmis/disciplinary"], type="http", auth="user", website=True)
-    def hrmis_disciplinary_actions(self, tab: str = "history", **kw):
-        tab = (tab or "history").strip().lower()
-        if tab not in ("history", "new"):
-            tab = "history"
-        return request.render(
-            "hr_holidays_updates.hrmis_disciplinary_actions",
-            _base_ctx("Disciplinary Actions", "disciplinary_actions", tab=tab),
-        )
-
     @http.route(["/hrmis/staff"], type="http", auth="user", website=True)
     def hrmis_staff_search(self, **kw):
         search_by = (kw.get("search_by") or "designation").strip()
