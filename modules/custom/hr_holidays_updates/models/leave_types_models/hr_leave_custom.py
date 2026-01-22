@@ -80,18 +80,19 @@ class HrLeave(models.Model):
         """
         "Sandwich rule" for weekends:
 
-        Count Sat/Sun that fall strictly between the first and last weekday (Mon-Fri)
+        Count weekend day(s) that fall strictly between the first and last weekday (Mon-Sat)
         inside the requested period. This means weekend days at the edges of the
         request are NOT counted, only the weekend(s) "in the middle".
         """
         if not day_from or not day_to or day_to <= day_from:
             return 0
 
-        # Find first/last weekday in the range (Mon-Fri).
+        # HRMIS rule: Sunday is the only weekend day; Saturday is a working day.
+        # Find first/last weekday in the range (Mon-Sat).
         cur = day_from
         first_weekday = None
         while cur <= day_to:
-            if cur.weekday() < 5:
+            if cur.weekday() < 6:
                 first_weekday = cur
                 break
             cur = cur + relativedelta(days=1)
@@ -99,7 +100,7 @@ class HrLeave(models.Model):
         cur = day_to
         last_weekday = None
         while cur >= day_from:
-            if cur.weekday() < 5:
+            if cur.weekday() < 6:
                 last_weekday = cur
                 break
             cur = cur - relativedelta(days=1)
@@ -111,7 +112,8 @@ class HrLeave(models.Model):
         total = 0
         cur = first_weekday + relativedelta(days=1)
         while cur < last_weekday:
-            if cur.weekday() >= 5:
+            # Weekend = Sunday only
+            if cur.weekday() == 6:
                 total += 1
             cur = cur + relativedelta(days=1)
         return int(total)
@@ -152,7 +154,8 @@ class HrLeave(models.Model):
             cur = day_from
             total = 0
             while cur <= day_to:
-                if cur.weekday() < 5:
+                # Fallback workdays: Mon-Sat (Sunday is weekend)
+                if cur.weekday() < 6:
                     total += 1
                 cur = cur + relativedelta(days=1)
             base_days = float(total)
