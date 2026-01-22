@@ -25,6 +25,9 @@
                 <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'profile_update_requests' else ''}"
                     href="/hrmis/profile-update-requests">
                         Profile Update Requests
+                        <span class="hrmis-nav__badge2">
+                            <t t-esc="pending_profile_update_count if pending_profile_update_count is not None else 0"/>
+                        </span>
                 </a>
             </t>
         </xpath>

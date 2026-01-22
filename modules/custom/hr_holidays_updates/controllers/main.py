@@ -112,6 +112,27 @@ def _base_ctx(page_title: str, active_menu: str, **extra):
         # Used by the global layout for profile links
         "current_employee": _current_employee(),
     }
+    # Keep sidebar badges in sync for Section Officer across all pages rendered by this controller.
+    try:
+        user = request.env.user
+        if user and user.has_group("custom_login.group_section_officer"):
+            from odoo.addons.hr_holidays_updates.controllers.leave_data import (
+                pending_leave_requests_for_user,
+            )
+
+            pending = pending_leave_requests_for_user(user.id)
+            ctx["pending_manage_leave_count"] = len(pending)
+
+            ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
+            ctx["pending_profile_update_count"] = ProfileRequest.search_count(
+                [("approver_id.user_id", "=", user.id), ("state", "=", "submitted")]
+            )
+        else:
+            ctx["pending_manage_leave_count"] = 0
+            ctx["pending_profile_update_count"] = 0
+    except Exception:
+        ctx["pending_manage_leave_count"] = 0
+        ctx["pending_profile_update_count"] = 0
     ctx.update(extra)
     return ctx
 
@@ -1283,11 +1304,13 @@ class HrmisProfileUpdateRequests(http.Controller):
 
         return request.render(
             'hr_holidays_updates.hrmis_profile_update_requests',
-            {
-                'profile_update_requests': requests_for_display,
-                'is_admin': is_admin,
-                'is_hr_manager': is_hr_manager,
-            }
+            _base_ctx(
+                "Profile Update Requests",
+                "profile_update_requests",
+                profile_update_requests=requests_for_display,
+                is_admin=is_admin,
+                is_hr_manager=is_hr_manager,
+            ),
         )
 
     @http.route(
