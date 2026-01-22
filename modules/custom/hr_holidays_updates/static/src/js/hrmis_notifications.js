@@ -240,7 +240,25 @@ function _wireNotificationsDropdown(root = document) {
 function _wireNotificationsPage(root = document) {
   // Make the "Mark all read" form submit via fetch, so it doesn't navigate away.
   const form = _qs(root, ".js-hrmis-notif-read-all-form");
+  const page = _qs(root, ".js-hrmis-notif-page");
   if (!form) return;
+
+  // Click-to-redirect behavior (same as bell dropdown).
+  if (page) {
+    const isSO = String(page.dataset?.isSectionOfficer || "0") === "1";
+    const empId = Number(page.dataset?.employeeId || 0) || 0;
+    const ctx = { is_section_officer: isSO, employee_id: empId };
+
+    page.addEventListener("click", (e) => {
+      // Ignore clicks on the "Mark all read" button.
+      if (e.target.closest(".js-hrmis-notif-read-all-form")) return;
+      const item = e.target.closest(".hrmis-notif-item");
+      if (!item) return;
+      const resModel = item.dataset?.resModel || "";
+      window.location.href = _redirectForNotification(resModel, ctx);
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = _qs(form, "button[type='submit']");

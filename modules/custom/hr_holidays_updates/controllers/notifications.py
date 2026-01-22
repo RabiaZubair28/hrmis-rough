@@ -22,6 +22,8 @@ class HrmisNotificationsController(http.Controller):
                     "subject": (n.title or "").strip() or "Notification",
                     "body": (n.body or "").strip(),
                     "date": str(n.create_date or ""),
+                    "res_model": n.res_model or "",
+                    "res_id": int(n.res_id or 0),
                 }
             )
 

@@ -845,6 +845,13 @@ class HrmisLeaveFrontendController(http.Controller):
                     "request_date_to": dt_to,
                     "name": remarks,
                 }
+                # Some Odoo versions hide `name` for non-HR and use `private_name` for reason.
+                # Store it in both so approvers can see it.
+                try:
+                    if "private_name" in request.env["hr.leave"]._fields:
+                        vals["private_name"] = remarks
+                except Exception:
+                    pass
                 # Defer supporting-doc checks until after the upload is linked.
                 leave = (
                     request.env["hr.leave"]

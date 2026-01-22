@@ -877,7 +877,9 @@
                         </form>
                     </div>
                 </div>
-                <div class="hrmis-panel__body">
+                <div class="hrmis-panel__body js-hrmis-notif-page"
+                     t-att-data-is-section-officer="1 if request.env.user.has_group('custom_login.group_section_officer') else 0"
+                     t-att-data-employee-id="(current_employee and current_employee.id) or 0">
                     <div class="hrmis-notif-page-actions">
                         <form action="/hrmis/api/notifications/read_all" method="post" class="js-hrmis-notif-read-all-form">
                             <button class="hrmis-btn hrmis-btn--outline" type="submit">Mark all read</button>
@@ -887,7 +889,9 @@
                         <div class="hrmis-empty">No notifications.</div>
                     </t>
                     <t t-foreach="notifications" t-as="n">
-                        <div t-attf-class="hrmis-notif-item #{'is-unread' if not n['is_read'] else ''}">
+                        <div t-attf-class="hrmis-notif-item #{'is-unread' if not n['is_read'] else ''}"
+                             t-att-data-res-model="n.get('res_model') or ''"
+                             t-att-data-res-id="n.get('res_id') or 0">
                             <div class="hrmis-notif-item__main">
                                 <div class="hrmis-notif-item__subject"><t t-esc="n['subject']"/></div>
                                 <div class="hrmis-notif-item__body"><t t-esc="n['body']"/></div>

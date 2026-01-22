@@ -264,7 +264,12 @@
 
                                             <div class="hrmis-modal__field" style="grid-column:1 / -1;">
                                                 <div class="hrmis-modal__label">Remarks</div>
-                                                <div class="hrmis-modal__value"><t t-esc="lv.name or ''"/></div>
+                                                <t t-set="rmk"
+                                                   t-value="(('private_name' in lv._fields and lv.private_name) or lv.name or '')"/>
+                                                <t t-set="rmk_stripped" t-value="(rmk or '').replace('*','').strip()"/>
+                                                <div class="hrmis-modal__value">
+                                                    <t t-esc="(lv.name or '') if (rmk and not rmk_stripped) and (lv.name and lv.name.replace('*','').strip()) else rmk"/>
+                                                </div>
                                             </div>
                                         </div>
 
