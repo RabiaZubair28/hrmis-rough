@@ -15,7 +15,7 @@
             </t>
               <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
             <a t-attf-class="hrmis-nav__item" 
-               href="#">
+               href="/hrmis/disciplinary?tab=history">
                 Disciplinary Actions
                 </a>
             </t>
@@ -102,120 +102,43 @@
                                 .hrmis-attachment__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 520px; }
                             </style>
 
-                            <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.0fr 130px 110px 1.1fr 130px 140px 3.0fr; column-gap: 12px; align-items: start;'"/>
-                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table"
-                                 t-att-style="grid + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
-                                <div style="width:36px; max-width:36px;">#</div>
-                                <div>Staff / Facility / District</div>
-                                <div>Total Leave Balance</div>
-                                <div>Leave Taken</div>
-                                <div>Submitted On</div>
-                                <div>Leave Type</div>
-                                <div>Dates</div>
-                                <div style="white-space: nowrap;">Comments / Actions</div>
+                            <!-- Use same table layout as HRMIS Leave History -->
+                            <div class="hrmis-table__head">
+                                <div>#</div>
+                                <div>Staff</div>
+                                <div>Leave type</div>
+                                <div>Submitted on</div>
+                                <div>From</div>
+                                <div>To</div>
+                                <div>Actions</div>
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]" />
-                                <div class="hrmis-leave-row hrmis-manage-table__row"
-				     style="cursor:pointer;"
-				     t-att-style="grid + 'font-size: 12px;'"
-				     t-att-data-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
-				     t-attf-onclick="window.location.href='/hrmis/manage/history/{{ lv.employee_id.id }}?tab=leave'"
-				     t-att-data-status="lv.state"
-				     t-att-data-date="lv.request_date_from"
-				     t-att-data-search="
-				        '%s %s %s %s' % (
-				            lv.employee_id.name or '',
-				            lv.holiday_status_id.name or '',
-				            lv.request_date_from or '',
-				            lv.request_date_to or ''
-				        )
-				     ">
-
-                                    <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:36px; max-width:36px;">
-                                        <t t-esc="idx0 + 1" t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)" style="cursor:pointer;"/>
-                                    </div>
-
-                                    <!-- Employee / Facility / District -->
-                                    <div class="hrmis-leave-row__cell">
+                                <div class="hrmis-table__row">
+                                    <div><t t-esc="idx0 + 1"/></div>
+                                    <div>
                                         <div class="strong">
                                             <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
-                                               onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
-                                                <t t-esc="lv.employee_id.name"/>,
-                                            </a>,
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
-                                               onclick="event.stopPropagation();"
-                                               style="text-decoration:none;">
-                                                <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
+                                                <t t-esc="lv.employee_id.name"/>
                                             </a>
                                         </div>
                                         <div class="sub">
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
-                                               onclick="event.stopPropagation();"
-                                               style="text-decoration:none;">
-                                                <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
-                                            </a>
+                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or '')"/>
+                                            <t t-if="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name))">
+                                                — <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or '')"/>
+                                            </t>
                                         </div>
                                     </div>
-
-                                    <!-- Total Leave Balance -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
-                                    </div>
-
-                                    <!-- Leave Taken (this type / this employee) -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="(leave_taken_by_leave_id.get(lv.id, 0.0) if leave_taken_by_leave_id else 0.0)"/> days
-                                    </div>
-
-                                    <!-- Submitted On -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/>
-                                    </div>
-
-                                    <!-- Leave Type -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.holiday_status_id.name"/>
-                                    </div>
-
-                                    <!-- Dates -->
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-set="d_from" t-value="lv.request_date_from"/>
-                                        <t t-set="d_to" t-value="lv.request_date_to"/>
-                                        <t t-set="days_count" t-value="(d_to and d_from and ((d_to - d_from).days + 1)) or 0"/>
-                                        <t t-set="from_txt" t-value="(d_from and ('%s-%s-%s' % (d_from.day, d_from.month, d_from.year))) or ''"/>
-                                        <t t-set="to_txt" t-value="(d_to and ('%s-%s-%s' % (d_to.day, d_to.month, d_to.year))) or ''"/>
-                                        <t t-esc="from_txt"/> to <t t-esc="to_txt"/>
-                                        <t t-if="days_count">
-                                            (<t t-esc="days_count"/> <t t-esc="'day' if days_count == 1 else 'days'"/>)
-                                        </t>
-                                    </div>
-
-                                    <!-- COMMENTS + ACTIONS -->
-                                    <div class="hrmis-leave-row__actions" style="display:grid; gap:8px;">
-
-                                        <!-- Previous approvers comments (keep visible in list) -->
-                                        <t t-if="lv.message_ids and len(lv.message_ids)">
-                                            <div class="hrmis-comments" style="padding:4px 0; max-height:120px; overflow-y:auto; border-bottom:1px solid #eee;">
-                                                <t t-foreach="lv.message_ids" t-as="msg">
-                                                    <div class="hrmis-comment" style="font-size:12px; line-height:1.3; margin-bottom:4px;">
-                                                        <strong><t t-esc="msg.author_id.name"/></strong>:
-                                                        <t t-esc="msg.body"/>
-                                                    </div>
-                                                </t>
-                                            </div>
-                                        </t>
-
+                                    <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                    <div><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
+                                    <div><t t-esc="lv.request_date_from"/></div>
+                                    <div><t t-esc="lv.request_date_to"/></div>
+                                    <div>
                                         <a class="hrmis-btn hrmis-btn--outline"
-                                           style="width: fit-content;"
-                                           t-att-href="'#lv-modal-%s' % lv.id"
-                                           onclick="event.stopPropagation();">
+                                           t-att-href="'#lv-modal-%s' % lv.id">
                                             Proceed
                                         </a>
-
-
-
                                     </div>
                                 </div>
 
@@ -447,57 +370,46 @@
                     </t>
                     <t t-else="">
                         <div class="hrmis-leave-history">
-                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table">
+                            <div class="hrmis-table__head">
                                 <div>#</div>
-                                <div>Staff / Facility / District</div>
-                                <div>Leave Type</div>
-                                <div>Dates</div>
+                                <div>Staff</div>
+                                <div>Leave type</div>
+                                <div>Submitted on</div>
+                                <div>From</div>
+                                <div>To</div>
                                 <div>Status</div>
-                                <div>Pending With</div>
-                                <div>Notifications</div>
                             </div>
 
                             <t t-foreach="range(len(leave_history))" t-as="idx0">
                                 <t t-set="lv" t-value="leave_history[idx0]"/>
 
-                                <div class="hrmis-leave-row hrmis-manage-table__row"
-                                     t-att-data-status="lv.state"
-                                     t-att-data-date="lv.request_date_from"
-                                     t-att-data-search="
-                                        '%s %s %s %s' % (
-                                            lv.employee_id.name or '',
-                                            lv.holiday_status_id.name or '',
-                                            lv.request_date_from or '',
-                                            lv.request_date_to or ''
-                                        )
-                                     ">
+                                <div class="hrmis-table__row">
                                     <div><t t-esc="idx0 + 1"/></div>
                                     <div>
-                                        <strong><t t-esc="lv.employee_id.name"/></strong><br/>
-                                        <small>
-                                            <t t-esc="(lv.employee_id.hrmis_facility_id.name if lv.employee_id.hrmis_facility_id else '')"/>
-                                            ,
-                                            <t t-esc="(lv.employee_id.hrmis_district_id.name if lv.employee_id.hrmis_district_id else '')"/>
-                                        </small>
+                                        <div class="strong">
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
+                                               style="text-decoration:none;">
+                                                <t t-esc="lv.employee_id.name"/>
+                                            </a>
+                                        </div>
+                                        <div class="sub">
+                                            <t t-esc="(lv.employee_id.hrmis_facility_id.name if getattr(lv.employee_id, 'hrmis_facility_id', False) else '')"/>
+                                            <t t-if="(lv.employee_id.hrmis_district_id.name if getattr(lv.employee_id, 'hrmis_district_id', False) else '')">
+                                                — <t t-esc="(lv.employee_id.hrmis_district_id.name if getattr(lv.employee_id, 'hrmis_district_id', False) else '')"/>
+                                            </t>
+                                        </div>
                                     </div>
                                     <div><t t-esc="lv.holiday_status_id.name"/></div>
+                                    <div><t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/></div>
+                                    <div><t t-esc="lv.request_date_from"/></div>
+                                    <div><t t-esc="lv.request_date_to"/></div>
                                     <div>
-                                        <t t-esc="lv.request_date_from"/> →
-                                        <t t-esc="lv.request_date_to"/>
-                                    </div>
-                                    <div>
-                                        <t t-if="lv.state == 'confirm'">Pending</t>
-                                        <t t-elif="lv.state == 'validate'">Approved</t>
+                                        <t t-if="lv.state in ('confirm','validate1')">Pending</t>
+                                        <t t-elif="lv.state in ('validate','validate2')">Approved</t>
                                         <t t-elif="lv.state == 'refuse'">Rejected</t>
+                                        <t t-elif="lv.state == 'cancel'">Cancelled</t>
                                         <t t-else=""><t t-esc="lv.state"/></t>
                                     </div>
-                                    <div>
-                                        <t t-if="lv.pending_approver_ids">
-                                            <t t-esc="', '.join(lv.pending_approver_ids.mapped('name'))"/>
-                                        </t>
-                                        <t t-else="">—</t>
-                                    </div>
-                                    <div></div>
                                 </div>
                             </t>
                         </div>
