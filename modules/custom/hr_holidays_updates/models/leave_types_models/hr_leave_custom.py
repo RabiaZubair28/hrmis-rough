@@ -80,18 +80,19 @@ class HrLeave(models.Model):
         """
         "Sandwich rule" for weekends:
 
-        Count Sat/Sun that fall strictly between the first and last weekday (Mon-Fri)
+        Count weekend day(s) that fall strictly between the first and last weekday (Mon-Sat)
         inside the requested period. This means weekend days at the edges of the
         request are NOT counted, only the weekend(s) "in the middle".
         """
         if not day_from or not day_to or day_to <= day_from:
             return 0
 
-        # Find first/last weekday in the range (Mon-Fri).
+        # HRMIS rule: Sunday is the only weekend day; Saturday is a working day.
+        # Find first/last weekday in the range (Mon-Sat).
         cur = day_from
         first_weekday = None
         while cur <= day_to:
-            if cur.weekday() < 5:
+            if cur.weekday() < 6:
                 first_weekday = cur
                 break
             cur = cur + relativedelta(days=1)
@@ -99,7 +100,7 @@ class HrLeave(models.Model):
         cur = day_to
         last_weekday = None
         while cur >= day_from:
-            if cur.weekday() < 5:
+            if cur.weekday() < 6:
                 last_weekday = cur
                 break
             cur = cur - relativedelta(days=1)
@@ -111,7 +112,8 @@ class HrLeave(models.Model):
         total = 0
         cur = first_weekday + relativedelta(days=1)
         while cur < last_weekday:
-            if cur.weekday() >= 5:
+            # Weekend = Sunday only
+            if cur.weekday() == 6:
                 total += 1
             cur = cur + relativedelta(days=1)
         return int(total)
@@ -121,8 +123,9 @@ class HrLeave(models.Model):
         Effective leave days, excluding weekends/holidays where possible,
         but applying the "sandwich rule" for weekends.
 
-        Uses Odoo's calendar-based computation when available, so public holidays
-        and non-working days are excluded. Falls back to counting Mon-Fri.
+        Uses Odoo's calendar-based computation when available, but HRMIS business
+        rule treats Saturday as a working day (Sunday-only weekend). If the
+        calendar excludes Saturdays, we add them back.
         """
         if not employee or not day_from or not day_to:
             return 0.0
@@ -148,11 +151,24 @@ class HrLeave(models.Model):
             except Exception:
                 pass
 
+        # Ensure Saturday is treated as a working day even if the resource calendar
+        # marks it as non-working. We do this by adding the count of Saturdays in
+        # the requested range to the calendar-computed workdays.
+        if base_days:
+            sat = 0
+            cur = day_from
+            while cur <= day_to:
+                if cur.weekday() == 5:  # Saturday
+                    sat += 1
+                cur = cur + relativedelta(days=1)
+            base_days = float(base_days) + float(sat)
+
         if not base_days:
             cur = day_from
             total = 0
             while cur <= day_to:
-                if cur.weekday() < 5:
+                # Fallback workdays: Mon-Sat (Sunday is weekend)
+                if cur.weekday() < 6:
                     total += 1
                 cur = cur + relativedelta(days=1)
             base_days = float(total)
@@ -384,16 +400,9 @@ class HrLeave(models.Model):
         def _employee_dob(emp):
             if not emp:
                 return None
-            for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
-                if f in getattr(emp, "_fields", {}):
-                    d = fields.Date.to_date(getattr(emp, f, None))
-                    if d:
-                        return d
-                else:
-                    d = fields.Date.to_date(getattr(emp, f, None))
-                    if d:
-                        return d
-            return None
+            # Per HRMIS requirement: take birthday from hr_employee_inherit
+            # (hrmis_user_profiles_updates) which defines `birthday`.
+            return fields.Date.to_date(getattr(emp, "birthday", None))
 
         def _date_range(leave):
             d_from = None
@@ -424,5 +433,86 @@ class HrLeave(models.Model):
             # Allow only dates in [start_allowed, end_exclusive)
             if d_from < start_allowed or d_to >= end_exclusive:
                 raise ValidationError(
-                    "You can only apply for LPR leave between your 59th and 60th birthday."
+                    "you cannot take LPR in these dates"
+                )
+
+    @api.constrains("holiday_status_id", "employee_id", "state")
+    def _check_lpr_single_request_any_state(self):
+        """
+        LPR rule: once an employee has *any* LPR leave that is pending/approved
+        (i.e., not refused/cancelled), they cannot apply for LPR again.
+        """
+        lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        if not lpr_leave_type:
+            return
+
+        for leave in self:
+            if not leave.employee_id or leave.holiday_status_id != lpr_leave_type:
+                continue
+            # Only enforce against "active" requests (pending/approved).
+            if getattr(leave, "state", None) in ("cancel", "refuse"):
+                continue
+
+            exists = self.sudo().search_count(
+                [
+                    ("id", "!=", leave.id),
+                    ("employee_id", "=", leave.employee_id.id),
+                    ("holiday_status_id", "=", lpr_leave_type.id),
+                    ("state", "not in", ("cancel", "refuse")),
+                ]
+            )
+            if exists:
+                raise ValidationError("LPR can only be taken once.")
+
+    @api.constrains(
+        "holiday_status_id",
+        "employee_id",
+        "request_date_from",
+        "request_date_to",
+        "date_from",
+        "date_to",
+        "state",
+    )
+    def _check_lpr_total_leave_balance(self):
+        """
+        LPR rule: requested days must not exceed employee total leave balance.
+
+        Error message required by business:
+        "you donot have sufficient leave balance to request LPR for following days."
+        """
+        lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        if not lpr_leave_type:
+            return
+
+        def _date_range(leave):
+            d_from = None
+            d_to = None
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+            return d_from, d_to
+
+        for leave in self.filtered(lambda l: l.holiday_status_id == lpr_leave_type):
+            # Apply-time states only (avoid breaking legacy validated leaves).
+            if getattr(leave, "state", None) not in ("draft", "confirm", "validate1"):
+                continue
+            if not leave.employee_id:
+                continue
+
+            d_from, d_to = _date_range(leave)
+            if not d_from or not d_to:
+                continue
+
+            # Requested days should match our effective-day logic.
+            requested = float(leave._hrmis_effective_days(leave.employee_id, d_from, d_to) or 0.0)
+            available = float(getattr(leave.employee_id, "employee_leave_balance_total", 0.0) or 0.0)
+
+            if (requested - available) > 1e-6:
+                raise ValidationError(
+                    "you donot have sufficient leave balance to request LPR for following days."
                 )

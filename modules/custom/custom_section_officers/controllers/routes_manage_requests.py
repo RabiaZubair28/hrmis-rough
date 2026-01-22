@@ -296,7 +296,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         leaves = []
         leave_history = []
         leave_taken_by_leave_id = {}
-        attachments_by_leave_id = {}
 
         # Decide which tab is active
         tab = tab or "leave"
@@ -361,20 +360,6 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                             taken_by_root_type.get((root_id, lt_id), 0.0)
                         )
 
-                    # Attachments
-                    Att = request.env["ir.attachment"].sudo()
-                    atts = Att.search(
-                        [
-                            ("res_model", "=", "hr.leave"),
-                            ("res_id", "in", leave_ids),
-                        ],
-                        order="id desc",
-                    )
-
-                    for att in atts:
-                        attachments_by_leave_id.setdefault(att.res_id, Att.browse([]))
-                        attachments_by_leave_id[att.res_id] |= att
-
             except Exception:
                 _logger.exception("Failed preparing Manage Requests UI data")
 
@@ -395,9 +380,90 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 leaves=leaves,
                 leave_history=leave_history,
                 leave_taken_by_leave_id=leave_taken_by_leave_id,
-                attachments_by_leave_id=attachments_by_leave_id,
                 success=success,
                 error=error,
+            ),
+        )
+
+    @http.route(
+        ["/hrmis/manage/history/<int:employee_id>"],
+        type="http",
+        auth="user",
+        website=True,
+    )
+    def hrmis_manage_history(self, employee_id: int, tab: str = "leave", **kw):
+        """
+        Employee-centric history page for Section Officers.
+        """
+        Emp = request.env["hr.employee"].sudo()
+        employee = Emp.browse(employee_id).exists()
+        if not employee:
+            return request.not_found()
+
+        # Access control: section officers can only view employees they manage (HR can view).
+        is_hr = bool(
+            request.env.user.has_group("hr_holidays.group_hr_holidays_user")
+            or request.env.user.has_group("hr_holidays.group_hr_holidays_manager")
+        )
+        if not is_hr and employee.id not in set(self._managed_employee_ids()):
+            return request.redirect("/hrmis/manage/requests?tab=leave&error=not_allowed")
+
+        tab = (tab or "leave").strip().lower()
+        if tab not in ("leave", "history", "transfer", "disciplinary", "profile"):
+            tab = "leave"
+
+        # Facility / district labels (best-effort across schemas)
+        facility = getattr(employee, "facility_id", False) or getattr(employee, "hrmis_facility_id", False)
+        district = getattr(employee, "district_id", False) or getattr(employee, "hrmis_district_id", False)
+        facility_name = facility.name if facility else ""
+        district_name = district.name if district else ""
+
+        group_emp_ids = self._employee_group_ids_for_person(employee) or [employee.id]
+        Leave = request.env["hr.leave"].sudo()
+
+        leaves_history = Leave.browse([])
+        leave_history = Leave.browse([])
+        leave_taken_by_type = {}
+
+        if tab == "leave":
+            leaves_history = Leave.search(
+                [("employee_id", "in", group_emp_ids)],
+                order="request_date_from desc, id desc",
+                limit=200,
+            )
+            approved = Leave.search(
+                [
+                    ("employee_id", "in", group_emp_ids),
+                    ("state", "in", ("validate", "validate2")),
+                ],
+                order="id desc",
+            )
+            for lv in approved:
+                lt_id = lv.holiday_status_id.id if lv.holiday_status_id else None
+                if not lt_id:
+                    continue
+                leave_taken_by_type[lt_id] = float(leave_taken_by_type.get(lt_id, 0.0) + self._leave_days_value(lv))
+
+        elif tab == "history":
+            leave_history = Leave.search(
+                [("employee_id", "in", group_emp_ids)],
+                order="request_date_from desc, id desc",
+                limit=200,
+            )
+        # tab == "profile": no extra queries required (employee is enough)
+
+        return request.render(
+            "custom_section_officers.hrmis_manage_history",
+            base_ctx(
+                "Manage History",
+                "manage_requests",
+                tab=tab,
+                employee=employee,
+                facility_name=facility_name,
+                district_name=district_name,
+                leaves_history=leaves_history,
+                leave_taken_by_type=leave_taken_by_type,
+                leave_history=leave_history,
             ),
         )
 
