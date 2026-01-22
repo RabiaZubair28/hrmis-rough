@@ -15,7 +15,7 @@
             </t>
               <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
             <a t-attf-class="hrmis-nav__item" 
-               href="#">
+               href="/hrmis/disciplinary?tab=history">
                 Disciplinary Actions
                 </a>
             </t>
@@ -103,7 +103,7 @@
                             </style>
 
                             <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.0fr 130px 110px 1.1fr 130px 140px 3.0fr; column-gap: 12px; align-items: start;'"/>
-                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table"
+                            <div class="hrmis-table__head"
                                  t-att-style="grid + 'font-size: 12px; font-weight: 600; white-space: nowrap;'">
                                 <div style="width:36px; max-width:36px;">#</div>
                                 <div>Staff / Facility / District</div>
@@ -116,7 +116,7 @@
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]" />
-                                <div class="hrmis-leave-row hrmis-manage-table__row"
+                                <div class="hrmis-table__row hrmis-manage-table__row"
 				     style="cursor:pointer;"
 				     t-att-style="grid + 'font-size: 12px;'"
 				     t-att-data-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
@@ -447,7 +447,7 @@
                     </t>
                     <t t-else="">
                         <div class="hrmis-leave-history">
-                            <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table">
+                            <div class="hrmis-table__head">
                                 <div>#</div>
                                 <div>Staff / Facility / District</div>
                                 <div>Leave Type</div>
@@ -460,7 +460,7 @@
                             <t t-foreach="range(len(leave_history))" t-as="idx0">
                                 <t t-set="lv" t-value="leave_history[idx0]"/>
 
-                                <div class="hrmis-leave-row hrmis-manage-table__row"
+                                <div class="hrmis-table__row hrmis-manage-table__row"
                                      t-att-data-status="lv.state"
                                      t-att-data-date="lv.request_date_from"
                                      t-att-data-search="

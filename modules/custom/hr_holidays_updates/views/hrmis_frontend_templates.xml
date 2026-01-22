@@ -261,11 +261,14 @@
                             </a>
                             
                             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'staff' else ''}" href="/hrmis/staff">Search staff</a>
-                            <a class="hrmis-nav__item" href="#">Transfer requests</a>
+                            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'transfer_requests' else ''}"
+                               href="/hrmis/transfer?tab=history">Transfer requests</a>
                             <!-- <a class="hrmis-nav__item" href="#">Promotions</a>
                             <a class="hrmis-nav__item" href="#">Vacancies</a> -->
-                            <a class="hrmis-nav__item" href="#">Disciplinary actions</a>
-                            <a class="hrmis-nav__item" href="#">Promotion Requests</a>
+                            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'disciplinary_actions' else ''}"
+                               href="/hrmis/disciplinary?tab=history">Disciplinary actions</a>
+                            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'promotion_requests' else ''}"
+                               href="/hrmis/promotion?tab=history">Promotion Requests</a>
                                                         <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'leave_requests' else ''}"
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests
@@ -806,6 +809,66 @@
                     <div class="hrmis-form__actions">
                         <a class="hrmis-btn hrmis-btn--outline" href="/hrmis/leave/requests">Back</a>
                     </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Under construction pages for sidebar items (Transfer/Promotion/etc) -->
+    <!-- ------------------------------------------------------------------ -->
+
+    <template id="hrmis_under_construction_block" name="HRMIS Under Construction Block">
+        <div style="display:flex; justify-content:center; align-items:center; padding: 24px 0;">
+            <img src="/hr_holidays_updates/static/src/img/under_construction.svg"
+                 alt="This page is under construction"
+                 style="max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 12px;"/>
+        </div>
+    </template>
+
+    <template id="hrmis_transfer_requests" name="HRMIS Transfer Requests">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}"
+                       t-att-href="'/hrmis/transfer?tab=history'">History</a>
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
+                       t-att-href="'/hrmis/transfer?tab=new'">New Transfer Request</a>
+                </div>
+                <div class="hrmis-panel__body">
+                    <t t-call="hr_holidays_updates.hrmis_under_construction_block"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="hrmis_promotion_requests" name="HRMIS Promotion Requests">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}"
+                       t-att-href="'/hrmis/promotion?tab=history'">History</a>
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
+                       t-att-href="'/hrmis/promotion?tab=new'">New Promotion Request</a>
+                </div>
+                <div class="hrmis-panel__body">
+                    <t t-call="hr_holidays_updates.hrmis_under_construction_block"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="hrmis_disciplinary_actions" name="HRMIS Disciplinary Actions">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}"
+                       t-att-href="'/hrmis/disciplinary?tab=history'">History</a>
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
+                       t-att-href="'/hrmis/disciplinary?tab=new'">New Disciplinary Action</a>
+                </div>
+                <div class="hrmis-panel__body">
+                    <t t-call="hr_holidays_updates.hrmis_under_construction_block"/>
                 </div>
             </div>
         </t>
