@@ -17,6 +17,8 @@ function _renderNotificationItem(n) {
   const item = document.createElement("div");
   item.className = `hrmis-notif-item ${n.is_read ? "" : "is-unread"}`.trim();
   item.dataset.notificationId = String(n.id);
+  item.dataset.resModel = String(n.res_model || "");
+  item.dataset.resId = String(n.res_id || "");
   item.title = "Open notifications";
 
   const main = document.createElement("div");
@@ -50,6 +52,25 @@ function _renderNotificationItem(n) {
   item.appendChild(main);
   item.appendChild(actions);
   return item;
+}
+
+function _redirectForNotification(resModel, ctx) {
+  const isSO = !!ctx?.is_section_officer;
+  const empId = Number(ctx?.employee_id || 0) || 0;
+
+  if (resModel === "hr.leave") {
+    if (isSO) return "/hrmis/manage/requests?tab=leave";
+    if (empId) return `/hrmis/staff/${empId}/leave?tab=history`;
+    return "/hrmis/services";
+  }
+
+  if (resModel === "hrmis.employee.profile.request") {
+    if (isSO) return "/hrmis/profile-update-requests";
+    if (empId) return `/hrmis/staff/${empId}?tab=personal`;
+    return "/hrmis/services";
+  }
+
+  return "/hrmis/notifications";
 }
 
 async function _fetchNotifications(limit = 20) {
@@ -107,6 +128,7 @@ function _wireNotificationsDropdown(root = document) {
 
   let isOpen = false;
   let lastLoadedAt = 0;
+  let lastCtx = { is_section_officer: false, employee_id: 0 };
 
   function close() {
     isOpen = false;
@@ -128,6 +150,7 @@ function _wireNotificationsDropdown(root = document) {
       if (!data || !data.ok) return;
 
       _setBadge(badge, data.unread_count);
+      if (data.ctx) lastCtx = data.ctx;
 
       list.innerHTML = "";
       const items = data.notifications || [];
@@ -172,7 +195,8 @@ function _wireNotificationsDropdown(root = document) {
     if (!dismissBtn) {
       const item = e.target.closest(".hrmis-notif-item");
       if (item) {
-        window.location.href = "/hrmis/notifications";
+        const resModel = item.dataset?.resModel || "";
+        window.location.href = _redirectForNotification(resModel, lastCtx);
         return;
       }
     }
