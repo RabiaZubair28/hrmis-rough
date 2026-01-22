@@ -125,7 +125,7 @@ def _base_ctx(page_title: str, active_menu: str, **extra):
 
             ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
             ctx["pending_profile_update_count"] = ProfileRequest.search_count(
-                [("approver_id.user_id", "=", user.id), ("state", "=", "submitted")]
+                [("approver_id.user_id", "=", user.id), ("state", "!=", "approved")]
             )
         else:
             ctx["pending_manage_leave_count"] = 0

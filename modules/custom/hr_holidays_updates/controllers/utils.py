@@ -81,7 +81,7 @@ def base_ctx(page_title: str, active_menu: str, **extra):
             try:
                 ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
                 ctx["pending_profile_update_count"] = ProfileRequest.search_count(
-                    [("approver_id.user_id", "=", request.env.user.id), ("state", "=", "submitted")]
+                    [("approver_id.user_id", "=", request.env.user.id), ("state", "!=", "approved")]
                 )
             except Exception:
                 ctx["pending_profile_update_count"] = 0
