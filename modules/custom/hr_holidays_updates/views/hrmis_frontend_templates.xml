@@ -151,6 +151,7 @@
             <t t-set="no_header" t-value="True"/>
             <t t-set="no_footer" t-value="True"/>
             <t t-set="body_class" t-value="'hrmis-ui'"/>
+            <t t-set="is_hrmis_employee" t-value="request.env.user.has_group('custom_login.group_hrmis_employee_self')"/>
 
             <div class="hrmis-app">
                 <div class="hrmis-topbar">
@@ -261,14 +262,24 @@
                             </a>
                             
                             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'staff' else ''}" href="/hrmis/staff">Search staff</a>
-                            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'transfer_requests' else ''}"
-                               href="/hrmis/transfer?tab=history">Transfer requests</a>
+                            <a t-att-class="'hrmis-nav__item'"
+                               t-att-href="((not is_hrmis_employee) or (current_employee and current_employee.profile_complete)) and '/hrmis/transfer?tab=history' or '#'"
+                               t-attf-style="cursor: #{ 'not-allowed' if is_hrmis_employee and (not current_employee or not current_employee.profile_complete) else 'pointer' }">
+                                Transfer requests
+                            </a>
                             <!-- <a class="hrmis-nav__item" href="#">Promotions</a>
                             <a class="hrmis-nav__item" href="#">Vacancies</a> -->
-                            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'disciplinary_actions' else ''}"
-                               href="/hrmis/disciplinary?tab=history">Disciplinary actions</a>
-                            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'promotion_requests' else ''}"
-                               href="/hrmis/promotion?tab=history">Promotion Requests</a>
+                            <a t-att-class="'hrmis-nav__item'"
+                               t-att-href="((not is_hrmis_employee) or (current_employee and current_employee.profile_complete)) and '/hrmis/disciplinary?tab=history' or '#'"
+                               t-attf-style="cursor: #{ 'not-allowed' if is_hrmis_employee and (not current_employee or not current_employee.profile_complete) else 'pointer' }">
+                                Disciplinary actions
+                            </a>
+
+                            <a t-att-class="'hrmis-nav__item'"
+                               t-att-href="((not is_hrmis_employee) or (current_employee and current_employee.profile_complete)) and '/hrmis/promotion?tab=history' or '#'"
+                               t-attf-style="cursor: #{ 'not-allowed' if is_hrmis_employee and (not current_employee or not current_employee.profile_complete) else 'pointer' }">
+                                Promotion Requests
+                            </a>
                                                         <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'leave_requests' else ''}"
                                t-att-href="current_employee and ('/hrmis/staff/%s/leave?tab=new' % current_employee.id) or '/hrmis/services'">
                                 Leave requests

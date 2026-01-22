@@ -123,8 +123,9 @@ class HrLeave(models.Model):
         Effective leave days, excluding weekends/holidays where possible,
         but applying the "sandwich rule" for weekends.
 
-        Uses Odoo's calendar-based computation when available, so public holidays
-        and non-working days are excluded. Falls back to counting Mon-Fri.
+        Uses Odoo's calendar-based computation when available, but HRMIS business
+        rule treats Saturday as a working day (Sunday-only weekend). If the
+        calendar excludes Saturdays, we add them back.
         """
         if not employee or not day_from or not day_to:
             return 0.0
@@ -149,6 +150,18 @@ class HrLeave(models.Model):
                     pass
             except Exception:
                 pass
+
+        # Ensure Saturday is treated as a working day even if the resource calendar
+        # marks it as non-working. We do this by adding the count of Saturdays in
+        # the requested range to the calendar-computed workdays.
+        if base_days:
+            sat = 0
+            cur = day_from
+            while cur <= day_to:
+                if cur.weekday() == 5:  # Saturday
+                    sat += 1
+                cur = cur + relativedelta(days=1)
+            base_days = float(base_days) + float(sat)
 
         if not base_days:
             cur = day_from
