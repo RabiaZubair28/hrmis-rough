@@ -7,9 +7,9 @@
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                href="/hrmis/manage/requests?tab=leave">
                 Leave Requests
-                <t t-if="pending_manage_leave_count and pending_manage_leave_count &gt; 0">
-                    <span class="hrmis-nav__badge2"><t t-esc="pending_manage_leave_count"/></span>
-                </t>
+                <span class="hrmis-nav__badge2">
+                    <t t-esc="pending_manage_leave_count if pending_manage_leave_count is not None else 0"/>
+                </span>
             </a>
 
             </t>
@@ -136,19 +136,19 @@
                                     <!-- Employee / Facility / District -->
                                     <div class="hrmis-leave-row__cell">
                                         <div class="strong">
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
                                                onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
                                                 <t t-esc="lv.employee_id.name"/>,
                                             </a>,
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
                                                onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
                                                 <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
                                             </a>
                                         </div>
                                         <div class="sub">
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=leave' % (lv.employee_id.id)"
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
                                                onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
                                                 <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
