@@ -98,7 +98,7 @@
                             </style>
 
                             <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.4fr 130px 90px 1.2fr 120px 120px 3.2fr; column-gap: 12px; align-items: start;'"/>
-                            <div class="hrmis-table__head"
+                            <div class="hrmis-table__head hrmis-manage-requests-leave__head"
                                  t-att-style="grid">
                                 <div style="width:25px; max-width:25px;">#</div>
                                 <div>Staff / Facility / District</div>

@@ -832,12 +832,22 @@
 }
 
 /* Prevent column overflow */
-.hrmis-table__row > div,
-.hrmis-table__head > div {
+.hrmis-table__row:not(.hrmis-manage-table__row) > div,
+.hrmis-table__head:not(.hrmis-manage-requests-leave__head) > div {
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.hrmis-manage-requests-leave__head > div,
+.hrmis-table__row.hrmis-manage-table__row > div {
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .hrmis-table__row > div:nth-child(5) {
