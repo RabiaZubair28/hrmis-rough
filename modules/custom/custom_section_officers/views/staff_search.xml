@@ -132,7 +132,7 @@
 </div>
 
 
-               <a t-att-href="'/hrmis/manage/history/%s?tab=profile&amp;name=%s&amp;cnic=%s&amp;designation=%s&amp;district=%s&amp;facility=%s' % (
+               <a t-att-href="'/hrmis/manage/history/%s?tab=profile&amp;from=staff&amp;name=%s&amp;cnic=%s&amp;designation=%s&amp;district=%s&amp;facility=%s' % (
     emp.id,
     name or '',
     cnic or '',
@@ -153,18 +153,4 @@
     </t>
   </t>
 </template>
- <template id="hrmis_manage_history_back_to_staff"
-          inherit_id="hrmis_manage_history">
-
-    <xpath expr="//div[contains(@class,'hrmis-form__actions')]/a"
-           position="replace">
-<a class="hrmis-btn hrmis-btn--outline"
-   t-attf-href="/hrmis/staff?name={{ request.session.get('staff_search_filters', {}).get('name','') }}&amp;cnic={{ request.session.get('staff_search_filters', {}).get('cnic','') }}&amp;designation={{ request.session.get('staff_search_filters', {}).get('designation','') }}&amp;district={{ request.session.get('staff_search_filters', {}).get('district','') }}&amp;facility={{ request.session.get('staff_search_filters', {}).get('facility','') }}">
-   Back to Staff Search
-</a>
-
-    </xpath>
-
-</template>
-
 </odoo>
