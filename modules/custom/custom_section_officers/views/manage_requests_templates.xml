@@ -7,8 +7,9 @@
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                href="/hrmis/manage/requests?tab=leave">
                 Leave Requests
-                <span class="hrmis-nav__badge2">
-                    <t t-esc="pending_manage_leave_count if pending_manage_leave_count is not None else 0"/>
+                <span class="hrmis-nav__badge2 js-hrmis-pending-manage-leave-badge"
+                      t-attf-style="display: #{'inline-flex' if (pending_manage_leave_count or 0) > 0 else 'none'};">
+                    <t t-esc="pending_manage_leave_count or 0"/>
                 </span>
             </a>
 
@@ -21,8 +22,9 @@
                     href="/hrmis/profile-update-requests">
                         Profile Update Requests
 
-                        <span class="hrmis-nav__badge2">
-                            <t t-esc="pending_profile_update_count if pending_profile_update_count is not None else 0"/>
+                        <span class="hrmis-nav__badge2 js-hrmis-pending-profile-update-badge"
+                              t-attf-style="display: #{'inline-flex' if (pending_profile_update_count or 0) > 0 else 'none'};">
+                            <t t-esc="pending_profile_update_count or 0"/>
                         </span>
                 </a>
             </t>
