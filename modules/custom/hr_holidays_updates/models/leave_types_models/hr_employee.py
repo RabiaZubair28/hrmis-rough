@@ -37,6 +37,8 @@ class HrEmployee(models.Model):
             months = (today.year - join_date.year) * 12 + (today.month - join_date.month) + 1
             emp.earned_leave_balance = max(0, months) * 4.0
 
+
+    @api.depends("earned_leave_balance", "hrmis_leaves_taken")
     def _compute_employee_leave_balances(self):
         """
         Keep depends simple (avoid missing-field depends during module load).
@@ -51,12 +53,15 @@ class HrEmployee(models.Model):
             # Business definition:
             # Total leave balance starts from Earned Leave Balance and is reduced ONLY by the
             # following leave types:
+            # and is reduced ONLY by the
             # - Full deduction (effective days, excluding holidays/weekends):
             #   Study Leave (Full Pay), LPR, Ex-Pakistan (Full Pay), Earned Leave (Full Pay)
             # - Half deduction (effective days * 0.5):
             #   Leave on Half Pay, Study Leave (Half Pay), Ex-Pakistan (Half Pay)
             # All other leave types do NOT affect total leave balance.
-            base_total = float(getattr(emp, "earned_leave_balance", 0.0) or 0.0)
+            earned = float(getattr(emp, "earned_leave_balance", 0.0) or 0.0)
+            taken = float(getattr(emp, "hrmis_leaves_taken", 0.0) or 0.0)
+            base_total = max(0.0, earned - taken)
 
             # Resolve leave types (ignore if not present on this DB).
             full_types = [

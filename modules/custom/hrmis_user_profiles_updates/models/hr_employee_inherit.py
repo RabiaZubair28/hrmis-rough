@@ -41,7 +41,12 @@ class HREmployee(models.Model):
     required=True
     )
 
-    hrmis_designation = fields.Char(string="Designation")
+    hrmis_designation = fields.Many2one(
+    'hrmis.designation',
+    string='Designation',
+    required=True 
+    )
+    
     hrmis_bps = fields.Integer(
     string="BPS Grade"
     ) 
@@ -60,7 +65,7 @@ class HREmployee(models.Model):
 
     hrmis_contact_info = fields.Char(string="Contact Info")
     hrmis_leaves_taken = fields.Float(
-        string="Total Leaves Taken (Days)"
+        string="Total Leaves Taken Since Joining (Days)"
     )
 
     service_postings_district_id = fields.Many2one(related="hrmis_service_history_ids.district_id", readonly=True)

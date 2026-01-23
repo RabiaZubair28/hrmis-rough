@@ -1,7 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from datetime import date
-
+# DISCARDEDDDDD
 class HrmisUserProfile(models.Model):
     _name = "hrmis.user.profile"
     _description = "HRMIS User Profile"
@@ -21,7 +21,11 @@ class HrmisUserProfile(models.Model):
         ('other', 'Other')
     ], string="Gender", required=True)
     cadre = fields.Char(string="Cadre")
-    designation = fields.Char(string="Designation")
+    hrmis_designation = fields.Many2one(
+    'hrmis.designation',
+    string='Designation',
+    required=True
+    )
     bps = fields.Selection([
         ('17', '17'),
         ('18', '18'),

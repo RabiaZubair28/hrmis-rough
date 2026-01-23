@@ -120,5 +120,29 @@
         <field name="temp_password">Temp123</field>
         <field name="hrmis_role">section_officer</field>
     </record>
+    <record id="user_humza" model="res.users">
+        <field name="name">Humza</field>
+        <field name="login">humza</field>
+        <field name="email">xyz1@example.com</field>
+        <field name="temp_password">123</field>
+        <field name="hrmis_role">employee</field>
+        <field name="manager_id">4</field>
+    </record>
+    <record id="user_rabia" model="res.users">
+        <field name="name">Rabia</field>
+        <field name="login">rabia</field>
+        <field name="email">xyz2@example.com</field>
+        <field name="temp_password">123</field>
+        <field name="hrmis_role">employee</field>
+        <field name="manager_id">4</field>
+    </record>
+    <record id="user_aneeqa" model="res.users">
+        <field name="name">Aneeqa</field>
+        <field name="login">aneeqa</field>
+        <field name="email">xyz3@example.com</field>
+        <field name="temp_password">123</field>
+        <field name="hrmis_role">employee</field>
+        <field name="manager_id">4</field>
+    </record>
  
 </odoo>

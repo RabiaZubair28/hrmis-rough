@@ -6,3 +6,4 @@ from . import hrmis_facility_type
 from . import res_users_inherit
 from . import hrmis_final_profile_request
 from . import hrmis_cadre
+from . import hrmis_designations

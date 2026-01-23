@@ -15,7 +15,7 @@
     <!-- Show Request Profile Update ONLY if NOT Section Officer -->
     <template id="hrmis_hide_profile_update_btn_section_officer"
               inherit_id="hr_holidays_updates.hrmis_staff_profile">
-        <xpath expr="//div[contains(@class,'hrmis-panel__body')]" position="inside">
+        <xpath expr="//div[@id='personal_data']" position="inside">
             <t t-if="not request.env.user.has_group('custom_login.group_section_officer')">
                 <div class="hrmis-panel__tools mb-3">
                     <a class="hrmis-btn hrmis-btn--primary"

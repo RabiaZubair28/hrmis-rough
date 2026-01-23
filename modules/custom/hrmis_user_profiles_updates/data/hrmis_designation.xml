@@ -1,0 +1,167 @@
+<odoo>
+    <record id="designation_anaesthetist" model="hrmis.designation">
+        <field name="name">Anaesthetist</field>
+        <field name="code">anaesthetist</field>
+    </record>
+
+    <record id="designation_computer_operator" model="hrmis.designation">
+        <field name="name">Computer Operator</field>
+        <field name="code">computer_operator</field>
+    </record>
+
+    <record id="designation_dental_assistant" model="hrmis.designation">
+        <field name="name">Dental Assistant</field>
+        <field name="code">dental_assistant</field>
+    </record>
+
+    <record id="designation_dental_surgeon" model="hrmis.designation">
+        <field name="name">Dental Surgeon</field>
+        <field name="code">dental_surgeon</field>
+    </record>
+
+    <record id="designation_dispenser" model="hrmis.designation">
+        <field name="name">Dispenser</field>
+        <field name="code">dispenser</field>
+    </record>
+
+    <record id="designation_district_health_officer" model="hrmis.designation">
+        <field name="name">District Health Officer</field>
+        <field name="code">district_health_officer</field>
+    </record>
+
+    <record id="designation_female_medical_technician" model="hrmis.designation">
+        <field name="name">Female Medical Technician</field>
+        <field name="code">female_medical_technician</field>
+    </record>
+
+    <record id="designation_gynecologist" model="hrmis.designation">
+        <field name="name">Gynecologist</field>
+        <field name="code">gynecologist</field>
+    </record>
+
+    <record id="designation_health_inspector" model="hrmis.designation">
+        <field name="name">Health Inspector</field>
+        <field name="code">health_inspector</field>
+    </record>
+
+    <record id="designation_junior_clerk" model="hrmis.designation">
+        <field name="name">Junior Clerk</field>
+        <field name="code">junior_clerk</field>
+    </record>
+
+    <record id="designation_lab_assistant" model="hrmis.designation">
+        <field name="name">Lab Assistant</field>
+        <field name="code">lab_assistant</field>
+    </record>
+
+    <record id="designation_lab_technician" model="hrmis.designation">
+        <field name="name">Lab Technician</field>
+        <field name="code">lab_technician</field>
+    </record>
+
+    <record id="designation_lhv" model="hrmis.designation">
+        <field name="name">LHV</field>
+        <field name="code">lhv</field>
+    </record>
+
+    <record id="designation_medical_officer" model="hrmis.designation">
+        <field name="name">Medical Officer</field>
+        <field name="code">medical_officer</field>
+    </record>
+
+    <record id="designation_medical_superintendent" model="hrmis.designation">
+        <field name="name">Medical Superintendent</field>
+        <field name="code">medical_superintendent</field>
+    </record>
+
+    <record id="designation_medical_technician" model="hrmis.designation">
+        <field name="name">Medical Technician</field>
+        <field name="code">medical_technician</field>
+    </record>
+
+    <record id="designation_midwife" model="hrmis.designation">
+        <field name="name">Midwife</field>
+        <field name="code">midwife</field>
+    </record>
+
+    <record id="designation_ot_assistant" model="hrmis.designation">
+        <field name="name">OT Assistant</field>
+        <field name="code">ot_assistant</field>
+    </record>
+
+    <record id="designation_ot_technician" model="hrmis.designation">
+        <field name="name">OT Technician</field>
+        <field name="code">ot_technician</field>
+    </record>
+
+    <record id="designation_pathologist" model="hrmis.designation">
+        <field name="name">Pathologist</field>
+        <field name="code">pathologist</field>
+    </record>
+
+    <record id="designation_pediatrician" model="hrmis.designation">
+        <field name="name">Pediatrician</field>
+        <field name="code">pediatrician</field>
+    </record>
+
+    <record id="designation_physician" model="hrmis.designation">
+        <field name="name">Physician</field>
+        <field name="code">physician</field>
+    </record>
+
+    <record id="designation_radiologist" model="hrmis.designation">
+        <field name="name">Radiologist</field>
+        <field name="code">radiologist</field>
+    </record>
+
+    <record id="designation_senior_clerk" model="hrmis.designation">
+        <field name="name">Senior Clerk</field>
+        <field name="code">senior_clerk</field>
+    </record>
+
+    <record id="designation_senior_medical_officer" model="hrmis.designation">
+        <field name="name">Senior Medical Officer</field>
+        <field name="code">senior_medical_officer</field>
+    </record>
+
+    <record id="designation_senior_nurse" model="hrmis.designation">
+        <field name="name">Senior Nurse</field>
+        <field name="code">senior_nurse</field>
+    </record>
+
+    <record id="designation_senior_women_medical_officer" model="hrmis.designation">
+        <field name="name">Senior Women Medical Officer</field>
+        <field name="code">senior_women_medical_officer</field>
+    </record>
+
+    <record id="designation_staff_nurse" model="hrmis.designation">
+        <field name="name">Staff Nurse</field>
+        <field name="code">staff_nurse</field>
+    </record>
+
+    <record id="designation_storekeeper" model="hrmis.designation">
+        <field name="name">Storekeeper</field>
+        <field name="code">storekeeper</field>
+    </record>
+
+    <record id="designation_surgeon" model="hrmis.designation">
+        <field name="name">Surgeon</field>
+        <field name="code">surgeon</field>
+    </record>
+
+    <record id="designation_vaccinator" model="hrmis.designation">
+        <field name="name">Vaccinator</field>
+        <field name="code">vaccinator</field>
+    </record>
+
+    <record id="designation_woman_medical_officer" model="hrmis.designation">
+        <field name="name">Woman Medical Officer</field>
+        <field name="code">woman_medical_officer</field>
+    </record>
+
+    <record id="designation_xray_technician_attendant" model="hrmis.designation">
+        <field name="name">X-Ray Technician/Attendant</field>
+        <field name="code">xray_technician_attendant</field>
+    </record>
+
+</odoo>

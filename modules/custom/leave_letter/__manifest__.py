@@ -4,7 +4,7 @@
     "category": "HRMIS",
     "summary": "System generated leave approval notifications",
     "author": "HRMIS",
-    "depends": ["hr_holidays", "hr", "hr_holidays_multilevel_hierarchy", "custom_section_officers"],
+    "depends": ["hr_holidays_updates", "hr", "hr_holidays_multilevel_hierarchy", "custom_section_officers"],
     "data": [
         "security/ir.model.access.csv",
         # "views/leave_notification_views.xml",

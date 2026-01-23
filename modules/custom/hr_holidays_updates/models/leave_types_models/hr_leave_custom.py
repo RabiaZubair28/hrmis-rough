@@ -384,16 +384,9 @@ class HrLeave(models.Model):
         def _employee_dob(emp):
             if not emp:
                 return None
-            for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
-                if f in getattr(emp, "_fields", {}):
-                    d = fields.Date.to_date(getattr(emp, f, None))
-                    if d:
-                        return d
-                else:
-                    d = fields.Date.to_date(getattr(emp, f, None))
-                    if d:
-                        return d
-            return None
+            # Per HRMIS requirement: take birthday from hr_employee_inherit
+            # (hrmis_user_profiles_updates) which defines `birthday`.
+            return fields.Date.to_date(getattr(emp, "birthday", None))
 
         def _date_range(leave):
             d_from = None
@@ -424,5 +417,86 @@ class HrLeave(models.Model):
             # Allow only dates in [start_allowed, end_exclusive)
             if d_from < start_allowed or d_to >= end_exclusive:
                 raise ValidationError(
-                    "You can only apply for LPR leave between your 59th and 60th birthday."
+                    "you cannot take LPR in these dates"
+                )
+
+    @api.constrains("holiday_status_id", "employee_id", "state")
+    def _check_lpr_single_request_any_state(self):
+        """
+        LPR rule: once an employee has *any* LPR leave that is pending/approved
+        (i.e., not refused/cancelled), they cannot apply for LPR again.
+        """
+        lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        if not lpr_leave_type:
+            return
+
+        for leave in self:
+            if not leave.employee_id or leave.holiday_status_id != lpr_leave_type:
+                continue
+            # Only enforce against "active" requests (pending/approved).
+            if getattr(leave, "state", None) in ("cancel", "refuse"):
+                continue
+
+            exists = self.sudo().search_count(
+                [
+                    ("id", "!=", leave.id),
+                    ("employee_id", "=", leave.employee_id.id),
+                    ("holiday_status_id", "=", lpr_leave_type.id),
+                    ("state", "not in", ("cancel", "refuse")),
+                ]
+            )
+            if exists:
+                raise ValidationError("LPR can only be taken once.")
+
+    @api.constrains(
+        "holiday_status_id",
+        "employee_id",
+        "request_date_from",
+        "request_date_to",
+        "date_from",
+        "date_to",
+        "state",
+    )
+    def _check_lpr_total_leave_balance(self):
+        """
+        LPR rule: requested days must not exceed employee total leave balance.
+
+        Error message required by business:
+        "you donot have sufficient leave balance to request LPR for following days."
+        """
+        lpr_leave_type = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
+        if not lpr_leave_type:
+            return
+
+        def _date_range(leave):
+            d_from = None
+            d_to = None
+            if "request_date_from" in leave._fields and "request_date_to" in leave._fields:
+                d_from = fields.Date.to_date(getattr(leave, "request_date_from", None))
+                d_to = fields.Date.to_date(getattr(leave, "request_date_to", None))
+            if (not d_from or not d_to) and "date_from" in leave._fields and "date_to" in leave._fields:
+                dt_from = fields.Datetime.to_datetime(getattr(leave, "date_from", None))
+                dt_to = fields.Datetime.to_datetime(getattr(leave, "date_to", None))
+                d_from = dt_from.date() if dt_from else d_from
+                d_to = dt_to.date() if dt_to else d_to
+            return d_from, d_to
+
+        for leave in self.filtered(lambda l: l.holiday_status_id == lpr_leave_type):
+            # Apply-time states only (avoid breaking legacy validated leaves).
+            if getattr(leave, "state", None) not in ("draft", "confirm", "validate1"):
+                continue
+            if not leave.employee_id:
+                continue
+
+            d_from, d_to = _date_range(leave)
+            if not d_from or not d_to:
+                continue
+
+            # Requested days should match our effective-day logic.
+            requested = float(leave._hrmis_effective_days(leave.employee_id, d_from, d_to) or 0.0)
+            available = float(getattr(leave.employee_id, "employee_leave_balance_total", 0.0) or 0.0)
+
+            if (requested - available) > 1e-6:
+                raise ValidationError(
+                    "you donot have sufficient leave balance to request LPR for following days."
                 )

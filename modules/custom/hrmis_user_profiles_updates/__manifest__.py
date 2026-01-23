@@ -19,6 +19,7 @@
         'data/districts.xml',
         'data/facilities.xml',
         'data/hrmis_cadre.xml',
+        'data/hrmis_designation.xml',
     ],
     'assets': {
         'web.assets_frontend': [

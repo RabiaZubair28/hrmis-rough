@@ -23,26 +23,33 @@
       <form class="hrmis-form" action="/hrmis/staff" method="get" 
       style="display:flex; flex-wrap:wrap; gap:25px; align-items:flex-end;">
 
+
+    <!-- Name -->
+  <div style="display:flex; flex-direction:column; flex:1; min-width:150px; gap:5px;">
+    <label style="font-weight:bold;">Name</label>
+    <input class="hrmis-input" type="text" name="name" t-att-value="name" placeholder="Type Name..." style="padding:8px;"/>
+  </div>
+
   <!-- CNIC -->
-  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+  <div style="display:flex; flex-direction:column; flex:1; min-width:150px; gap:5px;">
     <label style="font-weight:bold;">CNIC</label>
     <input class="hrmis-input" type="text" name="cnic" t-att-value="cnic" placeholder="Type CNIC..." style="padding:8px;"/>
   </div>
 
   <!-- Designation -->
-  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+  <div style="display:flex; flex-direction:column; flex:1; min-width:150px; gap:5px;">
     <label style="font-weight:bold;">Designation</label>
     <input class="hrmis-input" type="text" name="designation" t-att-value="designation" placeholder="Type designation..." style="padding:8px;"/>
   </div>
 
   <!-- District -->
-  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+  <div style="display:flex; flex-direction:column; flex:1; min-width:150px; gap:5px;">
     <label style="font-weight:bold;">District</label>
     <input class="hrmis-input" type="text" name="district" t-att-value="district" placeholder="Type district..." style="padding:8px;"/>
   </div>
 
   <!-- Facility -->
-  <div style="display:flex; flex-direction:column; flex:1; min-width:200px; gap:5px;">
+  <div style="display:flex; flex-direction:column; flex:1; min-width:150px; gap:5px;">
     <label style="font-weight:bold;">Facility</label>
     <input class="hrmis-input" type="text" name="facility" t-att-value="facility" placeholder="Type facility..." style="padding:8px;"/>
   </div>
@@ -60,9 +67,28 @@
       </div>
 
       <!-- Search Results -->
-      <div class="hrmis-panel" t-if="cnic or designation or district or facility">
+      <div class="hrmis-panel" t-if="name or cnic or designation or district or facility">
         <div class="hrmis-panel__header">
           <div class="hrmis-panel__title">Search results</div>
+          <div class="hrmis-panel__header">
+  
+  <div>
+<a t-attf-href="/hrmis/staff/export?name={{ name or '' }}&amp;cnic={{ cnic or '' }}&amp;designation={{ designation or '' }}&amp;district={{ district or '' }}&amp;facility={{ facility or '' }}"
+   class="hrmis-btn hrmis-btn--primary"
+   >
+    Export Results
+</a>
+
+
+
+
+
+
+
+
+  </div>
+</div>
+
         </div>
         <div class="hrmis-panel__body">
 
@@ -77,19 +103,47 @@
                      t-att-src="'/web/image/hr.employee.public/%s/avatar_1024/' % emp.id"/>
               </div>
               <div class="hrmis-result__meta">
-                <div class="hrmis-result__name">
-                  <t t-esc="emp.name"/>
-                  <t t-if="emp.hrmis_bps">, BPS <t t-esc="emp.hrmis_bps"/></t>
-                </div>
-                <div class="hrmis-result__sub">
-                  <t t-esc="(
-                    ('facility_id' in emp._fields and emp.facility_id and emp.facility_id.name) 
-                    or ('hrmis_facility_id' in emp._fields and emp.hrmis_facility_id and emp.hrmis_facility_id.name) 
-                    or 'Place of posting'
-                  )"/>
-                </div>
-              </div>
-              <a class="hrmis-btn hrmis-btn--outline" t-att-href="'/hrmis/staff/%s' % emp.id">View Profile</a>
+  <div class="hrmis-result__name">
+    <t t-esc="emp.name"/>
+
+    <t t-if="emp.job_id">
+      — <t t-esc="emp.job_id.name"/>
+    </t>
+    <t t-if="emp.hrmis_designation">
+    — <t t-esc="emp.hrmis_designation.name"/>
+  </t>
+    <t t-if="emp.hrmis_bps">
+      , BPS <t t-esc="emp.hrmis_bps"/>
+    </t>
+  </div>
+
+  <div class="hrmis-result__sub">
+
+    <div class="hrmis-result__sub">
+    
+  <t t-if="emp.facility_id"><t t-esc="emp.facility_id.name"/></t>
+  <t t-if="emp.facility_id and emp.district_id"> · </t>
+  <t t-if="emp.district_id"><t t-esc="emp.district_id.name"/></t>
+  
+</div>
+
+
+  </div>
+</div>
+
+
+               <a t-att-href="'/hrmis/manage/history/%s?tab=profile&amp;name=%s&amp;cnic=%s&amp;designation=%s&amp;district=%s&amp;facility=%s' % (
+    emp.id,
+    name or '',
+    cnic or '',
+    designation or '',
+    district or '',
+    facility or ''
+)"
+   class="btn btn-outline-secondary mt4">
+    View Profile
+</a>
+
             </div>
           </t>
 
@@ -99,4 +153,18 @@
     </t>
   </t>
 </template>
+ <template id="hrmis_manage_history_back_to_staff"
+          inherit_id="hrmis_manage_history">
+
+    <xpath expr="//div[contains(@class,'hrmis-form__actions')]/a"
+           position="replace">
+<a class="hrmis-btn hrmis-btn--outline"
+   t-attf-href="/hrmis/staff?name={{ request.session.get('staff_search_filters', {}).get('name','') }}&amp;cnic={{ request.session.get('staff_search_filters', {}).get('cnic','') }}&amp;designation={{ request.session.get('staff_search_filters', {}).get('designation','') }}&amp;district={{ request.session.get('staff_search_filters', {}).get('district','') }}&amp;facility={{ request.session.get('staff_search_filters', {}).get('facility','') }}">
+   Back to Staff Search
+</a>
+
+    </xpath>
+
+</template>
+
 </odoo>

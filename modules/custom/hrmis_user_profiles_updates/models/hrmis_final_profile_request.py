@@ -67,8 +67,10 @@ class EmployeeProfileRequest(models.Model):
     )
 
 
-    hrmis_designation = fields.Char(
-        string="Designation"    )
+    hrmis_designation = fields.Many2one(
+        'hrmis.designation',
+        string='Designation',
+    )
 
     hrmis_bps = fields.Integer(
         string="BPS Grade"
@@ -87,7 +89,7 @@ class EmployeeProfileRequest(models.Model):
         domain="[('district_id','=',district_id)]"
     )
     hrmis_leaves_taken = fields.Float(
-        string="Total Leaves Taken (Days)"
+        string="Total Leaves Taken Since Joining (Days)"
     )
     approved_by = fields.Many2one(
     'res.users',

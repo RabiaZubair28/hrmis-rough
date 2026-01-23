@@ -112,23 +112,11 @@ class HRMISProfileRequest(http.Controller):
         # Handle Cadre safely
         # -----------------------
         cadre_val = post.get('hrmis_cadre')
-        if cadre_val == 'other':
-            cadre_id = 1
-            # # Create new cadre
-            # cadre_name = (post.get('hrmis_cadre_other') or '').strip()
-            # if not cadre_name:
-            #     return self._render_profile_form(employee, req, error="Please specify the Cadre.")
-            # cadre = request.env['hrmis.cadre'].sudo().create({
-            #     'name': cadre_name,
-            #     'code': cadre_name,
-            # })
-            # cadre_id = cadre.id  # Must be int
-        else:
-            try:
-                # Convert string to int
-                cadre_id = int(cadre_val) if cadre_val else False
-            except Exception:
-                cadre_id = False
+        try:
+            # Convert string to int
+            cadre_id = int(cadre_val) if cadre_val else False
+        except Exception:
+            cadre_id = False
 
         # Ensure we pass only ID, never recordset
         if not isinstance(cadre_id, (int, type(None))):

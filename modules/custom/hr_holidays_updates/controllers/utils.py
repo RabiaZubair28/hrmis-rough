@@ -67,7 +67,7 @@ def base_ctx(page_title: str, active_menu: str, **extra):
         "active_menu": active_menu,
         "current_employee": current_employee(),
     }
-    # Section Officer UX: show pending leave count badge on "Manage Requests".
+    # Section Officer UX: show pending counts badges on sidebar.
     try:
         if request.env.user and request.env.user.has_group("custom_login.group_section_officer"):
             from odoo.addons.hr_holidays_updates.controllers.leave_data import (
@@ -76,11 +76,22 @@ def base_ctx(page_title: str, active_menu: str, **extra):
 
             pending = pending_leave_requests_for_user(request.env.user.id)
             ctx["pending_manage_leave_count"] = len(pending)
+
+            # Profile update requests count (pending for current approver).
+            try:
+                ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
+                ctx["pending_profile_update_count"] = ProfileRequest.search_count(
+                    [("approver_id.user_id", "=", request.env.user.id), ("state", "!=", "approved")]
+                )
+            except Exception:
+                ctx["pending_profile_update_count"] = 0
         else:
             ctx["pending_manage_leave_count"] = 0
+            ctx["pending_profile_update_count"] = 0
     except Exception:
         # Never break page render due to badge computation.
         ctx["pending_manage_leave_count"] = 0
+        ctx["pending_profile_update_count"] = 0
     ctx.update(extra)
     return ctx
 

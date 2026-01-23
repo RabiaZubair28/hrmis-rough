@@ -32,7 +32,7 @@
                 <div class="hrmis-kv__item">
                     <div class="hrmis-kv__k">Designation</div>
                     <div class="hrmis-kv__v">
-                        <t t-esc="('hrmis_designation' in employee._fields and employee.hrmis_designation) or (employee.job_id and employee.job_id.name) or ''"/>
+                        <t t-esc="(employee.hrmis_designation and employee.hrmis_designation.name) or ''"/>
                     </div>
                 </div>
             </t>

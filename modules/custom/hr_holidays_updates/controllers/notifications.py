@@ -3,7 +3,7 @@ from __future__ import annotations
 from odoo import http
 from odoo.http import request
 
-from .utils import base_ctx
+from .utils import base_ctx, current_employee
 
 
 class HrmisNotificationsController(http.Controller):
@@ -22,6 +22,8 @@ class HrmisNotificationsController(http.Controller):
                     "subject": (n.title or "").strip() or "Notification",
                     "body": (n.body or "").strip(),
                     "date": str(n.create_date or ""),
+                    "res_model": n.res_model or "",
+                    "res_id": int(n.res_id or 0),
                 }
             )
 
@@ -52,10 +54,25 @@ class HrmisNotificationsController(http.Controller):
                     "subject": (n.title or "").strip() or "Notification",
                     "body": (n.body or "").strip(),
                     "date": str(n.create_date or ""),
+                    "res_model": n.res_model or "",
+                    "res_id": int(n.res_id or 0),
                 }
             )
 
-        return request.make_json_response({"ok": True, "unread_count": unread, "notifications": items})
+        user = request.env.user
+        is_section_officer = bool(user and user.has_group("custom_login.group_section_officer"))
+        emp = current_employee()
+        return request.make_json_response(
+            {
+                "ok": True,
+                "unread_count": unread,
+                "notifications": items,
+                "ctx": {
+                    "is_section_officer": is_section_officer,
+                    "employee_id": emp.id if emp else 0,
+                },
+            }
+        )
 
     @http.route(["/hrmis/api/notifications/read"], type="http", auth="user", methods=["POST"], csrf=False)
     def hrmis_api_notifications_read(self, **post):

@@ -1,21 +1,20 @@
 <odoo>
-
-    <!-- First template: Leave form -->
     <template id="leave_letter_add_download_notification_form"
               inherit_id="hr_holidays_updates.hrmis_leave_form">
-        <xpath expr="//div[@class='hrmis-table__row']/div[last()]" position="inside">
-           <t t-if="lv.state in ('validate','validate2') and lv.leave_notification_id">
-                <a t-att-href="'/report/pdf/leave_letter.leave_notification_pdf/%s' % lv.leave_notification_id.id"
-                   class="btn btn-primary btn-sm"
+
+        <!-- Insert after existing View button -->
+        <xpath expr="//a[contains(@class,'hrmis-btn') and contains(., 'View')]" position="after">
+
+            <t t-if="lv and lv.state in ('validate','validate2') and lv.leave_notification_id">
+                <a t-att-href="'/leave_letter/pdf/%s' % lv.leave_notification_id.id"
+                   class="hrmis-btn hrmis-btn--outline"
+                   style="margin-left:8px;"
                    target="_blank">
                     Download Notification
                 </a>
-           </t>
+            </t>
+
         </xpath>
+
     </template>
-
-
-
-
-
 </odoo>

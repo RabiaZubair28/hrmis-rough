@@ -25,7 +25,7 @@ class LeaveNotification(models.Model):
         required=True,
         ondelete="cascade",
     )
-    # NEW: start and end dates for leave
+    
     leave_start_date = fields.Date(string="Leave Start Date")
     leave_end_date = fields.Date(string="Leave End Date")
     leave_duration = fields.Char(string="Leave Duration", compute='_compute_leave_duration', store=True)
@@ -60,10 +60,8 @@ class LeaveNotification(models.Model):
             'issue_date': fields.Date.today(),
             'leave_id': leave.id,
 
-            # ✅ important
             'leave_type_id': leave.holiday_status_id.id,
 
-            # ✅ better date fields
             'leave_start_date': leave.request_date_from,
             'leave_end_date': leave.request_date_to,
         })

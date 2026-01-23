@@ -144,10 +144,6 @@
                                             <t t-esc="cadre.name"/>
                                         </option>
                                     </t>
-                                    <option t-att-value="'other'"
-                                            t-att-selected="current_cadre and current_cadre.name not in [c.name for c in env['hrmis.cadre'].search([])]">
-                                        Other
-                                    </option>
                                 </select>
                             </div>
 
@@ -161,17 +157,22 @@
                                     placeholder="Enter your cadre"/>
                             </div>
 
-
-
-
-
+                           <!-- Designation -->
                             <div class="hrmis-field">
                                 <label>Designation<span class="req">*</span></label>
-                                <input class="hrmis-input"
-                                       type="text"
-                                       name="hrmis_designation"
-                                       t-att-value="req.hrmis_designation or current_employee.hrmis_designation or ''"
-                                       required="required"/>
+
+                                <t t-set="current_designation"
+                                t-value="req.hrmis_designation or current_employee.hrmis_designation"/>
+
+                                <select class="hrmis-input" name="hrmis_designation" required="required">
+                                    <option value="">Select</option>
+                                    <t t-foreach="env['hrmis.designation'].search([], order='name')" t-as="designation">
+                                        <option t-att-value="designation.id"
+                                                t-att-selected="current_designation and current_designation.id == designation.id">
+                                            <t t-esc="designation.name"/>
+                                        </option>
+                                    </t>
+                                </select>
                             </div>
 
                             <!-- Posting -->
@@ -192,21 +193,24 @@
                                 <label>Facility<span class="req">*</span></label>
                                 <select class="hrmis-input js-hrmis-facility" name="facility_id" required="required">
                                     <option value="">Select</option>
-                                    <t t-foreach="facilities" t-as="f">
+                                    <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
                                         <option t-att-value="f.id"
+                                                t-att-title="f.name"
                                                 t-att-data-district-id="f.district_id.id if f.district_id else ''"
-                                                t-att-selected="(req.facility_id and req.facility_id.id == f.id) or (current_employee.facility_id and current_employee.facility_id.id == f.id)">
+                                                t-att-selected="(req.facility_id and req.facility_id.id == f.id) or
+                                                                (current_employee.facility_id and current_employee.facility_id.id == f.id)">
                                             <t t-esc="f.name"/>
                                         </option>
                                     </t>
                                 </select>
                             </div>
 
+
                             <div class="hrmis-field">
-                                <label>Total Leaves Taken (Days)<span class="req">*</span></label>
+                                <label>Total Leaves Taken Since Joining (Days)<span class="req">*</span></label>
                                 <input  class="hrmis-input"
                                         type="number"
-                                        step="0.1"
+                                        step="1.0"
                                         min="0"
                                         max="365"
                                         name="hrmis_leaves_taken"
@@ -215,8 +219,8 @@
                             </div>
 
                             <!-- Contact -->
-                            <div class="hrmis-field hrmis-field--wide">
-                                <label>Contact Information</label>
+                            <div class="hrmis-field hrmis-field--wide hrmis-field--wide2">
+                                <label>Contact Number</label>
                                 <input class="hrmis-input hrmis-input--wide"
                                        type="text"
                                        name="hrmis_contact_info"

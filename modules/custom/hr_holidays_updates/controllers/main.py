@@ -112,6 +112,27 @@ def _base_ctx(page_title: str, active_menu: str, **extra):
         # Used by the global layout for profile links
         "current_employee": _current_employee(),
     }
+    # Keep sidebar badges in sync for Section Officer across all pages rendered by this controller.
+    try:
+        user = request.env.user
+        if user and user.has_group("custom_login.group_section_officer"):
+            from odoo.addons.hr_holidays_updates.controllers.leave_data import (
+                pending_leave_requests_for_user,
+            )
+
+            pending = pending_leave_requests_for_user(user.id)
+            ctx["pending_manage_leave_count"] = len(pending)
+
+            ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
+            ctx["pending_profile_update_count"] = ProfileRequest.search_count(
+                [("approver_id.user_id", "=", user.id), ("state", "!=", "approved")]
+            )
+        else:
+            ctx["pending_manage_leave_count"] = 0
+            ctx["pending_profile_update_count"] = 0
+    except Exception:
+        ctx["pending_manage_leave_count"] = 0
+        ctx["pending_profile_update_count"] = 0
     ctx.update(extra)
     return ctx
 
@@ -202,7 +223,7 @@ def _allowed_leave_type_domain(employee, request_date_from=None):
     Current rules:
     - Maternity Leave is visible only for female employees.
     - Maternity Leave is hidden after 3 approved maternity leaves.
-    - LPR Leave is hidden after 1 approved LPR leave.
+    - LPR Leave is hidden after 1 pending/approved LPR leave.
     """
     domain = []
     try:
@@ -230,7 +251,8 @@ def _allowed_leave_type_domain(employee, request_date_from=None):
                 [
                     ("employee_id", "=", employee.id),
                     ("holiday_status_id", "=", lpr.id),
-                    ("state", "in", approved_states),
+                    # Treat any non-cancelled/non-refused request as "taken" (pending or approved).
+                    ("state", "not in", ("cancel", "refuse")),
                 ]
             )
 
@@ -245,37 +267,6 @@ def _allowed_leave_type_domain(employee, request_date_from=None):
         if lpr:
             if lpr_taken >= 1:
                 domain.append(("id", "!=", lpr.id))
-            else:
-                # Date eligibility: only allow applying for LPR within the employee's
-                # age 59-60 window (based on DOB).
-                try:
-                    from dateutil.relativedelta import relativedelta
-
-                    dob = None
-                    # Common DOB fields across deployments
-                    for f in ("birthday", "date_of_birth", "dob", "hrmis_date_of_birth"):
-                        if f in getattr(employee, "_fields", {}):
-                            dob = fields.Date.to_date(getattr(employee, f, None))
-                            if dob:
-                                break
-                        else:
-                            # Best-effort fallback for non-standard attrs
-                            dob = fields.Date.to_date(getattr(employee, f, None))
-                            if dob:
-                                break
-
-                    req_dt = _safe_date(request_date_from) if request_date_from else None
-                    if not dob or not req_dt:
-                        # No DOB or no requested start date: hide to avoid invalid requests.
-                        domain.append(("id", "!=", lpr.id))
-                    else:
-                        start_allowed = dob + relativedelta(years=59)
-                        end_exclusive = dob + relativedelta(years=60)
-                        if not (start_allowed <= req_dt < end_exclusive):
-                            domain.append(("id", "!=", lpr.id))
-                except Exception:
-                    # If we can't compute eligibility, keep LPR visible (constraint will still enforce).
-                    pass
     except Exception:
         # Never break the form because of an eligibility rule.
         pass
@@ -308,6 +299,38 @@ def _leave_types_for_employee(employee, request_date_from=None):
     )
     return recs
 
+def _support_doc_rule_for_leave_type(leave_type):
+    """
+    Business rule for supporting documents.
+
+    Returns: (required: bool, label: str)
+    """
+    try:
+        env = request.env
+        # Resolve configured leave types (ignore if missing).
+        maternity = env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
+        quarantine = env.ref("hr_holidays_updates.leave_type_special_quarantine", raise_if_not_found=False)
+        study_full = env.ref("hr_holidays_updates.leave_type_study_full_pay", raise_if_not_found=False)
+        study_half = env.ref("hr_holidays_updates.leave_type_study_half_pay", raise_if_not_found=False)
+        study_eol = env.ref("hr_holidays_updates.leave_type_study_eol", raise_if_not_found=False)
+        medical = env.ref("hr_holidays_updates.leave_type_medical_long", raise_if_not_found=False)
+
+        rules = {
+            getattr(maternity, "id", None): "Medical certificate",
+            getattr(quarantine, "id", None): "Quarantine order",
+            getattr(study_full, "id", None): "Admission letter / Course Details",
+            getattr(study_half, "id", None): "Admission letter / Course Details",
+            getattr(study_eol, "id", None): "Admission letter / Course Details",
+            getattr(medical, "id", None): "Medical Certificate",
+        }
+        label = rules.get(getattr(leave_type, "id", None))
+        if label:
+            return True, label
+    except Exception:
+        pass
+    # Default: not required
+    return False, ""
+
 
 def _norm_leave_type_name(name: str) -> str:
     # Collapse to an ASCII-ish comparable key: lower, remove punctuation/spaces differences.
@@ -324,13 +347,20 @@ def _dedupe_leave_types_for_ui(leave_types):
     UI-only dedupe: keep first record per normalized name to avoid showing duplicates
     even if the DB has multiple leave types with near-identical names.
     """
+    # Also hide specific leave types from the HRMIS dropdown (business requirement).
+    blocked = {
+        "compensatorydays",
+        "paidtimeoff",
+        "sicktimeoff",
+        "unpaid",
+    }
     seen = set()
     # Preserve env/context from the incoming recordset; name_get() uses context
     # (employee/date/request_type) to compute the displayed balance.
     kept = leave_types.browse([])
     for lt in leave_types:
         key = _norm_leave_type_name(lt.name)
-        if not key or key in seen:
+        if not key or key in blocked or key in seen:
             continue
         seen.add(key)
         kept |= lt
@@ -401,6 +431,57 @@ class HrmisLeaveFrontendController(http.Controller):
             _base_ctx("Services", "services"),
         )
 
+    @http.route(["/hrmis/transfer"], type="http", auth="user", website=True)
+    def hrmis_transfer_requests(self, tab: str = "history", **kw):
+        tab = (tab or "history").strip().lower()
+        if tab not in ("history", "new"):
+            tab = "history"
+        return request.render(
+            "hr_holidays_updates.hrmis_transfer_requests",
+            _base_ctx("Transfer Requests", "transfer_requests", tab=tab),
+        )
+
+    @http.route(["/hrmis/promotion"], type="http", auth="user", website=True)
+    def hrmis_promotion_requests(self, tab: str = "history", **kw):
+        tab = (tab or "history").strip().lower()
+        if tab not in ("history", "new"):
+            tab = "history"
+        return request.render(
+            "hr_holidays_updates.hrmis_promotion_requests",
+            _base_ctx("Promotion Requests", "promotion_requests", tab=tab),
+        )
+
+    @http.route(["/hrmis/disciplinary"], type="http", auth="user", website=True)
+    def hrmis_disciplinary_actions(self, tab: str = "history", **kw):
+        tab = (tab or "history").strip().lower()
+        if tab not in ("history", "new"):
+            tab = "history"
+        return request.render(
+            "hr_holidays_updates.hrmis_disciplinary_actions",
+            _base_ctx("Disciplinary Actions", "disciplinary_actions", tab=tab),
+        )
+
+    @http.route(["/hrmis/promotion"], type="http", auth="user", website=True)
+    def hrmis_promotion_requests(self, tab: str = "history", **kw):
+        tab = (tab or "history").strip().lower()
+        if tab not in ("history", "new"):
+            tab = "history"
+        return request.render(
+            "hr_holidays_updates.hrmis_promotion_requests",
+            _base_ctx("Promotion Requests", "promotion_requests", tab=tab),
+        )
+    
+    @http.route(["/hrmis/disciplinary"], type="http", auth="user", website=True)
+    def hrmis_disciplinary_actions(self, tab: str = "history", **kw):
+        tab = (tab or "history").strip().lower()
+        if tab not in ("history", "new"):
+            tab = "history"
+        return request.render(
+            "hr_holidays_updates.hrmis_disciplinary_actions",
+            _base_ctx("Disciplinary Actions", "disciplinary_actions", tab=tab),
+        )
+
+
     @http.route(["/hrmis/staff"], type="http", auth="user", website=True)
     def hrmis_staff_search(self, **kw):
         search_by = (kw.get("search_by") or "designation").strip()
@@ -450,6 +531,10 @@ class HrmisLeaveFrontendController(http.Controller):
         tab = (kw.get("tab") or "personal").strip().lower()
         if tab not in ("personal", "posting", "disciplinary", "qualifications"):
             tab = "personal"
+
+        if request.env.user.has_group("custom_login.group_section_officer"):
+            if tab in ("posting", "qualifications"):
+                tab = "personal"
         return request.render(
             "hr_holidays_updates.hrmis_staff_profile",
             # _base_ctx("User profile", active_menu, employee=employee),
@@ -574,8 +659,12 @@ class HrmisLeaveFrontendController(http.Controller):
                         # (e.g. "Casual Leave (2 remaining out of 2 days)").
                         "name": lt.display_name,
                         # Keep fields optional for UI compatibility.
-                        "support_document": bool(getattr(lt, "support_document", False)),
-                        "support_document_note": getattr(lt, "support_document_note", "") or "",
+                        # Business rule overrides (do not depend on DB fields existing/being configured).
+                        **(
+                            (lambda req, note: {"support_document": bool(req), "support_document_note": note})(
+                                *_support_doc_rule_for_leave_type(lt)
+                            )
+                        ),
                     }
                     for lt in leave_types
                 ],
@@ -811,7 +900,22 @@ class HrmisLeaveFrontendController(http.Controller):
                     "request_date_to": dt_to,
                     "name": remarks,
                 }
-                leave = request.env["hr.leave"].with_user(request.env.user).create(vals)
+
+                # Some Odoo versions hide `name` for non-HR and use `private_name` for reason.
+                # Store it in both so approvers can see it.
+                try:
+                    if "private_name" in request.env["hr.leave"]._fields:
+                        vals["private_name"] = remarks
+                except Exception:
+                    pass
+                
+                # Defer supporting-doc checks until after the upload is linked.
+                leave = (
+                    request.env["hr.leave"]
+                    .with_user(request.env.user)
+                    .with_context(hrmis_defer_support_doc_check=True)
+                    .create(vals)
+                )
 
             if uploaded:
                 data = uploaded.read()
@@ -830,11 +934,18 @@ class HrmisLeaveFrontendController(http.Controller):
                     # so it also shows up in the native Odoo form view.
                     if "supported_attachment_ids" in leave._fields:
                         leave.sudo().write({"supported_attachment_ids": [(4, att.id)]})
+                    # Also set as main attachment when available (helps quick access in some UIs).
+                    if "message_main_attachment_id" in leave._fields:
+                        try:
+                            leave.sudo().write({"message_main_attachment_id": att.id})
+                        except Exception:
+                            pass
 
             # Confirm regardless of whether a supporting document was uploaded.
             # (Previous indentation meant many requests stayed in draft and could bypass checks.)
             if hasattr(leave, "action_confirm"):
-                leave.action_confirm()
+                # Confirm WITHOUT the defer flag so validations run with attachments present.
+                leave.with_context(hrmis_defer_support_doc_check=False).action_confirm()
 
                 # Force constraint checks inside the savepoint (so failures roll back).
                 request.env.cr.flush()
@@ -930,7 +1041,7 @@ class HrmisLeaveFrontendController(http.Controller):
                     if st:
                         st.sudo().write({"leave_comments": comment})
                     rec.sudo().message_post(
-                        body=f"Approval comment by {request.env.user.name}: {comment}",
+                        body=f"Comment: {comment}",
                         author_id=getattr(request.env.user, "partner_id", False) and request.env.user.partner_id.id or False,
                     )
                 rec.action_validate()
@@ -1020,6 +1131,7 @@ class HrmisProfileRequestController(http.Controller):
                 "approver_id": approver.id if approver else False,
                 "state": "draft",
                 "hrmis_cadre": employee.hrmis_cadre.id if employee.hrmis_cadre else False,
+                "hrmis_designation": employee.hrmis_designation.id if employee.hrmis_designation else False,
                 "district_id": employee.district_id.id if employee.district_id else False,
                 "facility_id": employee.facility_id.id if employee.facility_id else False,
             })
@@ -1033,7 +1145,7 @@ class HrmisProfileRequestController(http.Controller):
             "hrmis_joining_date": employee.hrmis_joining_date or "",
             "hrmis_bps": employee.hrmis_bps or "",
             "hrmis_cadre": req.hrmis_cadre.id if req.hrmis_cadre else False,
-            "hrmis_designation": employee.hrmis_designation or "",
+            "hrmis_designation": req.hrmis_designation.id if req.hrmis_designation else False,
             "district_id": req.district_id.id if req.district_id else False,
             "facility_id": req.facility_id.id if req.facility_id else False,
             "hrmis_contact_info": employee.hrmis_contact_info or "",
@@ -1129,23 +1241,14 @@ class HrmisProfileRequestController(http.Controller):
         # Handle Cadre safely
         # -----------------------
         cadre_val = post.get('hrmis_cadre')
-        if cadre_val == 'other':
-            cadre_id = 1
-            # # Create new cadre
-            # cadre_name = (post.get('hrmis_cadre_other') or '').strip()
-            # if not cadre_name:
-            #     return self._render_profile_form(employee, req, error="Please specify the Cadre.")
-            # cadre = request.env['hrmis.cadre'].sudo().create({
-            #     'name': cadre_name,
-            #     'code': cadre_name,
-            # })
-            # cadre_id = cadre.id  # Must be int
-        else:
-            try:
-                # Convert string to int
-                cadre_id = int(cadre_val) if cadre_val else False
-            except Exception:
-                cadre_id = False
+        designation_val = post.get('hrmis_designation')
+        designation_id = int(designation_val) if designation_val else False
+        
+        try:
+            # Convert string to int
+            cadre_id = int(cadre_val) if cadre_val else False
+        except Exception:
+            cadre_id = False
 
         # Ensure we pass only ID, never recordset
         if not isinstance(cadre_id, (int, type(None))):
@@ -1163,7 +1266,7 @@ class HrmisProfileRequestController(http.Controller):
                 "hrmis_joining_date": post.get("hrmis_joining_date"),
                 "hrmis_bps": int(post.get("hrmis_bps")),
                 "hrmis_cadre": cadre_id,
-                "hrmis_designation": post.get("hrmis_designation"),
+                "hrmis_designation": designation_id,
                 "district_id": int(post.get("district_id")),
                 "facility_id": int(post.get("facility_id")),
                 "hrmis_contact_info": post.get("hrmis_contact_info"),
@@ -1242,8 +1345,8 @@ class HrmisProfileUpdateRequests(http.Controller):
             if req.hrmis_bps != (emp.hrmis_bps or 0):
                 changes.append(f"BPS: {req.hrmis_bps}")
 
-            if req.hrmis_designation != (emp.hrmis_designation or ''):
-                changes.append(f"Designation: {req.hrmis_designation}")
+            #if req.hrmis_designation != (emp.hrmis_designation or ''):
+            #    changes.append(f"Designation: {req.hrmis_designation}")
 
             requests_for_display.append({
                 'id': req.id,
@@ -1257,11 +1360,13 @@ class HrmisProfileUpdateRequests(http.Controller):
 
         return request.render(
             'hr_holidays_updates.hrmis_profile_update_requests',
-            {
-                'profile_update_requests': requests_for_display,
-                'is_admin': is_admin,
-                'is_hr_manager': is_hr_manager,
-            }
+            _base_ctx(
+                "Profile Update Requests",
+                "profile_update_requests",
+                profile_update_requests=requests_for_display,
+                is_admin=is_admin,
+                is_hr_manager=is_hr_manager,
+            ),
         )
 
     @http.route(
@@ -1305,6 +1410,7 @@ class HrmisProfileUpdateRequests(http.Controller):
                 "districts": request.env["hrmis.district.master"].sudo().search([]),
                 "facilities": request.env["hrmis.facility.type"].sudo().search([]),
                 "cadres": request.env["hrmis.cadre"].sudo().search([]),
+                "designations": request.env["hrmis.designation"].sudo().search([]),
                 "back_url": "/hrmis/profile-update-requests",
                 "can_approve": can_approve,
             },
@@ -1363,7 +1469,7 @@ class HrmisProfileUpdateRequests(http.Controller):
             'hrmis_joining_date': post.get('hrmis_joining_date'),
             'hrmis_bps': int(post.get('hrmis_bps') or 0),
             'hrmis_cadre': m2o(post.get('hrmis_cadre')),
-            'hrmis_designation': post.get('hrmis_designation'),
+            'hrmis_designation': m2o(post.get('hrmis_designation')),
             'district_id': m2o(post.get('district_id')),
             'facility_id': m2o(post.get('facility_id')),
             'hrmis_contact_info': post.get('hrmis_contact_info'),

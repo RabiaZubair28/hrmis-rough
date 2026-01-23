@@ -468,7 +468,7 @@ class HrLeave(models.Model):
 
             if comment:
                 leave.sudo().message_post(
-                    body=f"Approval comment by {user.name}: {comment}",
+                    body=f"Comment: {comment}",
                     author_id=getattr(user, "partner_id", False) and user.partner_id.id or False,
                 )
 

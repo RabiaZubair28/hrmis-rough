@@ -390,8 +390,8 @@
 
 .hrmis-nav__badge2 {
   
-  min-width: 25px;
-  height: 25px;
+  width: 30px;
+  height: 30px;
   padding: 8px 8px;
   border-radius: 100%;
   background: #c92222;
@@ -401,7 +401,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #064526;
+  margin-inline-start: 10px;
 }
 
 .hrmis-powered {
@@ -794,6 +794,9 @@
 .hrmis-field--wide {
   grid-column: 1 / -1;
 }
+.hrmis-field--wide2{
+  width: 100%!important;
+}
 .req {
   color: #c92222;
   margin-left: 2px;
@@ -971,8 +974,8 @@
 .hrmis-leave-history .hrmis-manage-table__row {
   display: grid;
   grid-template-columns:
-    64px     /* # */
-    1.6fr    /* Staff / Facility / District */
+    35px     /* # */
+    2.2fr    /* Staff / Facility / District */
     1fr      /* Leave Type */
     1.2fr    /* Dates */
     1fr      /* Status */
@@ -1127,6 +1130,32 @@
     background-color: #fff5f5;
 }
 
+.hrmis-input.js-hrmis-facility {
+    width: 100%;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* === FIX: prevent select/input from blowing grid width === */
+.hrmis-form__grid .hrmis-field {
+    min-width: 0;
+}
+
+.hrmis-form__grid .hrmis-input {
+    min-width: 0;          /* override 240px */
+    width: 50%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.hrmis-form__grid select.hrmis-input {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
 
 @media (max-width: 768px) {
     .hrmis-kv-row-fix {

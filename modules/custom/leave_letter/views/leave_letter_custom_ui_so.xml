@@ -1,13 +1,13 @@
-<odoo>
+<!-- <odoo>
 <template id="leave_letter_add_download_notification_history"
           inherit_id="custom_section_officers.hrmis_manage_requests">
 
-    <!-- Add Notifications header -->
+   
     <xpath expr="//div[contains(@class,'hrmis-table__head')]" position="inside">
         <div class="hrmis-table__head-cell">Notifications</div>
     </xpath>
 
-    <!-- Add Download button cell inside each leave row -->
+    
     <xpath expr="//div[contains(@class,'hrmis-leave-row')]" position="inside">
         <div class="hrmis-leave-row__cell">
             <t t-if="lv.leave_notification_id and lv.state in ('validate','validate2')">
@@ -22,7 +22,7 @@
     </xpath>
 
 </template>
-</odoo>
+</odoo> -->
 
 
 

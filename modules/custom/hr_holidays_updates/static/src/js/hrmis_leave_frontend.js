@@ -291,6 +291,141 @@ function _syncEndDateMin(formEl) {
   }
 }
 
+function _isLeapYear(y) {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function _toYmd(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  const yyyy = String(d.getUTCFullYear()).padStart(4, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function _parseYmdToUtcDate(ymd) {
+  const s = String(ymd || "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!y || !mo || !d) return null;
+  // UTC to avoid timezone off-by-one issues.
+  return new Date(Date.UTC(y, mo - 1, d));
+}
+
+function _addYearsSafeUtc(baseUtcDate, years) {
+  if (!(baseUtcDate instanceof Date) || Number.isNaN(baseUtcDate.getTime()))
+    return null;
+  const y0 = baseUtcDate.getUTCFullYear();
+  const m0 = baseUtcDate.getUTCMonth() + 1;
+  const d0 = baseUtcDate.getUTCDate();
+  const y = y0 + Number(years || 0);
+  let d = d0;
+  // Match Python/dateutil behavior for Feb 29 on non-leap years => Feb 28.
+  if (m0 === 2 && d0 === 29 && !_isLeapYear(y)) d = 28;
+  return new Date(Date.UTC(y, m0 - 1, d));
+}
+
+function _syncDateInputsEnabledAndRange(formEl) {
+  const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
+  const dateFromEl = _qs(formEl, ".js-hrmis-date-from");
+  const dateToEl = _qs(formEl, ".js-hrmis-date-to");
+  if (!leaveTypeEl || !dateFromEl || !dateToEl) return;
+
+  const leaveTypeId = String(leaveTypeEl.value || "").trim();
+  const lprTypeId = String(formEl?.dataset?.lprLeaveTypeId || "").trim();
+  const dobStr = String(formEl?.dataset?.employeeDob || "").trim();
+
+  // Disable dates until a leave type is selected.
+  const enabled = !!leaveTypeId;
+  dateFromEl.disabled = !enabled;
+  dateToEl.disabled = !enabled;
+  if (!enabled) return;
+
+  // Default behavior: keep current "min=today" (as set by template) and let
+  // the server enforce other constraints.
+  const todayLocal = new Date();
+  const todayUtc = new Date(
+    Date.UTC(
+      todayLocal.getFullYear(),
+      todayLocal.getMonth(),
+      todayLocal.getDate(),
+    ),
+  );
+
+  if (!lprTypeId || leaveTypeId !== lprTypeId) {
+    // Reset any LPR constraints.
+    const minDefault =
+      dateFromEl.getAttribute("data-default-min") || dateFromEl.min;
+    const maxDefault = dateFromEl.getAttribute("data-default-max") || "";
+    if (!dateFromEl.getAttribute("data-default-min"))
+      dateFromEl.setAttribute("data-default-min", minDefault || "");
+    if (!dateToEl.getAttribute("data-default-min"))
+      dateToEl.setAttribute("data-default-min", dateToEl.min || "");
+
+    dateFromEl.min = minDefault || "";
+    dateToEl.min = dateFromEl.min || "";
+    dateFromEl.max = maxDefault || "";
+    dateToEl.max = "";
+    _syncEndDateMin(formEl);
+    return;
+  }
+
+  // LPR selected: restrict selectable dates to [59th birthday, 60th birthday).
+  const dobUtc = _parseYmdToUtcDate(dobStr);
+  if (!dobUtc) {
+    // DOB missing: keep inputs enabled but warn (server will block on submit too).
+    _showInlineAlert(
+      formEl,
+      "error",
+      "Date of birth is required to apply for LPR leave.",
+    );
+    return;
+  }
+
+  const startAllowed = _addYearsSafeUtc(dobUtc, 59);
+  const endExclusive = _addYearsSafeUtc(dobUtc, 60);
+  if (!startAllowed || !endExclusive) return;
+
+  const endAllowed = new Date(endExclusive.getTime() - 24 * 60 * 60 * 1000);
+  // The website flow already blocks using today's date, so avoid offering it in the picker.
+  const tomorrowUtc = new Date(todayUtc.getTime() + 24 * 60 * 60 * 1000);
+  const minUtc =
+    startAllowed.getTime() > tomorrowUtc.getTime() ? startAllowed : tomorrowUtc;
+
+  const minStr = _toYmd(minUtc);
+  const maxStr = _toYmd(endAllowed);
+
+  if (maxStr && minStr && maxStr < minStr) {
+    // No selectable range.
+    dateFromEl.disabled = true;
+    dateToEl.disabled = true;
+    _showInlineAlert(formEl, "error", "you cannot take LPR in these dates");
+    return;
+  }
+
+  dateFromEl.min = minStr;
+  dateToEl.min = minStr;
+  dateFromEl.max = maxStr;
+  dateToEl.max = maxStr;
+
+  // Clamp existing values into range.
+  const curFrom = (dateFromEl.value || "").trim();
+  const curTo = (dateToEl.value || "").trim();
+  let newFrom = curFrom;
+  let newTo = curTo;
+  if (!newFrom || newFrom < minStr) newFrom = minStr;
+  if (maxStr && newFrom > maxStr) newFrom = maxStr;
+  if (!newTo || newTo < newFrom) newTo = newFrom;
+  if (maxStr && newTo > maxStr) newTo = maxStr;
+  dateFromEl.value = newFrom;
+  dateToEl.value = newTo;
+
+  _showInlineAlert(formEl, "error", "");
+}
+
 function _init() {
   const formEl = document.querySelector(".hrmis-leave-request-form");
   _syncProfileTabsActiveClass();
@@ -371,7 +506,10 @@ function _init() {
 
   const leaveTypeEl = _qs(formEl, ".js-hrmis-leave-type");
   if (leaveTypeEl) {
-    leaveTypeEl.addEventListener("change", () => _updateSupportDocUI(formEl));
+    leaveTypeEl.addEventListener("change", () => {
+      _updateSupportDocUI(formEl);
+      _syncDateInputsEnabledAndRange(formEl);
+    });
   }
 
   _updateSupportDocUI(formEl);
@@ -381,6 +519,7 @@ function _init() {
   // change the date field after approvals.
   _syncEndDateMin(formEl);
   _refreshLeaveTypes(formEl);
+  _syncDateInputsEnabledAndRange(formEl);
 }
 
 // In some Odoo pages, assets can load after DOMContentLoaded.
