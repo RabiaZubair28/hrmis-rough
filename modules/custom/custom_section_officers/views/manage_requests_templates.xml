@@ -114,7 +114,7 @@
                                 <div class="hrmis-table__row hrmis-manage-table__row"
                                     style="cursor:pointer; margin-top:20px"
                                     t-att-style="grid "
-                                    t-att-data-href="'/hrmis/manage/history/%s?tab=leave&from_tab=%s' % (lv.employee_id.id, tab)"
+                                    t-att-data-href="'/hrmis/manage/history/%s?tab=leave&amp;from_tab=%s' % (lv.employee_id.id, tab)"
                                     t-attf-onclick="window.location.href='/hrmis/manage/history/{{ lv.employee_id.id }}?tab=leave&amp;from_tab={{ tab }}'"
                                     t-att-data-status="lv.state"
                                     t-att-data-date="lv.request_date_from"
@@ -134,19 +134,19 @@
                                     <!-- Employee / Facility / District -->
                                     <div class="hrmis-leave-row__cell" style="text-decoration:none;">
                                         <div class="strong" style="color: #000;">
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile&from_tab=%s' % (lv.employee_id.id, tab)"
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile&amp;from_tab=%s' % (lv.employee_id.id, tab)"
                                                onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
                                                 <t t-esc="lv.employee_id.name"/>/
                                             </a>
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile&from_tab=%s' % (lv.employee_id.id, tab)"
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile&amp;from_tab=%s' % (lv.employee_id.id, tab)"
                                                onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
                                                 <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/> /
                                             </a>
                                        
                                  
-                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile&from_tab=%s' % (lv.employee_id.id, tab)"
+                                            <a t-att-href="'/hrmis/manage/history/%s?tab=profile&amp;from_tab=%s' % (lv.employee_id.id, tab)"
                                                onclick="event.stopPropagation();"
                                                style="text-decoration:none;">
                                                 <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
@@ -476,7 +476,7 @@
             <t t-set="from_src" t-value="request.params.get('from') or ''"/>
             <t t-set="from_tab" t-value="request.params.get('from_tab') or ''"/>
             <t t-set="qs"
-               t-value="(('&from=%s' % from_src) if from_src else '') + (('&from_tab=%s' % from_tab) if from_tab else '')"/>
+               t-value="(('&amp;from=%s' % from_src) if from_src else '') + (('&amp;from_tab=%s' % from_tab) if from_tab else '')"/>
             <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
               <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'profile' else ''}"
                    t-att-href="'/hrmis/manage/history/%s?tab=profile%s' % (employee.id, qs)">
