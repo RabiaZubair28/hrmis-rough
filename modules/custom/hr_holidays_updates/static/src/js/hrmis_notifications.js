@@ -28,10 +28,6 @@ function _renderNotificationItem(n) {
   subject.className = "hrmis-notif-item__subject";
   subject.textContent = (n.subject || "").trim() || "Notification";
 
-  const body = document.createElement("div");
-  body.className = "hrmis-notif-item__body";
-  body.textContent = (n.body || "").trim();
-
   const meta = document.createElement("div");
   meta.className = "hrmis-notif-item__meta";
   meta.textContent = _fmtDate(n.date || "");
@@ -46,7 +42,6 @@ function _renderNotificationItem(n) {
   actions.appendChild(btn);
 
   main.appendChild(subject);
-  if (body.textContent) main.appendChild(body);
   main.appendChild(meta);
 
   item.appendChild(main);

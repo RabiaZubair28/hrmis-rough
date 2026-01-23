@@ -657,9 +657,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 "leave_types": [
                     {
                         "id": lt.id,
-                        # Use display_name which includes balances in context
-                        # (e.g. "Casual Leave (2 remaining out of 2 days)").
-                        "name": lt.display_name,
+                        # UI requirement: show only the base leave type name (no balances suffix).
+                        "name": lt.name,
                         # Keep fields optional for UI compatibility.
                         # Business rule overrides (do not depend on DB fields existing/being configured).
                         **(

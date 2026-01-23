@@ -15,12 +15,14 @@ class HrmisNotificationsController(http.Controller):
 
         items = []
         for n in notifs:
+            # UX requirement: show the *body* as the title, and don't show the body elsewhere.
+            display_text = (n.body or "").strip() or (n.title or "").strip() or "Notification"
             items.append(
                 {
                     "id": n.id,
                     "is_read": bool(n.is_read),
-                    "subject": (n.title or "").strip() or "Notification",
-                    "body": (n.body or "").strip(),
+                    "subject": display_text,
+                    "body": "",
                     "date": str(n.create_date or ""),
                     "res_model": n.res_model or "",
                     "res_id": int(n.res_id or 0),
@@ -47,12 +49,14 @@ class HrmisNotificationsController(http.Controller):
 
         items = []
         for n in notifs:
+            # UX requirement: show the *body* as the title, and don't show the body elsewhere.
+            display_text = (n.body or "").strip() or (n.title or "").strip() or "Notification"
             items.append(
                 {
                     "id": n.id,
                     "is_read": bool(n.is_read),
-                    "subject": (n.title or "").strip() or "Notification",
-                    "body": (n.body or "").strip(),
+                    "subject": display_text,
+                    "body": "",
                     "date": str(n.create_date or ""),
                     "res_model": n.res_model or "",
                     "res_id": int(n.res_id or 0),
