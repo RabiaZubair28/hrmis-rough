@@ -620,7 +620,7 @@
                                                         t-att-data-support-document-note="(lt.support_document_note or '') if 'support_document_note' in lt._fields else ''">
                                                     <!-- `leave_types` are already prepared in the controller with the proper
                                                          employee/date/company/request_type context so balances compute correctly. -->
-                                                    <t t-esc="lt.display_name"/>
+                                                    <t t-esc="lt.name"/>
                                                 </option>
                                             </t>
                                         </select>
@@ -975,7 +975,6 @@
                              t-att-data-res-id="n.get('res_id') or 0">
                             <div class="hrmis-notif-item__main">
                                 <div class="hrmis-notif-item__subject"><t t-esc="n['subject']"/></div>
-                                <div class="hrmis-notif-item__body"><t t-esc="n['body']"/></div>
                                 <div class="hrmis-notif-item__meta"><t t-esc="n['date']"/></div>
                             </div>
                         </div>

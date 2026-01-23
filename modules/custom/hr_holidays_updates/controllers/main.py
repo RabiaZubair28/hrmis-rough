@@ -120,12 +120,14 @@ def _base_ctx(page_title: str, active_menu: str, **extra):
                 pending_leave_requests_for_user,
             )
 
-            pending = pending_leave_requests_for_user(user.id)
-            ctx["pending_manage_leave_count"] = len(pending)
+            pending_res = pending_leave_requests_for_user(user.id)
+            # Backwards-compat: helper may return either a recordset or (recordset, extra_info).
+            pending_leaves = pending_res[0] if isinstance(pending_res, (list, tuple)) else pending_res
+            ctx["pending_manage_leave_count"] = len(pending_leaves)
 
             ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
             ctx["pending_profile_update_count"] = ProfileRequest.search_count(
-                [("approver_id.user_id", "=", user.id), ("state", "!=", "approved")]
+                [("approver_id.user_id", "=", user.id), ("state", "=", "submitted")]
             )
         else:
             ctx["pending_manage_leave_count"] = 0
@@ -655,9 +657,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 "leave_types": [
                     {
                         "id": lt.id,
-                        # Use display_name which includes balances in context
-                        # (e.g. "Casual Leave (2 remaining out of 2 days)").
-                        "name": lt.display_name,
+                        # UI requirement: show only the base leave type name (no balances suffix).
+                        "name": lt.name,
                         # Keep fields optional for UI compatibility.
                         # Business rule overrides (do not depend on DB fields existing/being configured).
                         **(
