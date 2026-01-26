@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class HrLeaveAllocation(models.Model):
@@ -24,7 +27,7 @@ class HrLeaveAllocation(models.Model):
                 pass
 
     @api.model
-    def hrmis_ensure_allocations_for_employees(self, employees, target_date=None):
+    def hrmis_ensure_allocations_for_employees(self, employees, target_date=None, leave_types=None):
         """
         Create/update allocations for the given employee(s) for the year/month
         matching `target_date` (used for future-year balance display).
@@ -48,7 +51,14 @@ class HrLeaveAllocation(models.Model):
         casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
         maternity = self.env.ref("hr_holidays_updates.leave_type_maternity", raise_if_not_found=False)
         lpr = self.env.ref("hr_holidays_updates.leave_type_lpr", raise_if_not_found=False)
-        leave_types = self.env["hr.leave.type"].sudo().search([])
+        if leave_types is None:
+            LeaveType = self.env["hr.leave.type"].sudo()
+            lt_domain = [("active", "=", True)] if "active" in LeaveType._fields else []
+            # On versions where leave types can be "free / unlimited" without allocations,
+            # avoid creating allocations unless the leave type explicitly requires it.
+            if "requires_allocation" in LeaveType._fields:
+                lt_domain += [("requires_allocation", "=", True)]
+            leave_types = LeaveType.search(lt_domain)
 
         for lt in leave_types:
             is_casual = bool(casual and lt.id == casual.id)
@@ -141,27 +151,43 @@ class HrLeaveAllocation(models.Model):
         - Casual Leave: 2 days / month (current month only)
         """
         today = fields.Date.context_today(self)
-        year_start = date(today.year, 1, 1)
-        year_end = date(today.year, 12, 31)
-        month_start = date(today.year, today.month, 1)
-        # last day of the current month
-        if today.month == 12:
-            next_month_first = date(today.year + 1, 1, 1)
-        else:
-            next_month_first = date(today.year, today.month + 1, 1)
-        month_end = next_month_first - timedelta(days=1)
 
-        casual = self.env.ref("hr_holidays_updates.leave_type_casual", raise_if_not_found=False)
+        # Process employees in small batches so this cron stays fast on large DBs.
+        # Cursor is persisted in ir.config_parameter to avoid reprocessing all employees.
+        ICP = self.env["ir.config_parameter"].sudo()
+        batch_size = int(
+            ICP.get_param("hr_holidays_updates.auto_allocate_batch_size", default="200") or 200
+        )
+        batch_size = max(1, min(batch_size, 2000))
+
+        last_emp_id = int(
+            ICP.get_param("hr_holidays_updates.auto_allocate_last_employee_id", default="0") or 0
+        )
+
+        Employee = self.env["hr.employee"].sudo()
+        emp_domain = [("active", "=", True)] if "active" in Employee._fields else []
+        if last_emp_id:
+            emp_domain += [("id", ">", last_emp_id)]
+        employees = Employee.search(emp_domain, order="id asc", limit=batch_size)
+
+        if not employees:
+            ICP.set_param("hr_holidays_updates.auto_allocate_last_employee_id", "0")
+            _logger.info("HRMIS auto-allocate: completed full employee pass; cursor reset")
+            return True
 
         LeaveType = self.env["hr.leave.type"].sudo()
-        Employee = self.env["hr.employee"].sudo()
-
-        # All active employees (best-effort; if active field doesn't exist, just take all)
-        emp_domain = [("active", "=", True)] if "active" in Employee._fields else []
-        employees = Employee.search(emp_domain)
-
         lt_domain = [("active", "=", True)] if "active" in LeaveType._fields else []
+        if "requires_allocation" in LeaveType._fields:
+            lt_domain += [("requires_allocation", "=", True)]
         leave_types = LeaveType.search(lt_domain)
 
-        # Reuse the same "ensure" logic for all employees (includes de-duplication).
-        self.hrmis_ensure_allocations_for_employees(employees)
+        self.hrmis_ensure_allocations_for_employees(employees, target_date=today, leave_types=leave_types)
+
+        ICP.set_param("hr_holidays_updates.auto_allocate_last_employee_id", str(employees[-1].id))
+        _logger.info(
+            "HRMIS auto-allocate: processed employees %s..%s (batch=%s)",
+            employees[0].id,
+            employees[-1].id,
+            batch_size,
+        )
+        return True
