@@ -2,6 +2,8 @@
 <odoo>
     <template id="hrmis_new_transfer_request" name="HRMIS: New Transfer Request">
         <div class="hrmis-panel__body">
+            <t t-set="error" t-value="request.params.get('error')"/>
+            <t t-set="success" t-value="request.params.get('success')"/>
             <t t-if="error">
                 <div class="hrmis-alert hrmis-alert--error"><t t-esc="error"/></div>
             </t>

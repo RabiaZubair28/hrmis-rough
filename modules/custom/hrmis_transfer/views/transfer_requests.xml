@@ -40,10 +40,18 @@
     </template>
 
     <template id="hrmis_transfer_requests_list" name="HRMIS: Transfer Requests List">
+        <t t-set="error" t-value="request.params.get('error')"/>
+        <t t-set="success" t-value="request.params.get('success')"/>
         <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
         <t t-set="transfers"
            t-value="employee and request.env['hrmis.transfer.request'].sudo().search([('employee_id','=',employee.id)], order='create_date desc, id desc', limit=50) or request.env['hrmis.transfer.request'].browse([])"/>
         <div class="hrmis-panel__body">
+            <t t-if="error">
+                <div class="hrmis-alert hrmis-alert--error"><t t-esc="error"/></div>
+            </t>
+            <t t-if="success">
+                <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
+            </t>
             <t t-if="not transfers">
                 <div class="hrmis-empty">No transfer requests found.</div>
             </t>
@@ -73,7 +81,13 @@
                                     <t t-esc="(tr.required_district_id and tr.required_district_id.name) or ''"/>
                                 </div>
                             </div>
-                            <div><t t-esc="tr.state"/></div>
+                            <div>
+                                <t t-if="tr.state == 'draft'">Draft</t>
+                                <t t-elif="tr.state == 'submitted'">Pending</t>
+                                <t t-elif="tr.state == 'approved'">Approved</t>
+                                <t t-elif="tr.state == 'rejected'">Rejected</t>
+                                <t t-else=""><t t-esc="tr.state"/></t>
+                            </div>
                             <div><t t-esc="tr.pending_with or '-'"/></div>
                         </div>
                     </t>
