@@ -21,7 +21,10 @@
         "views/transfer_status.xml",
         "views/transfer_history.xml",
     ],
-    'assets': {
+    "assets": {
+        "web.assets_frontend": [
+            "hrmis_transfer/static/src/js/hrmis_transfer_facility_filter.js",
+        ],
     },
     "installable": True,
     "application": False,
