@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="hrmis_transfer_history" name="HRMIS: Transfer History">
+        <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+        <t t-set="history"
+           t-value="employee and request.env['hrmis.transfer.request'].sudo().search([('employee_id','=',employee.id),('state','in',('approved','rejected'))], order='create_date desc, id desc', limit=50) or request.env['hrmis.transfer.request'].browse([])"/>
+
+        <t t-if="not history">
+            <div class="hrmis-empty">No transfer history found.</div>
+        </t>
+        <t t-else="">
+            <div class="hrmis-table">
+                <div class="hrmis-table__head">
+                    <div>Reference</div>
+                    <div>Submitted on</div>
+                    <div>From</div>
+                    <div>To</div>
+                    <div>Status</div>
+                </div>
+                <t t-foreach="history" t-as="tr">
+                    <div class="hrmis-table__row">
+                        <div><t t-esc="tr.name"/></div>
+                        <div><t t-esc="tr.submitted_on or tr.create_date"/></div>
+                        <div>
+                            <t t-esc="(tr.current_facility_id and tr.current_facility_id.name) or ''"/>
+                            <div class="sub" style="color:#666;">
+                                <t t-esc="(tr.current_district_id and tr.current_district_id.name) or ''"/>
+                            </div>
+                        </div>
+                        <div>
+                            <t t-esc="(tr.required_facility_id and tr.required_facility_id.name) or ''"/>
+                            <div class="sub" style="color:#666;">
+                                <t t-esc="(tr.required_district_id and tr.required_district_id.name) or ''"/>
+                            </div>
+                        </div>
+                        <div><t t-esc="tr.state"/></div>
+                    </div>
+                </t>
+            </div>
+        </t>
+    </template>
+</odoo>

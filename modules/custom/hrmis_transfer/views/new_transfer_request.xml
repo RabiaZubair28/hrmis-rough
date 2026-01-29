@@ -10,6 +10,9 @@
             </t>
 
             <t t-if="tab == 'new'">
+                <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+                <t t-set="districts" t-value="request.env['hrmis.district.master'].sudo().search([])"/>
+                <t t-set="facilities" t-value="request.env['hrmis.facility.type'].sudo().search([])"/>
                 <form class="hrmis-form hrmis-transfer-request-form"
                       t-att-data-employee-bps="employee.hrmis_bps"
                       t-att-action="'/hrmis/staff/%s/transfer/submit' % employee.id"
@@ -27,27 +30,53 @@
 
                         <div class="hrmis-field">
                             <label>Current District<span class="req">*</span></label>
-                            <input class="hrmis-input" type="text" name="current_district" required="required"/>
+                            <select class="hrmis-input" name="current_district_id" required="required">
+                                <option value="">Select district</option>
+                                <t t-foreach="districts" t-as="d">
+                                    <option t-att-value="d.id"
+                                            t-att-selected="1 if (employee and employee.district_id and employee.district_id.id == d.id) else None">
+                                        <t t-esc="d.name"/>
+                                    </option>
+                                </t>
+                            </select>
                         </div>
 
                         <div class="hrmis-field">
                             <label>Current Facility<span class="req">*</span></label>
-                            <input class="hrmis-input" type="text" name="current_facility" required="required"/>
+                            <select class="hrmis-input" name="current_facility_id" required="required">
+                                <option value="">Select facility</option>
+                                <t t-foreach="facilities" t-as="f">
+                                    <option t-att-value="f.id"
+                                            t-att-selected="1 if (employee and employee.facility_id and employee.facility_id.id == f.id) else None">
+                                        <t t-esc="f.name"/>
+                                    </option>
+                                </t>
+                            </select>
                         </div>
 
-                        <!-- Requested Posting -->
+                        <!-- Required Posting -->
                         <div class="hrmis-field hrmis-field--wide">
-                            <label>Requested Posting</label>
+                            <label>Required Posting</label>
                         </div>
 
                         <div class="hrmis-field">
-                            <label>Requested District<span class="req">*</span></label>
-                            <input class="hrmis-input" type="text" name="requested_district" required="required"/>
+                            <label>Required District<span class="req">*</span></label>
+                            <select class="hrmis-input" name="required_district_id" required="required">
+                                <option value="">Select district</option>
+                                <t t-foreach="districts" t-as="d">
+                                    <option t-att-value="d.id"><t t-esc="d.name"/></option>
+                                </t>
+                            </select>
                         </div>
 
                         <div class="hrmis-field">
-                            <label>Requested Facility<span class="req">*</span></label>
-                            <input class="hrmis-input" type="text" name="requested_facility" required="required"/>
+                            <label>Required Facility<span class="req">*</span></label>
+                            <select class="hrmis-input" name="required_facility_id" required="required">
+                                <option value="">Select facility</option>
+                                <t t-foreach="facilities" t-as="f">
+                                    <option t-att-value="f.id"><t t-esc="f.name"/></option>
+                                </t>
+                            </select>
                         </div>
 
                         <!-- Justification -->
