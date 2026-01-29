@@ -6,6 +6,7 @@ class ResUsers(models.Model):
     hrmis_role = fields.Selection([
         ('employee', 'HRMIS Employee (Self)'),
         ('section_officer', 'Section Officer'),
+        ('ms_dho', 'MS DHO'),
     ], string="HRMIS Role")
     
     hrmis_cnic = fields.Char(string="CNIC")
@@ -42,6 +43,7 @@ class ResUsers(models.Model):
             group_map = {
                 'employee': 'custom_login.group_hrmis_employee_self',
                 'section_officer': 'custom_login.group_section_officer',
+                'ms_dho': 'custom_login.group_ms_dho',
             }
             role_group = self.env.ref(group_map[role])
             user.write({'groups_id': [(4, role_group.id)]})
@@ -84,6 +86,7 @@ class ResUsers(models.Model):
             group_map = {
                 'employee': 'custom_login.group_hrmis_employee_self',
                 'section_officer': 'custom_login.group_section_officer',
+                'ms_dho': 'custom_login.group_ms_dho',
             }
             role_group = self.env.ref(group_map[role])
             for user in self:

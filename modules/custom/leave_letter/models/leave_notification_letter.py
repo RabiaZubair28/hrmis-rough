@@ -16,7 +16,7 @@ class LeaveNotification(models.Model):
     hrmis_designation = fields.Char(string="Designation")
     hrmis_bps = fields.Char(string="BPS")
     district_id = fields.Many2one('res.country.state', string="District")
-    facility_id = fields.Many2one('res.partner', string="Facility")
+    facility_id = fields.Many2one(related="employee_id.facility_id", readonly=True)
     issue_date = fields.Date(string="Issue Date", default=fields.Date.today)
     leave_id = fields.Many2one('hr.leave', string="Related Leave")
     issued_by = fields.Char(string="Issued By", default="SECRETARY HEALTH")
@@ -29,6 +29,10 @@ class LeaveNotification(models.Model):
     leave_start_date = fields.Date(string="Leave Start Date")
     leave_end_date = fields.Date(string="Leave End Date")
     leave_duration = fields.Char(string="Leave Duration", compute='_compute_leave_duration', store=True)
+    employee_so = fields.Many2one('hr.employee', related='employee_id.parent_id', string='Section Officer')
+    so_signature = fields.Binary(related='employee_so.so_signature', readonly=True)
+
+
 
     @api.depends('leave_start_date', 'leave_end_date')
     def _compute_leave_duration(self):
@@ -42,9 +46,17 @@ class LeaveNotification(models.Model):
     @api.model
     def create_notification(self, leave):
         notif_seq = self.env['ir.sequence'].next_by_code('leave.notification') or 'New'
-        emp = leave.employee_id
+        emp = leave.employee_id.sudo()
 
-        return self.create({
+        facility_id = False
+        if emp.facility_id and emp.facility_id.exists():
+            facility_id = emp.facility_id.id
+
+        district_id = False
+        if emp.district_id and emp.district_id.exists():
+            district_id = emp.district_id.id
+
+        return self.sudo().create({
             'name': notif_seq,
             'category': 'leave',
             'employee_id': emp.id,
@@ -55,16 +67,17 @@ class LeaveNotification(models.Model):
             'hrmis_cadre': emp.cadre_id.name if emp.cadre_id else '',
             'hrmis_designation': emp.hrmis_designation,
             'hrmis_bps': emp.hrmis_bps,
-            'district_id': emp.district_id.id,
-            'facility_id': emp.facility_id.id,
+
+            'district_id': district_id,
+            'facility_id': facility_id,
+
             'issue_date': fields.Date.today(),
             'leave_id': leave.id,
-
             'leave_type_id': leave.holiday_status_id.id,
-
             'leave_start_date': leave.request_date_from,
             'leave_end_date': leave.request_date_to,
         })
+
 
 
     # @api.model

@@ -7,8 +7,9 @@
             <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
                href="/hrmis/manage/requests?tab=leave">
                 Leave Requests
-                <span class="hrmis-nav__badge2">
-                    <t t-esc="pending_manage_leave_count if pending_manage_leave_count is not None else 0"/>
+                <span class="hrmis-nav__badge2 js-hrmis-pending-manage-leave-badge"
+                      t-attf-style="display: #{'inline-flex' if (pending_manage_leave_count or 0) > 0 else 'none'};">
+                    <t t-esc="pending_manage_leave_count or 0"/>
                 </span>
             </a>
 
@@ -21,8 +22,9 @@
                     href="/hrmis/profile-update-requests">
                         Profile Update Requests
 
-                        <span class="hrmis-nav__badge2">
-                            <t t-esc="pending_profile_update_count if pending_profile_update_count is not None else 0"/>
+                        <span class="hrmis-nav__badge2 js-hrmis-pending-profile-update-badge"
+                              t-attf-style="display: #{'inline-flex' if (pending_profile_update_count or 0) > 0 else 'none'};">
+                            <t t-esc="pending_profile_update_count or 0"/>
                         </span>
                 </a>
             </t>
@@ -38,7 +40,7 @@
                    t-att-href="'/hrmis/manage/requests?tab=leave'" style="border-bottom: 2px solid black;">
                     Leave Requests
                 </a>
-
+            
                 <!-- New tab: Leave Request History -->
                 <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab == 'history' else ''}"
                    t-att-href="'/hrmis/manage/requests?tab=history'" style="border-bottom: 2px solid black;">
@@ -98,14 +100,14 @@
                             <t t-set="grid" t-value="'display:grid; grid-template-columns: 25px 2.4fr 130px 90px 1.2fr 120px 120px 3.2fr; column-gap: 12px; align-items: start;'"/>
                             <div class="hrmis-table__head"
                                  t-att-style="grid">
-                                <div style="width:25px; max-width:25px;">#</div>
-                                <div>Staff / Facility / District</div>
-                                <div>Total Leave Balance</div>
-                                <div>Leave Taken</div>
-                                <div>Submitted On</div>
-                                <div>Leave Type</div>
-                                <div>Dates</div>
-                                <div style="white-space: nowrap;">Comments / Actions</div>
+                                <div style="width:25px; max-width:25px; text-wrap: wrap">#</div>
+                                <div style="text-wrap: wrap">Staff / Facility / District</div>
+                                <div style="text-wrap: wrap">Total Leave Balance</div>
+                                <div style="text-wrap: wrap">Leave Taken</div>
+                                <div style="text-wrap: wrap">Submitted On</div>
+                                <div style="text-wrap: wrap">Leave Type</div>
+                                <div style="text-wrap: wrap">Dates</div>
+                                <div style="text-wrap: wrap">Comments / Actions</div>
                             </div>
                             <t t-foreach="range(len(leaves))" t-as="idx0">
                                 <t t-set="lv" t-value="leaves[idx0]" style="cursor:pointer; margin-top:20px" />
@@ -125,55 +127,55 @@
                                         )
                                     ">
 
-                                    <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="width:25px; max-width:25px;">
+                                    <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="cursor:pointer; text-wrap: wrap;">
                                         <t t-esc="idx0 + 1" t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)" style="cursor:pointer;"/>
                                     </div>
 
                                     <!-- Employee / Facility / District -->
-                                    <div class="hrmis-leave-row__cell" style="text-decoration:none;">
-                                        <div class="strong" style="color: #000;">
+                                    <div class="hrmis-leave-row__cell" style="text-decoration:none; cursor:pointer; text-wrap: wrap;">
+                                        <div class="strong" style="color: #000;  text-wrap: wrap;">
                                             <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
                                                onclick="event.stopPropagation();"
-                                               style="text-decoration:none;">
-                                                <t t-esc="lv.employee_id.name"/>/
+                                               style="text-decoration:none; color: #000; cursor: pointer;">
+                                                <t t-esc="lv.employee_id.name" style="color: #000;  text-wrap: wrap;"/>/
                                             </a>
                                             <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
                                                onclick="event.stopPropagation();"
-                                               style="text-decoration:none;">
-                                                <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/> /
+                                               style="text-decoration:none; color: #000; cursor: pointer;  text-wrap: wrap;">
+                                                <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')" style="color: #000;"/> /
                                             </a>
                                        
                                  
                                             <a t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
                                                onclick="event.stopPropagation();"
-                                               style="text-decoration:none;">
-                                                <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
+                                               style="text-decoration:none; color: #000; cursor: pointer;  text-wrap: wrap;">
+                                                <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')" style="color: #000; cursor: pointer;"/>
                                             </a>
                                         </div>
                                     </div>
 
                                     <!-- Total Leave Balance -->
-                                    <div class="hrmis-leave-row__cell">
+                                    <div class="hrmis-leave-row__cell" style="text-wrap: wrap;">
                                         <t t-esc="(lv.employee_id.employee_leave_balance_total if lv.employee_id else 0.0)"/> days
                                     </div>
 
                                     <!-- Leave Taken (this type / this employee) -->
-                                    <div class="hrmis-leave-row__cell">
+                                    <div class="hrmis-leave-row__cell" style="text-wrap: wrap;">
                                         <t t-esc="(leave_taken_by_leave_id.get(lv.id, 0.0) if leave_taken_by_leave_id else 0.0)"/> days
                                     </div>
 
                                     <!-- Submitted On -->
-                                    <div class="hrmis-leave-row__cell">
+                                    <div class="hrmis-leave-row__cell" style="text-wrap: wrap;">
                                         <t t-esc="(str(lv.create_date)[:19] if lv.create_date else '')"/>
                                     </div>
 
                                     <!-- Leave Type -->
-                                    <div class="hrmis-leave-row__cell">
+                                    <div class="hrmis-leave-row__cell" style="text-wrap: wrap;">
                                         <t t-esc="lv.holiday_status_id.name"/>
                                     </div>
 
                                     <!-- Dates -->
-                                    <div class="hrmis-leave-row__cell">
+                                    <div class="hrmis-leave-row__cell" style="text-wrap: wrap;">
                                         <t t-set="d_from" t-value="lv.request_date_from"/>
                                         <t t-set="d_to" t-value="lv.request_date_to"/>
                                         <t t-set="days_count" t-value="(d_to and d_from and ((d_to - d_from).days + 1)) or 0"/>
@@ -186,7 +188,7 @@
                                     </div>
 
                                     <!-- COMMENTS + ACTIONS -->
-                                    <div class="hrmis-leave-row__actions" style="display: flex; flex-direction: column;  gap:8px;">
+                                    <div class="hrmis-leave-row__actions" style="display: flex; flex-direction: column;  gap:8px; text-wrap: wrap; ">
 
                                         <!-- Previous approvers comments (keep visible in list) -->
                                         <t t-if="lv.message_ids">
@@ -220,15 +222,6 @@
                                         </div>
 
                                         <div class="hrmis-modal__grid">
-                                            <div class="hrmis-modal__field">
-                                                <div class="hrmis-modal__label">Starting Date</div>
-                                                <div class="hrmis-modal__value"><t t-esc="lv.request_date_from or ''"/></div>
-                                            </div>
-                                            <div class="hrmis-modal__field">
-                                                <div class="hrmis-modal__label">Ending Date</div>
-                                                <div class="hrmis-modal__value"><t t-esc="lv.request_date_to or ''"/></div>
-                                            </div>
-
                                             <div class="hrmis-modal__field">
                                                 <div class="hrmis-modal__label">Leave Type</div>
                                                 <div class="hrmis-modal__value"><t t-esc="(lv.holiday_status_id and lv.holiday_status_id.name) or ''"/></div>
@@ -312,6 +305,29 @@
                                               class="hrmis-modal__section">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <input type="hidden" name="action" value="approve"/>
+                                            
+                                            <div class="hrmis-modal__field hrmis-date-range">
+                                                <div class="hrmis-modal__label">Leave Dates</div>
+
+                                                <div class="hrmis-date-range__inputs">
+                                                    <div class="hrmis-date-range__input-wrapper">
+                                                        <div class="hrmis-date-range__label">From</div>
+                                                        <input type="date"
+                                                            name="date_from"
+                                                            class="hrmis-input"
+                                                            t-att-value="lv.request_date_from and str(lv.request_date_from) or ''"/>
+                                                    </div>
+
+                                                    <div class="hrmis-date-range__input-wrapper">
+                                                        <div class="hrmis-date-range__label">To</div>
+                                                        <input type="date"
+                                                            name="date_to"
+                                                            class="hrmis-input"
+                                                            t-att-value="lv.request_date_to and str(lv.request_date_to) or ''"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div class="hrmis-modal__label" style="margin-bottom:6px;">Add New Comment</div>
                                             <textarea class="hrmis-input hrmis-input--wide"
                                                       name="comment"
@@ -381,13 +397,13 @@
                     <t t-else="">
                         <div class="hrmis-leave-history">
                             <div class="hrmis-table__head hrmis-leave-row hrmis-manage-table">
-                                <div>#</div>
-                                <div>Staff / Facility / District</div>
-                                <div>Leave Type</div>
-                                <div>Dates</div>
-                                <div>Status</div>
-                                <div>Pending With</div>
-                                <div>Notifications</div>
+                                <div style="text-wrap: wrap;">#</div>
+                                <div style="text-wrap: wrap;">Staff / Facility / District</div>
+                                <div style="text-wrap: wrap;">Leave Type</div>
+                                <div style="text-wrap: wrap;">Dates</div>
+                                <div style="text-wrap: wrap;">Status</div>
+                                <div style="text-wrap: wrap;">Pending With</div>
+                                <div style="text-wrap: wrap;">Notifications</div>
                             </div>
 
                             <t t-foreach="range(len(leave_history))" t-as="idx0">
@@ -401,24 +417,34 @@
                                             lv.request_date_from or '',
                                             lv.request_date_to or ''
                                         )
-                                    ">
-                                    <div class="hrmis-leave-row_cell hrmis-leave-row_sno">
-                                        <t t-esc="idx0 + 1"/>
+                                    " t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none; cursor: pointer;">
+                                    <div class="hrmis-leave-row_cell hrmis-leave-row_sno" style="text-wrap: wrap;">
+                                        <t t-esc="idx0 + 1" style="text-wrap: wrap;"/>
                                     </div>
-                                    <div class="hrmis-leave-row__cell">
-                                        <div class="strong">
-                                            <t t-esc="lv.employee_id.name"/>,
-                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')"/>
+                                    <div class="hrmis-leave-row__cell" t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none; text-wrap: wrap;">
+                                        <div class="strong" style="text-wrap: wrap;">
+                                            <t t-esc="lv.employee_id.name" style="text-wrap: wrap;"/>,
+                                            <t t-esc="(('facility_id' in lv.employee_id._fields and lv.employee_id.facility_id and lv.employee_id.facility_id.name) or ('hrmis_facility_id' in lv.employee_id._fields and lv.employee_id.hrmis_facility_id and lv.employee_id.hrmis_facility_id.name) or 'Facility name')" t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none; text-wrap: wrap;" />
                                         </div>
                                         <div class="sub">
-                                            <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')"/>
+                                            <t t-esc="(('district_id' in lv.employee_id._fields and lv.employee_id.district_id and lv.employee_id.district_id.name) or ('hrmis_district_id' in lv.employee_id._fields and lv.employee_id.hrmis_district_id and lv.employee_id.hrmis_district_id.name) or 'District name')" t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none; text-wrap: wrap;"/>
                                         </div>
                                     </div>
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.holiday_status_id.name"/>
+                                    <div class="hrmis-leave-row__cell" t-att-href="'/hrmis/manage/history/%s?tab=profile' % (lv.employee_id.id)"
+                                               onclick="event.stopPropagation();"
+                                               style="text-decoration:none; text-wrap: wrap;">
+                                        <t t-esc="lv.holiday_status_id.name" style="text-wrap: wrap;"/>
                                     </div>
-                                    <div class="hrmis-leave-row__cell">
-                                        <t t-esc="lv.request_date_from"/> to <t t-esc="lv.request_date_to"/>
+                                    <div class="hrmis-leave-row__cell" style="text-wrap: wrap;" >
+                                        <t t-esc="lv.request_date_from" style="text-wrap: wrap;"/> to <t t-esc="lv.request_date_to" style="text-wrap: wrap;"/>
                                     </div>
                                     <div class="hrmis-leave-row__cell">
                                         <!-- Map Odoo state to display name and CSS class -->
@@ -451,7 +477,10 @@
                                         </t>
                                     </div>
                                     <div class="hrmis-leave-row__cell">
-                                                   
+                                          <a class="hrmis-btn hrmis-btn--outline"
+                                            t-att-href="'/hrmis/leave/%d/history-view' % lv.id">
+                                                View
+                                            </a>          
                                     </div>
 
                                 </div>
@@ -571,8 +600,8 @@
                                 <div>Notifications</div>
                             </div>
 
-                            <t t-foreach="range(len(leave_history))" t-as="idx0">
-                                <t t-set="lv" t-value="leave_history[idx0]"/>
+                            <t t-foreach="range(len(leave_history))" t-as="idx0" style="text-decoration:none; cursor: pointer;">
+                                <t t-set="lv" t-value="leave_history[idx0]" style="text-decoration:none; cursor: pointer;"/>
 
                                 <div class="hrmis-leave-row hrmis-manage-table__row"
                                      t-att-data-status="lv.state"
@@ -584,14 +613,14 @@
                                             lv.request_date_from or '',
                                             lv.request_date_to or ''
                                         )
-                                     ">
+                                     " style="text-decoration:none; cursor: pointer;">
                                     <div><t t-esc="idx0 + 1"/></div>
                                     <div>
-                                        <strong><t t-esc="lv.employee_id.name"/></strong><br/>
+                                        <strong><t t-esc="lv.employee_id.name" style="color: #000; cursor: pointer;"/></strong><br/>
                                         <small>
-                                            <t t-esc="(lv.employee_id.hrmis_facility_id.name if lv.employee_id.hrmis_facility_id else '')"/>
+                                            <t t-esc="(lv.employee_id.hrmis_facility_id.name if lv.employee_id.hrmis_facility_id else '')" style="color: #000; cursor: pointer;"/>
                                             ,
-                                            <t t-esc="(lv.employee_id.hrmis_district_id.name if lv.employee_id.hrmis_district_id else '')"/>
+                                            <t t-esc="(lv.employee_id.hrmis_district_id.name if lv.employee_id.hrmis_district_id else '')" style="color: #000; cursor: pointer;"/>
                                         </small>
                                     </div>
                                     <div><t t-esc="lv.holiday_status_id.name"/></div>
@@ -716,26 +745,28 @@
                 </t>
 
                 <div class="hrmis-form__actions" style="margin-top:16px;">
-                    <a class="hrmis-btn hrmis-btn--outline"
-   t-att-href="
-        '/hrmis/staff'
-        if request.params.get('from') == 'staff'
-        else '/hrmis/manage/requests?tab=leave'
-   ">
-    <t t-if="request.params.get('from') == 'staff'">
-        Back to Search Staff
-    </t>
-    <t t-else="">
-        Back to Manage Requests
-    </t>
-</a>
+
+    
+
+<t t-set="from_staff" t-value="request.params.get('from') == 'staff'"/>
+
+<div class="hrmis-form__actions" style="margin-top:16px;">
+    <a class="hrmis-btn hrmis-btn--outline"
+       t-att-href="('/hrmis/staff' if from_staff else '/hrmis/manage/requests?tab=leave')">
+        <t t-if="from_staff">Back to Search Staff</t>
+        <t t-else="">Back to Manage Requests</t>
+    </a>
+</div>
+
+
+
 
                 </div>
 
             </div>
         </div>
-    </t>
-</template>
+        </t>
+    </template>
 
 
     <template id="hrmis_confirm_dismiss" name="HRMIS Confirm Dismiss (Section Officer)">

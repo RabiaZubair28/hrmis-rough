@@ -195,6 +195,21 @@ class HrLeave(models.Model):
         confirm_leaves = leaves.filtered(lambda l: l.state in ("confirm", "validate1") and not l.approval_status_ids)
         if confirm_leaves:
             confirm_leaves.sudo()._init_approval_flow()
+
+        for leave in leaves:
+            # Remove only the default auto message
+            sys_msgs = leave.message_ids.filtered(
+                lambda m: m.body and "Time Off created" in m.body
+            )
+
+            sys_msgs.unlink()
+
+            # Add custom first message
+            leave.message_post(
+                body= ("Leave Request initiated"),
+                message_type="comment",
+                subtype_xmlid="mail.mt_comment",
+            )
         return leaves
 
     def write(self, vals):

@@ -1,50 +1,24 @@
-<!-- <odoo>
-<template id="leave_letter_add_download_notification_history"
-          inherit_id="custom_section_officers.hrmis_manage_requests">
+<odoo>
+    <template id="leave_letter_add_download_notification_manage_history"
+              inherit_id="custom_section_officers.hrmis_manage_requests">
 
-   
-    <xpath expr="//div[contains(@class,'hrmis-table__head')]" position="inside">
-        <div class="hrmis-table__head-cell">Notifications</div>
-    </xpath>
+        <!-- Target the Notifications column for each leave_history row -->
+        <xpath expr="//a[contains(@class,'hrmis-btn--outline') and contains(@t-att-href, 'history-view')]" position="replace">
 
-    
-    <xpath expr="//div[contains(@class,'hrmis-leave-row')]" position="inside">
-        <div class="hrmis-leave-row__cell">
-            <t t-if="lv.leave_notification_id and lv.state in ('validate','validate2')">
-                <a t-att-href="'/report/pdf/leave_letter.leave_notification_pdf/%s' % lv.leave_notification_id.id"
+        
+            <t t-if="lv.leave_notification_id">
+                <a t-att-href="'/leave_letter/pdf/%s' % lv.leave_notification_id.id"
                    class="hrmis-btn hrmis-btn--outline"
-                   target="_blank">
-                    Download Notification
+                   style="margin-left:0px;"
+                   target="_blank"
+                   t-if="lv.state in ('validate','validate2')">
+                    Download 
                 </a>
+                <t t-else="">—</t>
             </t>
             <t t-else="">—</t>
-        </div>
-    </xpath>
 
-</template>
-</odoo> -->
+        </xpath>
 
-
-
-<!-- <odoo>
-<template id="leave_letter_add_download_notification_history"
-          inherit_id="custom_section_officers.hrmis_manage_requests">
-
-   
-    <xpath expr="//div[contains(@class,'hrmis-leave-row')]/div[contains(@class,'hrmis-leave-row__actions')]" position="inside">
-        <div class="hrmis-leave-row__cell">
-            <t t-if="lv.leave_notification_id and lv.state in ('validate','validate2')">
-                <a t-att-href="'/report/pdf/leave_letter.leave_notification_pdf/%s' % lv.leave_notification_id.id"
-                   class="hrmis-btn hrmis-btnoutline"
-                   target="_blank">
-                    Download Notification
-                </a>
-            </t>
-            <t t-else="">—</t>
-        </div>
-    </xpath>
-
-</template>
-
-
-</odoo> -->
+    </template>
+</odoo>

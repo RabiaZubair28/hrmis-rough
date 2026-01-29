@@ -17,3 +17,5 @@ class HrEmployeePublic(models.Model):
     father_name = fields.Char(related="employee_id.hrmis_father_name", readonly=True)
     cadre_id = fields.Many2one(related="employee_id.hrmis_cadre", readonly=True)
     mobile_phone = fields.Char(related="employee_id.hrmis_contact_info", readonly=True)
+    so_signature = fields.Binary(related="employee_id.so_signature", readonly=True)
+

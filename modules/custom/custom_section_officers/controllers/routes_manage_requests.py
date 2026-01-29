@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from odoo import http
+from odoo import http, fields
 from odoo.http import request
 import json
 from odoo.exceptions import UserError, AccessError
@@ -259,53 +259,161 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
     #         "/hrmis/manage/requests?tab=leave&success=%s" % ("dismissed" if action == "dismiss" else "approved")
     #     )
 
+    # def hrmis_leave_approve(self, leave_id: int, **post):
+    #     _logger.warning("🔥 APPROVE ROUTE HIT for leave_id=%s", leave_id)
+    #     # --------------------------------------------------
+    #     # Fetch leave AS CURRENT USER (NO sudo)
+    #     # Record rules + sequential visibility apply here
+    #     # --------------------------------------------------
+    #     leave = request.env["hr.leave"].sudo().browse(leave_id)
+    #     # leave = request.env["hr.leave"].search([
+    #     #     ("id", "=", leave_id),
+    #     #     ("pending_approver_ids", "in", [request.env.user.id])
+    #     # ])
+    #     if not leave:
+    #         return request.redirect(
+    #             "/hrmis/manage/requests?tab=leave&error=Leave Not Found"
+    #         )
+
+    #     current_user = request.env.user
+
+    #     # --------------------------------------------------
+    #     # Ensure current user is an approver
+    #     # --------------------------------------------------
+    #     leave._ensure_custom_approval_initialized()
+
+    #     # --------------------------------------------------
+    #     # Check if THIS user can approve AT THIS STEP
+    #     # --------------------------------------------------
+    #     if not leave.is_pending_for_user(current_user):
+    #         return request.redirect(
+    #             "/hrmis/manage/requests?tab=leave&error=not_authorized"
+    #         )
+        
+    #     action = (post.get("action") or "approve").strip().lower()
+    #     comment = (post.get("comment") or "").strip() or None
+
+    #     try:
+    #         if action == "dismiss":
+    #             # ----------------------------------------------
+    #             # Optional: post comment as current user
+    #             # ----------------------------------------------
+    #             if comment:
+    #                 leave.sudo().message_post(
+    #                 body=comment,
+    #                 message_type="comment",
+    #                 subtype_xmlid="mail.mt_comment",
+    #                 author_id=current_user.partner_id.id,
+    #             )
+
+
+    #             rec = leave.sudo()
+    #             if hasattr(rec, "action_refuse"):
+    #                 rec.action_refuse()
+    #             elif hasattr(rec, "action_reject"):
+    #                 rec.action_reject()
+    #             else:
+    #                 rec.write({"state": "refuse"}) 
+    #         else:
+    #             # --------------------------------------------------
+    #             # Delegate approval to the model (sequential/parallel aware)
+    #             # --------------------------------------------------
+    #             leave.with_user(current_user).action_approve_by_user(
+    #                 comment=comment
+    #             )
+
+    #     except (UserError, AccessError) as e:
+    #         msg = getattr(e, "name", None) or getattr(e, "args", ["error"])[0]
+    #         return request.redirect(
+    #             "/hrmis/manage/requests?tab=leave&error=%s" % http.url_quote(str(msg))
+    #         )
+
+    #     except Exception as e:
+    #         _logger.exception("Unexpected leave approval error")
+    #         return request.redirect(
+    #             "/hrmis/manage/requests?tab=leave&error=approve_failed"
+    #         )
+
+    #     return request.redirect(
+    #         "/hrmis/manage/requests?tab=leave&success=%s"
+    #         % ("dismissed" if action == "dismiss" else "approved")
+    #     )
+
     def hrmis_leave_approve(self, leave_id: int, **post):
         _logger.warning("🔥 APPROVE ROUTE HIT for leave_id=%s", leave_id)
-        # --------------------------------------------------
-        # Fetch leave AS CURRENT USER (NO sudo)
-        # Record rules + sequential visibility apply here
-        # --------------------------------------------------
+
         leave = request.env["hr.leave"].sudo().browse(leave_id)
-        # leave = request.env["hr.leave"].search([
-        #     ("id", "=", leave_id),
-        #     ("pending_approver_ids", "in", [request.env.user.id])
-        # ])
         if not leave:
+            _logger.warning("⚠ Leave not found for leave_id=%s", leave_id)
             return request.redirect(
                 "/hrmis/manage/requests?tab=leave&error=Leave Not Found"
             )
 
         current_user = request.env.user
-
-        # --------------------------------------------------
-        # Ensure current user is an approver
-        # --------------------------------------------------
         leave._ensure_custom_approval_initialized()
 
-        # --------------------------------------------------
-        # Check if THIS user can approve AT THIS STEP
-        # --------------------------------------------------
         if not leave.is_pending_for_user(current_user):
+            _logger.warning("⛔ User %s not authorized to approve leave_id=%s", current_user.id, leave_id)
             return request.redirect(
                 "/hrmis/manage/requests?tab=leave&error=not_authorized"
             )
-        
+
         action = (post.get("action") or "approve").strip().lower()
         comment = (post.get("comment") or "").strip() or None
 
+        # ------------------------------
+        # Optional date updates with logging
+        # ------------------------------
+        dt_from = (post.get("date_from") or "").strip()
+        dt_to = (post.get("date_to") or "").strip()
+        _logger.info("📅 Received date_from='%s', date_to='%s'", dt_from, dt_to)
+
+        if dt_from and dt_to:
+            _logger.info("🔄 Entered date update block for leave_id=%s", leave_id)
+            try:
+                d_from = fields.Date.to_date(dt_from)
+                d_to = fields.Date.to_date(dt_to)
+                _logger.info("✅ Parsed dates: d_from=%s, d_to=%s", d_from, d_to)
+
+                if not d_from or not d_to:
+                    _logger.warning("⚠ Failed to parse dates from input")
+                elif d_to < d_from:
+                    _logger.warning("⛔ End date %s is before start date %s", d_to, d_from)
+                    return request.redirect(
+                        "/hrmis/manage/requests?tab=leave&error=End+date+cannot+be+before+start+date"
+                    )
+                else:
+                    if leave.request_date_from != d_from or leave.request_date_to != d_to:
+                        leave.with_context(
+                            mail_notrack=True,
+                            mail_create_nolog=True
+                        ).sudo().write({
+                            "request_date_from": d_from,
+                            "request_date_to": d_to,
+                        })
+
+                    _logger.info("✏️ Leave dates updated for leave_id=%s: %s -> %s", leave_id, d_from, d_to)
+            except Exception as e:
+                _logger.exception("⚠ Exception while updating leave dates: %s", e)
+                return request.redirect(
+                    "/hrmis/manage/requests?tab=leave&error=Invalid+date+format"
+                )
+        else:
+            _logger.info("ℹ️ No date update provided for leave_id=%s", leave_id)
+
+        # ------------------------------
+        # Approve or Dismiss logic
+        # ------------------------------
         try:
             if action == "dismiss":
-                # ----------------------------------------------
-                # Optional: post comment as current user
-                # ----------------------------------------------
+                _logger.info("❌ Dismissing leave_id=%s", leave_id)
                 if comment:
                     leave.sudo().message_post(
-                    body=comment,
-                    message_type="comment",
-                    subtype_xmlid="mail.mt_comment",
-                    author_id=current_user.partner_id.id,
-                )
-
+                        body=comment,
+                        message_type="comment",
+                        subtype_xmlid="mail.mt_comment",
+                        author_id=current_user.partner_id.id,
+                    )
 
                 rec = leave.sudo()
                 if hasattr(rec, "action_refuse"):
@@ -313,23 +421,20 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 elif hasattr(rec, "action_reject"):
                     rec.action_reject()
                 else:
-                    rec.write({"state": "refuse"}) 
+                    rec.write({"state": "refuse"})
             else:
-                # --------------------------------------------------
-                # Delegate approval to the model (sequential/parallel aware)
-                # --------------------------------------------------
-                leave.with_user(current_user).action_approve_by_user(
-                    comment=comment
-                )
+                _logger.info("✅ Approving leave_id=%s", leave_id)
+                leave.with_user(current_user).action_approve_by_user(comment=comment)
 
         except (UserError, AccessError) as e:
             msg = getattr(e, "name", None) or getattr(e, "args", ["error"])[0]
+            _logger.warning("⚠ Approval error for leave_id=%s: %s", leave_id, msg)
             return request.redirect(
                 "/hrmis/manage/requests?tab=leave&error=%s" % http.url_quote(str(msg))
             )
 
         except Exception as e:
-            _logger.exception("Unexpected leave approval error")
+            _logger.exception("💥 Unexpected leave approval error for leave_id=%s", leave_id)
             return request.redirect(
                 "/hrmis/manage/requests?tab=leave&error=approve_failed"
             )
@@ -338,6 +443,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
             "/hrmis/manage/requests?tab=leave&success=%s"
             % ("dismissed" if action == "dismiss" else "approved")
         )
+
+
 
 
     @http.route(

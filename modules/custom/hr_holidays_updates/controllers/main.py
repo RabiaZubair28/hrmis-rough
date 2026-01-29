@@ -120,12 +120,14 @@ def _base_ctx(page_title: str, active_menu: str, **extra):
                 pending_leave_requests_for_user,
             )
 
-            pending = pending_leave_requests_for_user(user.id)
-            ctx["pending_manage_leave_count"] = len(pending)
+            pending_res = pending_leave_requests_for_user(user.id)
+            # Backwards-compat: helper may return either a recordset or (recordset, extra_info).
+            pending_leaves = pending_res[0] if isinstance(pending_res, (list, tuple)) else pending_res
+            ctx["pending_manage_leave_count"] = len(pending_leaves)
 
             ProfileRequest = request.env["hrmis.employee.profile.request"].sudo()
             ctx["pending_profile_update_count"] = ProfileRequest.search_count(
-                [("approver_id.user_id", "=", user.id), ("state", "!=", "approved")]
+                [("approver_id.user_id", "=", user.id), ("state", "=", "submitted")]
             )
         else:
             ctx["pending_manage_leave_count"] = 0
@@ -563,6 +565,7 @@ class HrmisLeaveFrontendController(http.Controller):
             "hr_holidays_updates.hrmis_staff_services",
             _base_ctx("Services", "leave_requests", employee=employee),
         )
+    from datetime import date
 
     @http.route(
         ["/hrmis/staff/<int:employee_id>/leave"],
@@ -576,19 +579,21 @@ class HrmisLeaveFrontendController(http.Controller):
             return request.not_found()
 
         if not _can_manage_employee_leave(employee):
-            # Avoid exposing other employees' leave UI to normal users
             return request.redirect("/hrmis/services?error=not_allowed")
 
-        # Ensure allocations exist for this employee so balances display correctly.
+        # normalize tab
+        allowed_tabs = ("new", "history", "manage_requests_msdho")
+        tab = tab if tab in allowed_tabs else "new"
+
+        # Ensure allocations exist so balances display correctly (only relevant for new/history)
         try:
-            # Use the selected date to ensure future-year allocations exist so
-            # balances do not show "0 remaining out of 0".
             dt_leave = _safe_date(kw.get("date_from"))
-            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee, target_date=dt_leave)
+            request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(
+                employee, target_date=dt_leave
+            )
         except Exception:
             pass
 
-        # Show leave types allowed by the same rules used in the backend UI.
         dt_leave = _safe_date(kw.get("date_from"))
         leave_types = _dedupe_leave_types_for_ui(
             _leave_types_for_employee(employee, request_date_from=dt_leave)
@@ -596,26 +601,95 @@ class HrmisLeaveFrontendController(http.Controller):
 
         history = request.env["hr.leave"].sudo().search(
             [("employee_id", "=", employee.id)],
-             order="create_date desc, id desc",
+            order="create_date desc, id desc",
             limit=20,
         )
 
+        # ✅ MS/DHO manage list (only when tab is 3rd tab)
+        leaves = False
+        pending_manage_leave_count = 0
+        if tab == "manage_requests_msdho":
+            if not request.env.user.has_group("custom_login.group_ms_dho"):
+                return request.not_found()
+
+            # Keep your current logic (you can refine domain later)
+            leaves = request.env["hr.leave"].sudo().search([("state", "=", "confirm")], order="create_date desc", limit=50)
+            pending_manage_leave_count = len(leaves)
+
         error = kw.get("error")
         success = kw.get("success")
+        
+
         return request.render(
             "hr_holidays_updates.hrmis_leave_form",
             _base_ctx(
                 "Leave requests",
                 "leave_requests",
                 employee=employee,
-                tab=tab if tab in ("new", "history") else "new",
+                tab=tab,
                 leave_types=leave_types,
                 history=history,
+                # ✅ add these for 3rd tab
+                leaves=leaves,
+                pending_manage_leave_count=pending_manage_leave_count,
                 error=error,
                 success=success,
                 today=date.today(),
             ),
         )
+
+    # @http.route(
+    #     ["/hrmis/staff/<int:employee_id>/leave"],
+    #     type="http",
+    #     auth="user",
+    #     website=True,
+    # )
+    # def hrmis_leave_form(self, employee_id: int, tab: str = "new", **kw):
+    #     employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
+    #     if not employee:
+    #         return request.not_found()
+
+    #     if not _can_manage_employee_leave(employee):
+    #         # Avoid exposing other employees' leave UI to normal users
+    #         return request.redirect("/hrmis/services?error=not_allowed")
+
+    #     # Ensure allocations exist for this employee so balances display correctly.
+    #     try:
+    #         # Use the selected date to ensure future-year allocations exist so
+    #         # balances do not show "0 remaining out of 0".
+    #         dt_leave = _safe_date(kw.get("date_from"))
+    #         request.env["hr.leave.allocation"].sudo().hrmis_ensure_allocations_for_employees(employee, target_date=dt_leave)
+    #     except Exception:
+    #         pass
+
+    #     # Show leave types allowed by the same rules used in the backend UI.
+    #     dt_leave = _safe_date(kw.get("date_from"))
+    #     leave_types = _dedupe_leave_types_for_ui(
+    #         _leave_types_for_employee(employee, request_date_from=dt_leave)
+    #     )
+
+    #     history = request.env["hr.leave"].sudo().search(
+    #         [("employee_id", "=", employee.id)],
+    #          order="create_date desc, id desc",
+    #         limit=20,
+    #     )
+
+    #     error = kw.get("error")
+    #     success = kw.get("success")
+    #     return request.render(
+    #         "hr_holidays_updates.hrmis_leave_form",
+    #         _base_ctx(
+    #             "Leave requests",
+    #             "leave_requests",
+    #             employee=employee,
+    #             tab=tab if tab in ("new", "history") else "new",
+    #             leave_types=leave_types,
+    #             history=history,
+    #             error=error,
+    #             success=success,
+    #             today=date.today(),
+    #         ),
+    #     )
 
     @http.route(
         ["/hrmis/api/leave/types"],
@@ -655,9 +729,8 @@ class HrmisLeaveFrontendController(http.Controller):
                 "leave_types": [
                     {
                         "id": lt.id,
-                        # Use display_name which includes balances in context
-                        # (e.g. "Casual Leave (2 remaining out of 2 days)").
-                        "name": lt.display_name,
+                        # UI requirement: show only the base leave type name (no balances suffix).
+                        "name": lt.name,
                         # Keep fields optional for UI compatibility.
                         # Business rule overrides (do not depend on DB fields existing/being configured).
                         **(

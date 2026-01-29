@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="hrmis_new_transfer_request" name="HRMIS: New Transfer Request">
+        <div class="hrmis-panel__body">
+            <t t-if="error">
+                <div class="hrmis-alert hrmis-alert--error"><t t-esc="error"/></div>
+            </t>
+            <t t-if="success">
+                <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
+            </t>
+
+            <t t-if="tab == 'new'">
+                <form class="hrmis-form hrmis-transfer-request-form"
+                      t-att-data-employee-bps="employee.hrmis_bps"
+                      t-att-action="'/hrmis/staff/%s/transfer/submit' % employee.id"
+                      t-att-data-employee-id="employee.id"
+                      method="post">
+
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                    <div class="hrmis-form__grid">
+
+                        <!-- Current Posting -->
+                        <div class="hrmis-field hrmis-field--wide">
+                            <label>Current Posting</label>
+                        </div>
+
+                        <div class="hrmis-field">
+                            <label>Current District<span class="req">*</span></label>
+                            <input class="hrmis-input" type="text" name="current_district" required="required"/>
+                        </div>
+
+                        <div class="hrmis-field">
+                            <label>Current Facility<span class="req">*</span></label>
+                            <input class="hrmis-input" type="text" name="current_facility" required="required"/>
+                        </div>
+
+                        <!-- Requested Posting -->
+                        <div class="hrmis-field hrmis-field--wide">
+                            <label>Requested Posting</label>
+                        </div>
+
+                        <div class="hrmis-field">
+                            <label>Requested District<span class="req">*</span></label>
+                            <input class="hrmis-input" type="text" name="requested_district" required="required"/>
+                        </div>
+
+                        <div class="hrmis-field">
+                            <label>Requested Facility<span class="req">*</span></label>
+                            <input class="hrmis-input" type="text" name="requested_facility" required="required"/>
+                        </div>
+
+                        <!-- Justification -->
+                        <div class="hrmis-field hrmis-field--wide">
+                            <label>Justification<span class="req">*</span></label>
+                            <textarea class="hrmis-input hrmis-input--wide"
+                                      name="justification"
+                                      rows="4"
+                                      required="required"></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="hrmis-form__actions">
+                        <button class="hrmis-btn hrmis-btn--primary hrmis-btn--lg" type="submit">
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </t>
+        </div>
+    </template>
+</odoo>

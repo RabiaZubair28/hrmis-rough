@@ -1,8 +1,8 @@
 <odoo>
-<record id="seq_leave_notification" model="ir.sequence">
-    <field name="name">Leave Notification</field>
-    <field name="code">leave.notification</field>
-    <field name="prefix">LN/</field>
-    <field name="padding">4</field>
-</record>
+    <record id="seq_leave_notification" model="ir.sequence">
+        <field name="name">Leave Notification</field>
+        <field name="code">leave.notification</field>
+        <field name="prefix">LN/%(year)s/</field>
+        <field name="padding">4</field>
+    </record>
 </odoo>

@@ -2,18 +2,29 @@
     <template id="leave_letter_add_download_notification_form"
               inherit_id="hr_holidays_updates.hrmis_leave_form">
 
-        <!-- Insert after existing View button -->
-        <xpath expr="//a[contains(@class,'hrmis-btn') and contains(., 'View')]" position="after">
+        <xpath expr="//a[contains(@class,'hrmis-btn--outline') and contains(@t-att-href, 'history-view')]" position="replace">
 
-            <t t-if="lv and lv.state in ('validate','validate2') and lv.leave_notification_id">
+            <t t-if="lv.state in ('validate','validate2')
+             and lv.leave_notification_id
+              and lv.holiday_status_id.name != 'Casual Leave'">
                 <a t-att-href="'/leave_letter/pdf/%s' % lv.leave_notification_id.id"
                    class="hrmis-btn hrmis-btn--outline"
                    style="margin-left:8px;"
                    target="_blank">
-                    Download Notification
+                    Download 
                 </a>
             </t>
-
+             <t t-else="">
+                        <span style="
+                            font-size:12px;
+                            color:#888;
+                            padding:6px 10px;
+                            border:1px dashed #ccc;
+                            border-radius:6px;
+                            background:#fafafa;">
+                            No notification available
+                        </span>
+                    </t>
         </xpath>
 
     </template>

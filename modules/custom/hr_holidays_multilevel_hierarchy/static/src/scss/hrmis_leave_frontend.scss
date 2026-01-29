@@ -539,7 +539,7 @@
 .hrmis-table__row {
     display: grid;
     grid-template-columns:
-       0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr;
+       0.9fr 1.2fr 0.7fr 0.7fr 0.7fr 1.2fr 0.9fr;
     column-gap: 12px;
     align-items: center;
     gap: 16px;
@@ -566,11 +566,51 @@
 
 .hrmis-leave-row {
   display: grid;
-  grid-template-columns: 90px 1.6fr 1fr 1.2fr 240px;
+  grid-template-columns: 0.9fr 1.2fr 0.7fr 0.7fr 0.7fr 1.2fr 0.9fr;
   gap: 16px;
   padding: 16px 10px;
   border-bottom: 2px solid #2a2f31;
 }
+
+
+
+.hrmis-table__head,
+.hrmis-table__row {
+    display: grid;
+    grid-template-columns:
+       0.9fr 1.2fr 0.7fr 0.7fr 0.7fr 1.2fr 0.9fr;
+    column-gap: 12px;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Prevent column overflow */
+.hrmis-table__row > div,
+.hrmis-table__head > div {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hrmis-table__row > div:nth-child(5) {
+    white-space: normal;
+    word-break: break-word;
+}
+
+.hrmis-table__head {
+  font-weight: 900;
+  background: #f2f6f7;
+}
+
+.hrmis-leave-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1.2fr 0.7fr 0.7fr 0.7fr 1.2fr 0.9fr;
+  gap: 16px;
+  padding: 16px 10px;
+  border-bottom: 2px solid #2a2f31;
+}
+
 .hrmis-leave-row__actions {
   display: flex;
   gap: 12px;

@@ -1157,6 +1157,30 @@
     overflow: hidden;
 }
 
+.hrmis-date-range {
+  .hrmis-date-range__inputs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .hrmis-date-range__input-wrapper {
+    flex: 1;
+    min-width: 0; // prevents overflow
+  }
+
+  .hrmis-date-range__label {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  // .hrmis-input {
+  //   width: 100%;
+  //   box-sizing: border-box;
+  // }
+}
+
+
+
 @media (max-width: 768px) {
     .hrmis-kv-row-fix {
         grid-template-columns: 1fr;
