@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Views -->
-    <record id="view_hrmis_transfer_request_tree" model="ir.ui.view">
-        <field name="name">hrmis.transfer.request.tree</field>
+    <record id="view_hrmis_transfer_request_list" model="ir.ui.view">
+        <field name="name">hrmis.transfer.request.list</field>
         <field name="model">hrmis.transfer.request</field>
         <field name="arch" type="xml">
-            <tree string="Transfer Requests">
+            <list string="Transfer Requests">
                 <field name="name"/>
                 <field name="employee_id"/>
                 <field name="current_district_id"/>
@@ -14,7 +14,7 @@
                 <field name="required_facility_id"/>
                 <field name="state"/>
                 <field name="pending_with"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -90,7 +90,7 @@
     <record id="action_hrmis_transfer_requests" model="ir.actions.act_window">
         <field name="name">Transfer Requests</field>
         <field name="res_model">hrmis.transfer.request</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_hrmis_transfer_request_search"/>
     </record>
 
@@ -105,7 +105,7 @@
     <record id="action_hrmis_transfer_history" model="ir.actions.act_window">
         <field name="name">Transfer History</field>
         <field name="res_model">hrmis.transfer.request</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="domain">[('state','in',('approved','rejected'))]</field>
         <field name="search_view_id" ref="view_hrmis_transfer_request_search"/>
     </record>
@@ -113,7 +113,7 @@
     <record id="action_hrmis_transfer_status" model="ir.actions.act_window">
         <field name="name">Transfer Status</field>
         <field name="res_model">hrmis.transfer.request</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="context">{'search_default_group_state': 1, 'group_by': 'state'}</field>
         <field name="search_view_id" ref="view_hrmis_transfer_request_search"/>
     </record>
