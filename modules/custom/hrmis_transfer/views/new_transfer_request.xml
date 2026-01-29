@@ -116,12 +116,14 @@
                 </form>
 
                 <!-- Inline fallback: ensure district->facility filtering always works -->
-                <script type="text/javascript">
+                <script type="text/javascript"><![CDATA[
                   (function () {
                     function filterFacilities(districtSelect, facilitySelect) {
                       if (!districtSelect || !facilitySelect) return;
                       var districtId = districtSelect.value || "";
-                      var options = Array.prototype.slice.call(facilitySelect.querySelectorAll("option"));
+                      var options = Array.prototype.slice.call(
+                        facilitySelect.querySelectorAll("option")
+                      );
 
                       options.forEach(function (opt, idx) {
                         if (idx === 0) {
@@ -137,7 +139,8 @@
 
                       var selected = facilitySelect.options[facilitySelect.selectedIndex];
                       if (selected && selected.value) {
-                        var selectedDistrictId = selected.getAttribute("data-district-id") || "";
+                        var selectedDistrictId =
+                          selected.getAttribute("data-district-id") || "";
                         if (districtId && selectedDistrictId !== districtId) {
                           facilitySelect.value = "";
                         }
@@ -145,12 +148,22 @@
                     }
 
                     function initPair(groupName) {
-                      var d = document.querySelector('select[data-hrmis-transfer-group="' + groupName + '"][name$="_district_id"]');
-                      var f = document.querySelector('select[data-hrmis-transfer-group="' + groupName + '"][name$="_facility_id"]');
+                      var d = document.querySelector(
+                        'select[data-hrmis-transfer-group="' +
+                          groupName +
+                          '"][name$="_district_id"]'
+                      );
+                      var f = document.querySelector(
+                        'select[data-hrmis-transfer-group="' +
+                          groupName +
+                          '"][name$="_facility_id"]'
+                      );
                       if (!d || !f) return;
 
                       filterFacilities(d, f);
-                      d.addEventListener("change", function () { filterFacilities(d, f); });
+                      d.addEventListener("change", function () {
+                        filterFacilities(d, f);
+                      });
                     }
 
                     function init() {
@@ -165,7 +178,7 @@
                     }
                     window.addEventListener("pageshow", init);
                   })();
-                </script>
+                ]]></script>
             </t>
         </div>
     </template>
