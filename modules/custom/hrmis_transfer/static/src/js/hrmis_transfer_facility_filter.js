@@ -11,11 +11,15 @@ function filterFacilities(districtSelect, facilitySelect) {
     if (idx === 0) {
       opt.hidden = false;
       opt.disabled = false;
+      opt.style.display = "";
       return;
     }
 
     const optDistrictId = opt.getAttribute("data-district-id") || "";
     const visible = !districtId || optDistrictId === districtId;
+    // `option.hidden` works in many browsers but is inconsistent in some
+    // embedded/webview scenarios. Use display as the primary mechanism.
+    opt.style.display = visible ? "" : "none";
     opt.hidden = !visible;
     opt.disabled = !visible;
   });
@@ -30,26 +34,32 @@ function filterFacilities(districtSelect, facilitySelect) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const currentDistrict = document.querySelector("select.js-hrmis-current-district");
-  const currentFacility = document.querySelector("select.js-hrmis-current-facility");
-  const requiredDistrict = document.querySelector("select.js-hrmis-required-district");
-  const requiredFacility = document.querySelector("select.js-hrmis-required-facility");
+function initPair(groupName) {
+  const district = document.querySelector(
+    `select[data-hrmis-transfer-group="${groupName}"][name$="_district_id"]`,
+  );
+  const facility = document.querySelector(
+    `select[data-hrmis-transfer-group="${groupName}"][name$="_facility_id"]`,
+  );
+  if (!district || !facility) return;
 
   // Initial filter (supports pre-filled district)
-  filterFacilities(currentDistrict, currentFacility);
-  filterFacilities(requiredDistrict, requiredFacility);
+  filterFacilities(district, facility);
+  district.addEventListener("change", () => filterFacilities(district, facility));
+}
 
-  if (currentDistrict) {
-    currentDistrict.addEventListener("change", () => {
-      filterFacilities(currentDistrict, currentFacility);
-    });
-  }
+function init() {
+  initPair("current");
+  initPair("required");
+}
 
-  if (requiredDistrict) {
-    requiredDistrict.addEventListener("change", () => {
-      filterFacilities(requiredDistrict, requiredFacility);
-    });
-  }
-});
+// In some Odoo pages, assets can load after DOMContentLoaded.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+// Handle browser back/forward cache (page restored without a full reload).
+window.addEventListener("pageshow", init);
 
