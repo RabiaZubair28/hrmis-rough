@@ -49,7 +49,8 @@ function filterDesignations(facilitySelect, designationSelect) {
       return;
     }
     const optFacilityId = opt.getAttribute("data-facility-id") || "";
-    const visible = !facilityId || optFacilityId === facilityId;
+    // Match profile-update behavior: hide all designations until a facility is selected.
+    const visible = facilityId !== "" && optFacilityId === facilityId;
     opt.style.display = visible ? "" : "none";
     opt.hidden = !visible;
     opt.disabled = !visible;
