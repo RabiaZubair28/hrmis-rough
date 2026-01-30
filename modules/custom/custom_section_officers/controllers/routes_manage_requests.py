@@ -488,6 +488,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         is_last_approver_by_leave = {}
         transfer_requests = request.env["hrmis.transfer.request"].browse([])
         vacancy_by_transfer_id = {}
+        can_approve_by_transfer_id = {}
 
         # Decide which tab is active
         tab = tab or "leave"
@@ -593,6 +594,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                     "occupied": int(occupied),
                     "vacant": int(vacant),
                 }
+                # Enable approve only when facility has the employee's designation (matched_designation is stored).
+                can_approve_by_transfer_id[tr.id] = bool(tr.required_designation_id)
 
         elif tab == "transfer_status":
             Transfer = request.env["hrmis.transfer.request"].sudo()
@@ -627,6 +630,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                     "occupied": int(occupied),
                     "vacant": int(vacant),
                 }
+                can_approve_by_transfer_id[tr.id] = bool(tr.required_designation_id)
 
         else:
             # fallback safety
@@ -645,6 +649,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 is_last_approver_by_leave=is_last_approver_by_leave,
                 transfer_requests=transfer_requests,
                 vacancy_by_transfer_id=vacancy_by_transfer_id,
+                can_approve_by_transfer_id=can_approve_by_transfer_id,
                 success=success,
                 error=error,
             ),

@@ -25,10 +25,12 @@ class HrmisTransferRequest(models.Model):
         tracking=True,
     )
 
+    # Internal: the matching designation record in the *requested* facility, if present.
+    # This is used for vacancy checks and seat reservation on approval.
     required_designation_id = fields.Many2one(
         "hrmis.designation",
-        string="Requested Designation",
-        required=True,
+        string="Matched Designation (Requested Facility)",
+        required=False,
         tracking=True,
         domain="[('facility_id', '=', required_facility_id)]",
     )
