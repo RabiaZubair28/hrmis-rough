@@ -15,6 +15,7 @@
                 <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
                 <t t-set="districts" t-value="request.env['hrmis.district.master'].sudo().search([])"/>
                 <t t-set="facilities" t-value="request.env['hrmis.facility.type'].sudo().search([])"/>
+                <t t-set="designations" t-value="request.env['hrmis.designation'].sudo().search([('active','=',True)])"/>
                 <form class="hrmis-form hrmis-transfer-request-form"
                       t-att-data-employee-bps="employee.hrmis_bps"
                       t-att-action="'/hrmis/staff/%s/transfer/submit' % employee.id"
@@ -92,6 +93,22 @@
                                     <option t-att-value="f.id"
                                             t-att-data-district-id="f.district_id.id if f.district_id else ''">
                                         <t t-esc="f.name"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+
+                        <div class="hrmis-field">
+                            <label>Requested Designation<span class="req">*</span></label>
+                            <select class="hrmis-input js-hrmis-required-designation"
+                                    name="required_designation_id"
+                                    required="required">
+                                <option value="">Select designation</option>
+                                <t t-foreach="sorted(designations, key=lambda d: (d.name or ''))" t-as="des">
+                                    <option t-att-value="des.id"
+                                            t-att-data-facility-id="des.facility_id.id if des.facility_id else ''"
+                                            t-att-selected="1 if (employee and employee.hrmis_designation and employee.hrmis_designation.id == des.id) else None">
+                                        <t t-esc="des.name"/>
                                     </option>
                                 </t>
                             </select>

@@ -48,21 +48,31 @@ class HrmisTransferController(http.Controller):
         current_facility_id = _safe_int(post.get("current_facility_id"))
         required_district_id = _safe_int(post.get("required_district_id"))
         required_facility_id = _safe_int(post.get("required_facility_id"))
+        required_designation_id = _safe_int(post.get("required_designation_id"))
         justification = (post.get("justification") or "").strip()
 
-        if not (current_district_id and current_facility_id and required_district_id and required_facility_id and justification):
+        if not (
+            current_district_id
+            and current_facility_id
+            and required_district_id
+            and required_facility_id
+            and required_designation_id
+            and justification
+        ):
             msg = "Please fill all required fields"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
 
         District = request.env["hrmis.district.master"].sudo()
         Facility = request.env["hrmis.facility.type"].sudo()
+        Designation = request.env["hrmis.designation"].sudo()
 
         cur_dist = District.browse(current_district_id).exists()
         cur_fac = Facility.browse(current_facility_id).exists()
         req_dist = District.browse(required_district_id).exists()
         req_fac = Facility.browse(required_facility_id).exists()
+        req_desig = Designation.browse(required_designation_id).exists()
 
-        if not (cur_dist and cur_fac and req_dist and req_fac):
+        if not (cur_dist and cur_fac and req_dist and req_fac and req_desig):
             msg = "Invalid district/facility selection"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
 
@@ -74,6 +84,11 @@ class HrmisTransferController(http.Controller):
             msg = "Required facility must belong to required district"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
 
+        # Ensure the requested designation belongs to the requested facility (this DB uses facility-specific designations).
+        if getattr(req_desig, "facility_id", False) and req_desig.facility_id.id != req_fac.id:
+            msg = "Required designation must belong to required facility"
+            return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
+
         Transfer = request.env["hrmis.transfer.request"].sudo()
         tr = Transfer.create(
             {
@@ -82,6 +97,7 @@ class HrmisTransferController(http.Controller):
                 "current_facility_id": cur_fac.id,
                 "required_district_id": req_dist.id,
                 "required_facility_id": req_fac.id,
+                "required_designation_id": req_desig.id,
                 "justification": justification,
                 "state": "draft",
             }
