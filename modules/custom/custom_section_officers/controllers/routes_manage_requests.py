@@ -594,6 +594,40 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                     "vacant": int(vacant),
                 }
 
+        elif tab == "transfer_status":
+            Transfer = request.env["hrmis.transfer.request"].sudo()
+            managed_emp_ids = self._managed_employee_ids()
+
+            domain = []
+            if request.env.user.has_group("hr.group_hr_manager") or request.env.user.has_group("base.group_system"):
+                # HR/Admin can see all transfer requests.
+                pass
+            else:
+                domain.append(("employee_id", "in", managed_emp_ids or [-1]))
+
+            transfer_requests = Transfer.search(domain, order="submitted_on desc, create_date desc, id desc", limit=200)
+
+            Allocation = request.env["hrmis.facility.designation"].sudo()
+            for tr in transfer_requests:
+                total = (tr.required_designation_id.total_sanctioned_posts if tr.required_designation_id else 0) or 0
+                occupied = 0
+                vacant = 0
+                if tr.required_facility_id and tr.required_designation_id:
+                    alloc = Allocation.search(
+                        [
+                            ("facility_id", "=", tr.required_facility_id.id),
+                            ("designation_id", "=", tr.required_designation_id.id),
+                        ],
+                        limit=1,
+                    )
+                    occupied = (alloc.occupied_posts if alloc else 0) or 0
+                    vacant = total - occupied
+                vacancy_by_transfer_id[tr.id] = {
+                    "total": int(total),
+                    "occupied": int(occupied),
+                    "vacant": int(vacant),
+                }
+
         else:
             # fallback safety
             tab = "leave"
