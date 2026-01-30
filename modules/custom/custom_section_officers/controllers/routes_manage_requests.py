@@ -486,6 +486,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         leave_history = []
         leave_taken_by_leave_id = {}
         is_last_approver_by_leave = {}
+        transfer_requests = request.env["hrmis.transfer.request"].browse([])
+        vacancy_by_transfer_id = {}
 
         # Decide which tab is active
         tab = tab or "leave"
@@ -556,6 +558,42 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         elif tab == "history":
             leave_history = leave_request_history_for_user(uid)
 
+        elif tab == "transfer_requests":
+            Transfer = request.env["hrmis.transfer.request"].sudo()
+            # Manager visibility: use the same "managed employees" definition as the rest of this controller.
+            managed_emp_ids = self._managed_employee_ids()
+
+            domain = [("state", "=", "submitted")]
+            if request.env.user.has_group("hr.group_hr_manager") or request.env.user.has_group("base.group_system"):
+                # HR/Admin can see all submitted transfer requests.
+                pass
+            else:
+                domain.append(("employee_id", "in", managed_emp_ids or [-1]))
+
+            transfer_requests = Transfer.search(domain, order="submitted_on desc, create_date desc, id desc", limit=200)
+
+            # Vacant/occupied posts lookup: facility+designation allocation.
+            Allocation = request.env["hrmis.facility.designation"].sudo()
+            for tr in transfer_requests:
+                total = (tr.required_designation_id.total_sanctioned_posts if tr.required_designation_id else 0) or 0
+                occupied = 0
+                vacant = 0
+                if tr.required_facility_id and tr.required_designation_id:
+                    alloc = Allocation.search(
+                        [
+                            ("facility_id", "=", tr.required_facility_id.id),
+                            ("designation_id", "=", tr.required_designation_id.id),
+                        ],
+                        limit=1,
+                    )
+                    occupied = (alloc.occupied_posts if alloc else 0) or 0
+                    vacant = total - occupied
+                vacancy_by_transfer_id[tr.id] = {
+                    "total": int(total),
+                    "occupied": int(occupied),
+                    "vacant": int(vacant),
+                }
+
         else:
             # fallback safety
             tab = "leave"
@@ -571,10 +609,87 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 leave_history=leave_history,
                 leave_taken_by_leave_id=leave_taken_by_leave_id,
                 is_last_approver_by_leave=is_last_approver_by_leave,
+                transfer_requests=transfer_requests,
+                vacancy_by_transfer_id=vacancy_by_transfer_id,
                 success=success,
                 error=error,
             ),
         )
+
+    @http.route(
+        ["/hrmis/transfer/<int:transfer_id>/approve"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def hrmis_transfer_approve(self, transfer_id: int, **post):
+        tr = request.env["hrmis.transfer.request"].browse(transfer_id).exists()
+        if not tr:
+            return request.not_found()
+
+        if tr.state != "submitted":
+            return request.redirect("/hrmis/manage/requests?tab=transfer_requests&error=invalid_state")
+
+        comment = (post.get("comment") or "").strip()
+        try:
+            if comment:
+                tr.sudo().message_post(
+                    body=comment,
+                    message_type="comment",
+                    subtype_xmlid="mail.mt_comment",
+                    author_id=request.env.user.partner_id.id,
+                )
+            tr.action_approve()
+        except UserError as e:
+            return request.redirect(
+                "/hrmis/manage/requests?tab=transfer_requests&error=%s" % http.url_quote(e.name)
+            )
+        except Exception:
+            _logger.exception("Transfer approval failed for transfer_id=%s", transfer_id)
+            return request.redirect("/hrmis/manage/requests?tab=transfer_requests&error=approve_failed")
+
+        return request.redirect("/hrmis/manage/requests?tab=transfer_requests&success=approved")
+
+    @http.route(
+        ["/hrmis/transfer/<int:transfer_id>/reject"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def hrmis_transfer_reject(self, transfer_id: int, **post):
+        tr = request.env["hrmis.transfer.request"].browse(transfer_id).exists()
+        if not tr:
+            return request.not_found()
+
+        if tr.state != "submitted":
+            return request.redirect("/hrmis/manage/requests?tab=transfer_requests&error=invalid_state")
+
+        reject_reason = (post.get("reject_reason") or "").strip()
+        comment = (post.get("comment") or "").strip()
+        try:
+            if reject_reason:
+                tr.write({"reject_reason": reject_reason})
+            if comment:
+                tr.sudo().message_post(
+                    body=comment,
+                    message_type="comment",
+                    subtype_xmlid="mail.mt_comment",
+                    author_id=request.env.user.partner_id.id,
+                )
+            tr.action_reject()
+        except UserError as e:
+            return request.redirect(
+                "/hrmis/manage/requests?tab=transfer_requests&error=%s" % http.url_quote(e.name)
+            )
+        except Exception:
+            _logger.exception("Transfer rejection failed for transfer_id=%s", transfer_id)
+            return request.redirect("/hrmis/manage/requests?tab=transfer_requests&error=reject_failed")
+
+        return request.redirect("/hrmis/manage/requests?tab=transfer_requests&success=rejected")
 
     @http.route(
         ["/hrmis/manage/history/<int:employee_id>"],
