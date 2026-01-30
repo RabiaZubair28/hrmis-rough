@@ -55,7 +55,7 @@
 
                     <!-- Section Officer Signature Block -->
                     <div style="margin-top:40px; text-align:right;">
-                        <t t-if="doc.so_signature">
+                        
                             <div style="display:inline-block; text-align:center;">
                                 
                                 <!-- <div style="margin-top:5px; font-weight:bold;"><t t-esc="doc.employee_so.name"/></div> -->
@@ -63,7 +63,7 @@
                                 <div style="margin-top:2px;">Secretary Health</div>
                                                                 <div style="font-size:14pt;">Karachi, dated: <t t-esc="doc.issue_date"/></div>
                             </div>
-                        </t>
+                        
                         
                     </div>
 <strong style="text-align:left; text-decoration:underline;">NO. <t t-esc="doc.name"/>:-</strong> 
@@ -83,22 +83,64 @@
                     </p>
 
                     <!-- Section Officer Signature Block -->
-                    <div style="margin-top:0px; text-align:right;">
-                        <t t-if="doc.so_signature">
-                            <div style="display:inline-block; text-align:center;">
-                                <img t-att-src="'data:image/png;base64,%s' % (doc.so_signature.decode() if isinstance(doc.so_signature, bytes) else doc.so_signature)"
-                                     style="height:200px;"/> <!-- Bigger signature -->
-                                <div style="margin-top:5px; font-weight:bold;"><t t-esc="doc.employee_so.name"/></div>
-                                <div style="margin-top:2px;">Section Officer</div>
-                                <div style="margin-top:2px;">Karachi, <t t-esc="doc.issue_date"/></div>
-                            </div>
-                        </t>
-                        <t t-if="not doc.so_signature">
-                            <div style="display:inline-block; text-align:center; color:#999;">
-                                Section Officer signature not uploaded
-                            </div>
-                        </t>
-                    </div>
+               
+                <!-- QR Code Block -->
+<div style="margin-top:40px; width:100%; display:table;">
+    <div style="display:table-cell; text-align:center; vertical-align:top; width:50%;">
+
+
+
+<div style="margin-top:30px; text-align:left;">
+    <div style="display:inline-block; text-align:center;">
+<t t-set="qr_b64" t-value="doc.get_notification_qr_b64()"/>
+<img t-if="qr_b64"
+     t-att-src="'data:image/png;base64,%s' % qr_b64"
+     style="height:150px; width:150px;"/>
+
+<!-- <div style="font-size:10pt; margin-top:5px;">Scan to Download Notification</div> -->
+
+
+      
+    </div>
+</div>
+
+
+        <t t-if="not doc.get_notification_qr_b64()">
+            <div style="font-size:10pt; color:#999;">
+                QR code not available
+            </div>
+        </t>
+</div>
+    <!-- SIGNATURE (RIGHT) -->
+    <div style="display:table-cell; text-align:right; vertical-align:top; width:50%;">
+
+        <t t-if="doc.so_signature">
+            <div style="display:inline-block; text-align:center;">
+                <img t-att-src="'data:image/png;base64,%s' % (doc.so_signature.decode() if isinstance(doc.so_signature, bytes) else doc.so_signature)"
+                     style="height:200px;"/>
+
+                <div style="margin-top:5px; font-weight:bold;">
+                    <t t-esc="doc.employee_so.name"/>
+                </div>
+                <div style="margin-top:2px;">Section Officer</div>
+                <div style="margin-top:2px;">
+                    Karachi, <t t-esc="doc.issue_date"/>
+                </div>
+            </div>
+        </t>
+
+        <t t-if="not doc.so_signature">
+            <div style="display:inline-block; text-align:center; color:#999;">
+                Section Officer signature not uploaded
+            </div>
+        </t>
+
+    </div>
+
+</div>
+
+
+
 
                 </div>
             </t>

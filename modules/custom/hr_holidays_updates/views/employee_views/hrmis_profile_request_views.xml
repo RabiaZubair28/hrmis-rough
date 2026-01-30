@@ -117,10 +117,40 @@
                                        t-att-value="req.hrmis_joining_date or current_employee.hrmis_joining_date or ''"
                                        required="required"/>
                             </div>
+                            
+                            <!-- Posting -->
+                            <div class="hrmis-field">
+                                <label>District<span class="req">*</span></label>
+                                <select class="hrmis-input js-hrmis-district" name="district_id" required="required">
+                                    <option value="">Select</option>
+                                    <t t-foreach="districts" t-as="d">
+                                        <option t-att-value="d.id"
+                                                t-att-selected="(req.district_id and req.district_id.id == d.id) or (current_employee.district_id and current_employee.district_id.id == d.id)">
+                                            <t t-esc="d.name"/>
+                                        </option>
+                                    </t>
+                                </select>
+                            </div>
+
+                            <div class="hrmis-field">
+                                <label>Facility<span class="req">*</span></label>
+                                <select class="hrmis-input js-hrmis-facility" name="facility_id" required="required">
+                                    <option value="">Select</option>
+                                    <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
+                                        <option t-att-value="f.id"
+                                                t-att-title="f.name"
+                                                t-att-data-district-id="f.district_id.id if f.district_id else ''"
+                                                t-att-selected="(req.facility_id and req.facility_id.id == f.id) or
+                                                                (current_employee.facility_id and current_employee.facility_id.id == f.id)">
+                                            <t t-esc="f.name"/>
+                                        </option>
+                                    </t>
+                                </select>
+                            </div>
 
                             <div class="hrmis-field">
                                 <label>BPS<span class="req">*</span></label>
-                                <input class="hrmis-input"
+                                <input class="hrmis-input js-hrmis-bps"
                                        type="number"
                                        min="6"
                                        max="22"
@@ -164,46 +194,20 @@
                                 <t t-set="current_designation"
                                 t-value="req.hrmis_designation or current_employee.hrmis_designation"/>
 
-                                <select class="hrmis-input" name="hrmis_designation" required="required">
+                                <select class="hrmis-input js-designation-select" name="hrmis_designation" required="required">
                                     <option value="">Select</option>
-                                    <t t-foreach="env['hrmis.designation'].search([], order='name')" t-as="designation">
-                                        <option t-att-value="designation.id"
-                                                t-att-selected="current_designation and current_designation.id == designation.id">
-                                            <t t-esc="designation.name"/>
-                                        </option>
-                                    </t>
-                                </select>
-                            </div>
 
-                            <!-- Posting -->
-                            <div class="hrmis-field">
-                                <label>District<span class="req">*</span></label>
-                                <select class="hrmis-input js-hrmis-district" name="district_id" required="required">
-                                    <option value="">Select</option>
-                                    <t t-foreach="districts" t-as="d">
+                                    <t t-foreach="env['hrmis.designation'].search([('active','=',True)], order='name')" t-as="d">
                                         <option t-att-value="d.id"
-                                                t-att-selected="(req.district_id and req.district_id.id == d.id) or (current_employee.district_id and current_employee.district_id.id == d.id)">
+                                                t-att-data-facility-id="d.facility_id.id if d.facility_id else ''"
+                                                t-att-data-bps="d.post_BPS"
+                                                t-att-selected="current_designation and current_designation.id == d.id">
                                             <t t-esc="d.name"/>
                                         </option>
                                     </t>
                                 </select>
                             </div>
 
-                            <div class="hrmis-field">
-                                <label>Facility<span class="req">*</span></label>
-                                <select class="hrmis-input js-hrmis-facility" name="facility_id" required="required">
-                                    <option value="">Select</option>
-                                    <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
-                                        <option t-att-value="f.id"
-                                                t-att-title="f.name"
-                                                t-att-data-district-id="f.district_id.id if f.district_id else ''"
-                                                t-att-selected="(req.facility_id and req.facility_id.id == f.id) or
-                                                                (current_employee.facility_id and current_employee.facility_id.id == f.id)">
-                                            <t t-esc="f.name"/>
-                                        </option>
-                                    </t>
-                                </select>
-                            </div>
 
 
                             <div class="hrmis-field">

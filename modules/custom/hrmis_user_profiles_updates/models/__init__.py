@@ -7,3 +7,5 @@ from . import res_users_inherit
 from . import hrmis_final_profile_request
 from . import hrmis_cadre
 from . import hrmis_designations
+from . import hrmis_health_care_unit
+from . import hrmis_facility_designation

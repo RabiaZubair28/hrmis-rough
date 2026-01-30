@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Views -->
+    <record id="view_hrmis_transfer_request_list" model="ir.ui.view">
+        <field name="name">hrmis.transfer.request.list</field>
+        <field name="model">hrmis.transfer.request</field>
+        <field name="arch" type="xml">
+            <list string="Transfer Requests">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="current_district_id"/>
+                <field name="current_facility_id"/>
+                <field name="required_district_id"/>
+                <field name="required_facility_id"/>
+                <field name="state"/>
+                <field name="pending_with"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hrmis_transfer_request_form" model="ir.ui.view">
+        <field name="name">hrmis.transfer.request.form</field>
+        <field name="model">hrmis.transfer.request</field>
+        <field name="arch" type="xml">
+            <form string="Transfer Request">
+                <header>
+                    <button name="action_submit" type="object" string="Submit" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn-success"
+                            groups="hr.group_hr_manager"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_reject" type="object" string="Reject" class="btn-danger"
+                            groups="hr.group_hr_manager"
+                            invisible="state != 'submitted'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,rejected"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                        <field name="employee_id"/>
+                    </group>
+                    <group string="Current Posting" col="2">
+                        <field name="current_district_id"/>
+                        <field name="current_facility_id"/>
+                    </group>
+                    <group string="Required Posting" col="2">
+                        <field name="required_district_id"/>
+                        <field name="required_facility_id"/>
+                    </group>
+                    <group>
+                        <field name="justification" placeholder="Enter justification..."/>
+                    </group>
+
+                    <group string="Audit" col="2">
+                        <field name="submitted_by_id" readonly="1"/>
+                        <field name="submitted_on" readonly="1"/>
+                        <field name="approved_by_id" readonly="1"/>
+                        <field name="approved_on" readonly="1"/>
+                        <field name="rejected_by_id" readonly="1"/>
+                        <field name="rejected_on" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hrmis_transfer_request_search" model="ir.ui.view">
+        <field name="name">hrmis.transfer.request.search</field>
+        <field name="model">hrmis.transfer.request</field>
+        <field name="arch" type="xml">
+            <search string="Transfer Requests">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="state"/>
+                <filter string="My Requests" name="my_requests" domain="[('submitted_by_id','=',uid)]"/>
+                <separator/>
+                <filter string="Submitted" name="submitted" domain="[('state','=','submitted')]"/>
+                <filter string="Approved" name="approved" domain="[('state','=','approved')]"/>
+                <filter string="Rejected" name="rejected" domain="[('state','=','rejected')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
+                    <filter string="Employee" name="group_employee" context="{'group_by':'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Actions -->
+    <record id="action_hrmis_transfer_requests" model="ir.actions.act_window">
+        <field name="name">Transfer Requests</field>
+        <field name="res_model">hrmis.transfer.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_hrmis_transfer_request_search"/>
+    </record>
+
+    <record id="action_hrmis_new_transfer_request" model="ir.actions.act_window">
+        <field name="name">New Transfer Request</field>
+        <field name="res_model">hrmis.transfer.request</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_hrmis_transfer_history" model="ir.actions.act_window">
+        <field name="name">Transfer History</field>
+        <field name="res_model">hrmis.transfer.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state','in',('approved','rejected'))]</field>
+        <field name="search_view_id" ref="view_hrmis_transfer_request_search"/>
+    </record>
+
+    <record id="action_hrmis_transfer_status" model="ir.actions.act_window">
+        <field name="name">Transfer Status</field>
+        <field name="res_model">hrmis.transfer.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_state': 1, 'group_by': 'state'}</field>
+        <field name="search_view_id" ref="view_hrmis_transfer_request_search"/>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="menu_hrmis_transfer_root" name="Transfers" parent="hr.menu_hr_root" sequence="45"/>
+    <menuitem id="menu_hrmis_transfer_requests" name="Transfer Requests" parent="menu_hrmis_transfer_root"
+              action="action_hrmis_transfer_requests" sequence="10"/>
+    <menuitem id="menu_hrmis_transfer_new" name="New Transfer Request" parent="menu_hrmis_transfer_root"
+              action="action_hrmis_new_transfer_request" sequence="20"/>
+    <menuitem id="menu_hrmis_transfer_status" name="Transfer Status" parent="menu_hrmis_transfer_root"
+              action="action_hrmis_transfer_status" sequence="30"/>
+    <menuitem id="menu_hrmis_transfer_history" name="Transfer History" parent="menu_hrmis_transfer_root"
+              action="action_hrmis_transfer_history" sequence="40"/>
+</odoo>

@@ -1,18 +1,135 @@
 .hrmis-btn--icon {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 12px;
-    cursor: pointer;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 12px;
+  cursor: pointer;
 }
 
 .hrmis-btn--icon i {
-    color: #28a745;   /* green */
-    font-size: 18px;
+  color: #064526;
+  font-size: 18px;
 }
 
 .hrmis-btn--icon:hover i {
-    color: #1e7e34;
+  color: #064526;
 }
+
 .hrmis-btn {
-    text-decoration: none !important;
+  text-decoration: none;
+}
+
+/* Base input/select look (kept same) */
+.hrmis-input,
+.hrmis-select {
+  width: 100%;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.hrmis-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23666' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'><polygon points='5,7 10,12 15,7'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  padding-right: 28px;
+}
+
+.hrmis-input:focus,
+.hrmis-select:focus {
+  outline: none;
+  border-color: #064526;
+  box-shadow: 0 0 0 1px rgba(6, 69, 38, .2);
+}
+
+/* =========================
+   Staff search form UI ONLY
+   (Scoped so other pages are not affected)
+   ========================= */
+.hrmis-search-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr)) 52px;
+  gap: 20px;
+  align-items: end;
+}
+
+/* Responsive wrap */
+@media (max-width: 1200px) {
+  .hrmis-search-form {
+    grid-template-columns: repeat(3, minmax(180px, 1fr)) 52px;
+  }
+}
+
+@media (max-width: 800px) {
+  .hrmis-search-form {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+  .hrmis-search-field--btn {
+    grid-column: span 2;
+    justify-self: end;
+  }
+}
+
+
+.hrmis-search-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 180px;
+  gap: 6px;
+}
+
+.hrmis-search-field label {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Make search inputs/selects same height only on this form */
+.hrmis-search-form .hrmis-input,
+.hrmis-search-form .hrmis-select {
+  height: 42px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+/* Button column should not stretch */
+.hrmis-search-field--btn {
+  flex: 0;
+  min-width: 52px;
+}
+
+/* ghost label to align with other labels */
+.hrmis-search-label--ghost {
+  visibility: hidden;
+}
+
+/* Override icon button ONLY inside search form so it looks like an input */
+.hrmis-search-form .hrmis-btn--icon {
+  height: 42px;
+  width: 52px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #fff !important;
+  border: 1px solid rgba(6, 69, 38, .25) !important;
+  border-radius: 8px;
+  transition: all .15s ease;
+}
+
+.hrmis-search-form .hrmis-btn--icon:hover {
+  background: #f4f8f6 !important;
+  border-color: rgba(6, 69, 38, .45) !important;
+}
+
+.hrmis-search-form .hrmis-btn--icon i {
+  font-size: 16px;
+  color: #064526;
 }

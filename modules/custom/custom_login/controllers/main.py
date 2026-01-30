@@ -1,46 +1,48 @@
+
 from odoo import http
 from odoo.http import request
 from odoo.addons.web.controllers.home import Home
 
 
-from odoo import http
-from odoo.http import request
-from odoo.addons.web.controllers.home import Home
 
 class CustomLogin(Home):
 
-    @http.route('/web/login', type='http', auth='public', sitemap=False)
+    @http.route('/web/login', type='http', auth='public', website=True, csrf=False, sitemap=False)
     def web_login(self, redirect=None, **kw):
-        # If user already logged in
-        uid = request.session.uid
-        if uid:
+
+        # If already logged in
+        if request.session.uid:
             user = request.env.user
             if getattr(user, 'is_temp_password', False):
                 return request.redirect('/force_password_reset')
             return request.redirect('/odoo/custom-time-off')
 
-        # If POST request → call Odoo login
+        # POST → let Odoo authenticate
         if request.httprequest.method == 'POST':
-            # This is the critical part: call super to process authentication
-            response = super(CustomLogin, self).web_login(redirect=redirect, **kw)
+            response = super().web_login(redirect=redirect, **kw)
 
-            # If login succeeded, session.uid is set
-            uid = request.session.uid
-            if uid:
+            # Login successful
+            if request.session.uid:
                 user = request.env.user
                 if getattr(user, 'is_temp_password', False):
                     return request.redirect('/force_password_reset')
                 return request.redirect('/odoo/custom-time-off')
 
-            # If login failed → render your custom template with error
-            return request.render('custom_login.custom_login_template', {
-                'redirect': redirect,
-                'error': 'Invalid login or password.',
-                'login': kw.get('login', ''),
-            })
+            # Login failed → render custom login page
+            return request.render(
+                'custom_login.custom_login_template',
+                {
+                    'redirect': redirect,
+                    'error': 'Invalid login or password.',
+                    'login': kw.get('login', ''),
+                }
+            )
 
-        # GET request → render custom login template
-        return request.render('custom_login.custom_login_template', {'redirect': redirect})
+        # GET → render custom login page
+        return request.render(
+            'custom_login.custom_login_template',
+            {'redirect': redirect}
+        )
 
 
 class ForcePasswordController(http.Controller):

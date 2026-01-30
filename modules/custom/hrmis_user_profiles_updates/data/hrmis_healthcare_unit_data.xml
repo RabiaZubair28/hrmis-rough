@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Primary Health Care Units -->
+        <record id="hcu_bhu" model="hrmis.healthcare.unit">
+            <field name="name">Basic Health Unit</field>
+            <field name="code">BHU</field>
+            <field name="hcu_type">primary</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="hcu_rhc" model="hrmis.healthcare.unit">
+            <field name="name">Rural Health Center</field>
+            <field name="code">RHC</field>
+            <field name="hcu_type">primary</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="hcu_mchc" model="hrmis.healthcare.unit">
+            <field name="name">Maternal and Child Health Center</field>
+            <field name="code">MCHC</field>
+            <field name="hcu_type">primary</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="hcu_dispensary" model="hrmis.healthcare.unit">
+            <field name="name">Dispensary</field>
+            <field name="code">DISP</field>
+            <field name="hcu_type">primary</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Secondary Health Care Units -->
+        <record id="hcu_thq" model="hrmis.healthcare.unit">
+            <field name="name">Tehsil Headquarter Hospital</field>
+            <field name="code">THQ</field>
+            <field name="hcu_type">secondary</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="hcu_dhq" model="hrmis.healthcare.unit">
+            <field name="name">District Headquarter Hospital</field>
+            <field name="code">DHQ</field>
+            <field name="hcu_type">secondary</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Tertiary Health Care Units -->
+        <record id="hcu_teaching" model="hrmis.healthcare.unit">
+            <field name="name">Teaching Hospital</field>
+            <field name="code">THOSP</field>
+            <field name="hcu_type">tertiary</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="hcu_specialty" model="hrmis.healthcare.unit">
+            <field name="name">Specialty Hospital</field>
+            <field name="code">SPHOSP</field>
+            <field name="hcu_type">tertiary</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Quaternary Health Care Units (Highly Specialized) -->
+        <record id="hcu_national_institute" model="hrmis.healthcare.unit">
+            <field name="name">National Institute of Cardiology</field>
+            <field name="code">NIC</field>
+            <field name="hcu_type">quaternary</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="hcu_transplant" model="hrmis.healthcare.unit">
+            <field name="name">Organ Transplant Center</field>
+            <field name="code">OTC</field>
+            <field name="hcu_type">quaternary</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

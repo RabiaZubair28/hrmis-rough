@@ -7,7 +7,7 @@ import logging
 import re
 import json
 import base64
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, unquote
 from odoo.http import Response
 
 
@@ -1443,12 +1443,11 @@ class HrmisProfileUpdateRequests(http.Controller):
         )
 
     @http.route(
-    '/hrmis/profile/request/view/<int:request_id>',
-    type='http',
-    auth='user',
-    website=True
+        '/hrmis/profile/request/view/<int:request_id>',
+        type='http',
+        auth='user',
+        website=True
     )
-    # Section officer can view a detailed view of the profile update request
     def profile_update_request_view(self, request_id, **kw):
 
         user = request.env.user
@@ -1457,9 +1456,9 @@ class HrmisProfileUpdateRequests(http.Controller):
         if not req.exists():
             return request.not_found()
 
-        # ------------------------------------------------
+        # ----------------------------
         # ACCESS CONTROL
-        # ------------------------------------------------
+        # ----------------------------
         is_admin = user.has_group('base.group_system')
         is_hr = user.has_group('hr.group_hr_manager')
         is_owner = user.id == req.user_id.id
@@ -1468,13 +1467,35 @@ class HrmisProfileUpdateRequests(http.Controller):
         can_approve = (
             req.state in ('draft', 'submitted')
             and (
-                request.env.user.has_group('hr.group_hr_manager')
-                or request.env.user.has_group('base.group_system')
+                user.has_group('hr.group_hr_manager')
+                or user.has_group('base.group_system')
                 or req._is_parent_approver()
             )
         )
+
         if not (is_admin or is_hr or is_owner or is_parent_approver):
             return request.not_found()
+
+        # ----------------------------
+        # Messages (for Bootstrap alerts)
+        # ----------------------------
+        error = request.params.get('error')
+        success = request.params.get('success')
+        info = request.params.get('info')
+
+        error_msg = error and unquote(error)
+        success_msg = success and unquote(success)
+        info_msg = info and unquote(info)
+
+        # ----------------------------
+        # Facility-wise remaining seats map
+        # key: (facility_id, designation_id) -> remaining_posts
+        # ----------------------------
+        allocs = request.env['hrmis.facility.designation'].sudo().search([])
+        remaining_map = {
+            (a.facility_id.id, a.designation_id.id): a.remaining_posts
+            for a in allocs
+        }
 
         return request.render(
             "hr_holidays_updates.hrmis_profile_update_request_view",
@@ -1483,7 +1504,18 @@ class HrmisProfileUpdateRequests(http.Controller):
                 "districts": request.env["hrmis.district.master"].sudo().search([]),
                 "facilities": request.env["hrmis.facility.type"].sudo().search([]),
                 "cadres": request.env["hrmis.cadre"].sudo().search([]),
-                "designations": request.env["hrmis.designation"].sudo().search([]),
+
+                # Only active designations (recommended)
+                "designations": request.env["hrmis.designation"].sudo().search([('active', '=', True)], order="name"),
+
+                # NEW: for (remaining/total) display facility-wise
+                "remaining_map": remaining_map,
+
+                # NEW: template alerts
+                "error_msg": error_msg,
+                "success_msg": success_msg,
+                "info_msg": info_msg,
+
                 "back_url": "/hrmis/profile-update-requests",
                 "can_approve": can_approve,
             },
@@ -1491,14 +1523,12 @@ class HrmisProfileUpdateRequests(http.Controller):
 
 
     @http.route('/hrmis/profile/request/approve/<int:request_id>', type='http', auth='user', website=True, methods=['POST', 'GET'])
-    # Section office is approving the profile update request
     def profile_request_approve(self, request_id, **post):
         user = request.env.user
         req = request.env['hrmis.employee.profile.request'].sudo().browse(request_id)
         if not req.exists():
             return request.not_found()
 
-        # Access control: parent or admin
         is_admin = user.has_group('base.group_system')
         is_parent_approver = self._is_parent_approver(user, req)
 
@@ -1507,9 +1537,6 @@ class HrmisProfileUpdateRequests(http.Controller):
                 f"/hrmis/profile/request/view/{req.id}?error=You are not allowed to approve this request."
             )
 
-        # ------------------------------------------------
-        # GET → show editable approval form
-        # ------------------------------------------------
         if request.httprequest.method == 'GET':
             return request.render(
                 'hr_holidays_updates.hrmis_profile_request_approve_form',
@@ -1519,19 +1546,16 @@ class HrmisProfileUpdateRequests(http.Controller):
                     'districts': request.env['hrmis.district.master'].sudo().search([]),
                     'facilities': request.env['hrmis.facility.type'].sudo().search([]),
                     'cadres': request.env['hrmis.cadre'].sudo().search([]),
+                    'designations': request.env['hrmis.designation'].sudo().search([('active', '=', True)]),
                 }
             )
 
-        # ------------------------------------------------
-        # POST → manager edits request data
-        # ------------------------------------------------
         def m2o(val):
             try:
                 return int(val)
             except Exception:
                 return False
 
-        # ✅ ONLY update request fields here
         req.write({
             'hrmis_employee_id': post.get('hrmis_employee_id'),
             'hrmis_cnic': post.get('hrmis_cnic'),
@@ -1552,12 +1576,64 @@ class HrmisProfileUpdateRequests(http.Controller):
 
         if req.state != 'submitted':
             return request.redirect('/hrmis/profile-update-requests')
+
         try:
-            req.action_approve()
-        except Exception as e:
-            return request.redirect(
-                f"/hrmis/profile/request/view/{req.id}?error={str(e)}"
+            # ----------------------------
+            # 1) Validate required fields
+            # ----------------------------
+            if not req.facility_id or not req.hrmis_designation:
+                return request.redirect(
+                    f"/hrmis/profile/request/view/{req.id}?error=Facility and Designation are required to approve."
+                )
+
+            Allocation = request.env['hrmis.facility.designation'].sudo()
+
+            # ----------------------------
+            # 2) Find / create allocation row
+            # ----------------------------
+            allocation = Allocation.search([
+                ('facility_id', '=', req.facility_id.id),
+                ('designation_id', '=', req.hrmis_designation.id),
+            ], limit=1)
+
+            if not allocation:
+                allocation = Allocation.create({
+                    'facility_id': req.facility_id.id,
+                    'designation_id': req.hrmis_designation.id,
+                    'occupied_posts': 0,
+                })
+                request.env.flush_all()
+
+            # ----------------------------
+            # 3) Lock row + re-check seats BEFORE approving
+            #    (prevents race conditions)
+            # ----------------------------
+            request.env.cr.execute(
+                "SELECT id FROM hrmis_facility_designation WHERE id=%s FOR UPDATE",
+                (allocation.id,)
             )
+            request.env.flush_all()
+            allocation = Allocation.browse(allocation.id)
+
+            if allocation.remaining_posts <= 0:
+                return request.redirect(
+                    f"/hrmis/profile/request/view/{req.id}?error=No remaining posts for this designation in this facility."
+                )
+
+            # ----------------------------
+            # 4) Reserve the seat (increment occupied) FIRST
+            # ----------------------------
+            allocation.write({'occupied_posts': allocation.occupied_posts + 1})
+            request.env.flush_all()
+
+            # ----------------------------
+            # 5) Now approve the request
+            # ----------------------------
+            req.action_approve()
+            request.env.flush_all()
+
+        except Exception as e:
+            return request.redirect(f"/hrmis/profile/request/view/{req.id}?error={str(e)}")
 
         return request.redirect('/hrmis/profile-update-requests')
 

@@ -1,4 +1,4 @@
-<odoo>
+<odoo noupdate="1">
  
     <record id="user_shafique_ahmed" model="res.users">
         <field name="name">Mr. Shafique Ahmed Ujjan</field>

@@ -31,7 +31,8 @@
             'hr_holidays_updates/static/src/js/hrmis_leave_frontend.js',
             'hr_holidays_updates/static/src/js/hrmis_notifications.js',
             'hr_holidays_updates/static/src/js/hrmis_pending_badges.js',
-            'hr_holidays_updates/static/src/js/hrmis_leave_filters.js'
+            'hr_holidays_updates/static/src/js/hrmis_leave_filters.js',
+            'hr_holidays_updates/static/src/js/hrmis_profile_request_facility_filter.js',
         ],
     },
     'installable': True,

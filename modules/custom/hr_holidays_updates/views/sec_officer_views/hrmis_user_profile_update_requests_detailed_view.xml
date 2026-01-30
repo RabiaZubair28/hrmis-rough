@@ -14,7 +14,29 @@
 
             <!-- Body -->
             <div class="hrmis-panel__body">
+                <t t-if="error_msg">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Error:</strong>
+                        <t t-esc="error_msg"/>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </t>
 
+                <t t-if="success_msg">
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Success:</strong>
+                        <t t-esc="success_msg"/>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </t>
+
+                <t t-if="info_msg">
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <strong>Info:</strong>
+                        <t t-esc="info_msg"/>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </t>
                 <form class="hrmis-form"
                       t-att-action="'/hrmis/profile/request/approve/%s' % req.id"
                       method="post">
@@ -75,6 +97,7 @@
                                    name="hrmis_commission_date"
                                    t-att-value="req.hrmis_commission_date"/>
                         </div>
+
                         <!-- Service -->
                         <div class="hrmis-field">
                             <label>Joining Date</label>
@@ -82,6 +105,33 @@
                                    type="date"
                                    name="hrmis_joining_date"
                                    t-att-value="req.hrmis_joining_date"/>
+                        </div>
+                        <!-- Posting -->
+                        <div class="hrmis-field">
+                            <label>District</label>
+                            <select class="hrmis-input js-hrmis-district" name="district_id" required="required">
+                                <option value="">Select</option>
+                                <t t-foreach="districts" t-as="dist">
+                                    <option t-att-value="dist.id"
+                                            t-att-selected="req.district_id and req.district_id.id == dist.id">
+                                        <t t-esc="dist.name"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+
+                        <div class="hrmis-field">
+                            <label>Facility</label>
+                            <select class="hrmis-input js-hrmis-facility" name="facility_id" required="required">
+                                <option value="">Select</option>
+                                <t t-foreach="facilities" t-as="fac">
+                                    <option t-att-value="fac.id"
+                                            t-att-data-district-id="fac.district_id.id if fac.district_id else ''"
+                                            t-att-selected="req.facility_id and req.facility_id.id == fac.id">
+                                        <t t-esc="fac.name"/>
+                                    </option>
+                                </t>
+                            </select>
                         </div>
 
                         <div class="hrmis-field">
@@ -99,52 +149,38 @@
 
                         <div class="hrmis-field">
                             <label>BPS Grade</label>
-                            <input class="hrmis-input"
-                                   type="number"
-                                   name="hrmis_bps"
-                                   t-att-value="req.hrmis_bps"/>
+                            <input class="hrmis-input js-hrmis-bps"
+                                type="number"
+                                name="hrmis_bps"
+                                t-att-value="req.hrmis_bps"/>
                         </div>
 
                         <!-- Designation -->
                         <div class="hrmis-field">
                             <label>Designation<span class="req">*</span></label>
-                            <select class="hrmis-input" name="hrmis_designation" required="required">
+                            <select class="hrmis-input js-designation-select" name="hrmis_designation" required="required">
                                 <option value="">Select</option>
                                 <t t-foreach="designations" t-as="designation">
-                                    <option t-att-value="designation.id"
-                                            t-att-selected="req.hrmis_designation and req.hrmis_designation.id == designation.id">
-                                        <t t-esc="designation.name"/>
-                                    </option>
+                                    <t t-set="rem"
+                                        t-value="remaining_map.get((designation.facility_id.id, designation.id), designation.total_sanctioned_posts or 0)"/>
+
+                                        <option t-att-value="designation.id"
+                                                t-att-data-facility-id="designation.facility_id.id if designation.facility_id else ''"
+                                                t-att-data-bps="designation.post_BPS"
+                                                t-att-data-total="designation.total_sanctioned_posts"
+                                                t-att-data-remaining="rem"
+                                                t-att-style="'color:#c62828;' if (rem or 0) == 0 else ''"
+                                                t-att-selected="req.hrmis_designation and req.hrmis_designation.id == designation.id">
+                                            <t t-esc="designation.name"/>
+                                            <t t-esc="'  (%s/%s)' % (rem or 0, designation.total_sanctioned_posts or 0)"/>
+                                        </option>
+
                                 </t>
                             </select>
+
+
                         </div>
 
-                        <!-- Posting -->
-                        <div class="hrmis-field">
-                            <label>District</label>
-                            <select class="hrmis-input" name="district_id">
-                                <option value="">Select</option>
-                                <t t-foreach="districts" t-as="dist">
-                                    <option t-att-value="dist.id"
-                                            t-att-selected="req.district_id and req.district_id.id == dist.id">
-                                        <t t-esc="dist.name"/>
-                                    </option>
-                                </t>
-                            </select>
-                        </div>
-
-                        <div class="hrmis-field">
-                            <label>Facility</label>
-                            <select class="hrmis-input" name="facility_id">
-                                <option value="">Select</option>
-                                <t t-foreach="facilities" t-as="fac">
-                                    <option t-att-value="fac.id"
-                                            t-att-selected="req.facility_id and req.facility_id.id == fac.id">
-                                        <t t-esc="fac.name"/>
-                                    </option>
-                                </t>
-                            </select>
-                        </div>
                         <div class="hrmis-field">
                             <label>Total Leaves Taken Since Joining (Days)</label>
                             <input class="hrmis-input"

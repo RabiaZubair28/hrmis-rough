@@ -26,8 +26,8 @@
                     </t>
 
                     <form t-att-action="'/web/login'" method="post">
-                        <input type="hidden" name="csrf_token"
-                               t-att-value="request.csrf_token()"/>
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
                         <input type="hidden" name="redirect"
                                t-att-value="redirect"/>
 

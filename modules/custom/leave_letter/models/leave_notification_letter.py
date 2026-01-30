@@ -1,6 +1,8 @@
+import base64
+from io import BytesIO
 from odoo import models, fields, api
 from datetime import timedelta
-
+import qrcode
 class LeaveNotification(models.Model):
     _name = 'leave.notification'
     _description = 'Leave Notification'
@@ -77,7 +79,25 @@ class LeaveNotification(models.Model):
             'leave_start_date': leave.request_date_from,
             'leave_end_date': leave.request_date_to,
         })
+    def get_notification_qr_b64(self):
+        self.ensure_one()
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        url = f"{base_url}/report/pdf/leave_letter.leave_notification_pdf/{self.id}"
 
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=6,
+            border=2,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+
+        return base64.b64encode(buf.getvalue()).decode()
 
 
     # @api.model
