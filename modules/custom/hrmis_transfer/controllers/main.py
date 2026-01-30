@@ -87,11 +87,19 @@ class HrmisTransferController(http.Controller):
         emp_desig = getattr(employee, "hrmis_designation", False)
         if emp_desig:
             # Prefer code match when available, fall back to name match.
-            dom = [("facility_id", "=", req_fac.id), ("active", "=", True)]
+            dom = [
+                ("facility_id", "=", req_fac.id),
+                ("active", "=", True),
+                ("post_BPS", "=", getattr(employee, "hrmis_bps", 0) or 0),
+            ]
             if getattr(emp_desig, "code", False):
                 matched_designation = Designation.search(dom + [("code", "=", emp_desig.code)], limit=1)
             if not matched_designation:
                 matched_designation = Designation.search(dom + [("name", "=", emp_desig.name)], limit=1)
+
+        if not matched_designation:
+            msg = "Requested facility does not have your designation at your BPS"
+            return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
 
         Transfer = request.env["hrmis.transfer.request"].sudo()
         tr = Transfer.create(

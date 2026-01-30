@@ -141,23 +141,12 @@ class HrmisTransferRequest(models.Model):
             if "facility_id" in rec.employee_id._fields and rec.employee_id.facility_id:
                 rec.current_facility_id = rec.employee_id.facility_id
 
-            # Default requested designation to the employee designation when available.
-            if "hrmis_designation" in rec.employee_id._fields and rec.employee_id.hrmis_designation:
-                # Only set if not already set (do not override user choice).
-                if not rec.required_designation_id:
-                    rec.required_designation_id = rec.employee_id.hrmis_designation
-
     @api.model_create_multi
     def create(self, vals_list):
         seq = self.env["ir.sequence"]
         for vals in vals_list:
             if vals.get("name", "New") == "New":
                 vals["name"] = seq.next_by_code("hrmis.transfer.request") or "/"
-            # Default requested designation from employee if not provided.
-            if not vals.get("required_designation_id") and vals.get("employee_id"):
-                emp = self.env["hr.employee"].sudo().browse(vals["employee_id"]).exists()
-                if emp and "hrmis_designation" in emp._fields and emp.hrmis_designation:
-                    vals["required_designation_id"] = emp.hrmis_designation.id
         recs = super().create(vals_list)
         return recs
 
