@@ -1,5 +1,49 @@
 /** @odoo-module **/
 
+async function fetchEligibleDestinations(employeeId) {
+  if (!employeeId) return { ok: false, error: "missing_employee_id" };
+  const url = `/hrmis/api/transfer/eligible_destinations?employee_id=${encodeURIComponent(employeeId)}`;
+  const res = await fetch(url, { method: "GET", credentials: "same-origin" });
+  // Odoo endpoints may return 200 with ok:false payload; treat non-200 as failure too.
+  if (!res.ok) {
+    return { ok: false, error: `http_${res.status}` };
+  }
+  return await res.json();
+}
+
+function clearSelect(selectEl, placeholderText) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+  const opt = document.createElement("option");
+  opt.value = "";
+  opt.textContent = placeholderText || "Select";
+  selectEl.appendChild(opt);
+}
+
+function populateDistricts(selectEl, districts) {
+  clearSelect(selectEl, "Select district");
+  (districts || []).forEach((d) => {
+    const opt = document.createElement("option");
+    opt.value = String(d.id);
+    opt.textContent = d.name;
+    selectEl.appendChild(opt);
+  });
+}
+
+function populateFacilities(selectEl, facilities) {
+  clearSelect(selectEl, "Select facility");
+  (facilities || []).forEach((f) => {
+    const opt = document.createElement("option");
+    opt.value = String(f.id);
+    opt.textContent = `${f.name} (Vacant: ${f.vacant})`;
+    opt.setAttribute("data-district-id", String(f.district_id || ""));
+    opt.setAttribute("data-vacant", String(f.vacant ?? 0));
+    opt.setAttribute("data-occupied", String(f.occupied ?? 0));
+    opt.setAttribute("data-total", String(f.total ?? 0));
+    selectEl.appendChild(opt);
+  });
+}
+
 function filterFacilities(districtSelect, facilitySelect) {
   if (!districtSelect || !facilitySelect) return;
 
@@ -34,37 +78,6 @@ function filterFacilities(districtSelect, facilitySelect) {
   }
 }
 
-function filterDesignations(facilitySelect, designationSelect) {
-  if (!facilitySelect || !designationSelect) return;
-
-  const facilityId = facilitySelect.value || "";
-  const options = Array.from(designationSelect.querySelectorAll("option"));
-
-  // Always keep the placeholder visible
-  options.forEach((opt, idx) => {
-    if (idx === 0) {
-      opt.hidden = false;
-      opt.disabled = false;
-      opt.style.display = "";
-      return;
-    }
-    const optFacilityId = opt.getAttribute("data-facility-id") || "";
-    // Match profile-update behavior: hide all designations until a facility is selected.
-    const visible = facilityId !== "" && optFacilityId === facilityId;
-    opt.style.display = visible ? "" : "none";
-    opt.hidden = !visible;
-    opt.disabled = !visible;
-  });
-
-  const selected = designationSelect.options[designationSelect.selectedIndex];
-  if (selected && selected.value) {
-    const selectedFacilityId = selected.getAttribute("data-facility-id") || "";
-    if (facilityId && selectedFacilityId !== facilityId) {
-      designationSelect.value = "";
-    }
-  }
-}
-
 function initPair(groupName) {
   const district = document.querySelector(
     `select[data-hrmis-transfer-group="${groupName}"][name$="_district_id"]`,
@@ -81,34 +94,85 @@ function initPair(groupName) {
   );
 }
 
-function initDesignationPair() {
-  const facility = document.querySelector(
-    `select[data-hrmis-transfer-group="required"][name$="_facility_id"]`,
-  );
-  const designation = document.querySelector(
-    "select.js-hrmis-required-designation[name='required_designation_id']",
-  );
-  if (!facility || !designation) return;
-
-  filterDesignations(facility, designation);
-  facility.addEventListener("change", () => filterDesignations(facility, designation));
-
-  // Also reset designation when district changes and facility gets cleared.
-  const district = document.querySelector(
+async function initEligibleRequiredDestinations() {
+  const form = document.querySelector("form.hrmis-transfer-request-form");
+  const employeeId = form ? form.getAttribute("data-employee-id") : "";
+  const reqDistrict = document.querySelector(
     `select[data-hrmis-transfer-group="required"][name$="_district_id"]`,
   );
-  if (district) {
-    district.addEventListener("change", () => {
-      // facility filtering might clear value; re-apply designation filter after that.
-      window.setTimeout(() => filterDesignations(facility, designation), 0);
-    });
+  const reqFacility = document.querySelector(
+    `select[data-hrmis-transfer-group="required"][name$="_facility_id"]`,
+  );
+  const msgEl = document.querySelector(".js-hrmis-transfer-eligibility-msg");
+  const vacancyEl = document.querySelector(".js-hrmis-transfer-vacancy");
+
+  if (!reqDistrict || !reqFacility) return;
+
+  // Default empty state while loading
+  clearSelect(reqDistrict, "Loading…");
+  clearSelect(reqFacility, "Loading…");
+  if (msgEl) msgEl.style.display = "none";
+  if (vacancyEl) vacancyEl.style.display = "none";
+
+  let payload;
+  try {
+    payload = await fetchEligibleDestinations(employeeId);
+  } catch (e) {
+    payload = { ok: false, error: "fetch_failed" };
+  }
+
+  if (!payload || !payload.ok) {
+    populateDistricts(reqDistrict, []);
+    populateFacilities(reqFacility, []);
+    if (msgEl) {
+      msgEl.textContent = "Could not load eligible districts/facilities. Please refresh.";
+      msgEl.style.display = "";
+    }
+    return;
+  }
+
+  populateDistricts(reqDistrict, payload.districts || []);
+  populateFacilities(reqFacility, payload.facilities || []);
+
+  // Apply district->facility filtering on current selection
+  filterFacilities(reqDistrict, reqFacility);
+
+  const updateVacancy = () => {
+    const opt = reqFacility.options[reqFacility.selectedIndex];
+    if (!opt || !opt.value) {
+      if (vacancyEl) vacancyEl.style.display = "none";
+      return;
+    }
+    const vacant = opt.getAttribute("data-vacant") || "0";
+    const occupied = opt.getAttribute("data-occupied") || "0";
+    const total = opt.getAttribute("data-total") || "0";
+    if (vacancyEl) {
+      vacancyEl.textContent = `Vacant posts for your designation (BPS ${payload.employee_bps}): ${vacant} / ${total} (Occupied: ${occupied})`;
+      vacancyEl.style.display = "";
+    }
+  };
+
+  reqDistrict.addEventListener("change", () => {
+    filterFacilities(reqDistrict, reqFacility);
+    updateVacancy();
+  });
+  reqFacility.addEventListener("change", updateVacancy);
+  updateVacancy();
+
+  if (msgEl) {
+    const dn = payload.employee_designation || "your designation";
+    const bps = payload.employee_bps || "";
+    msgEl.textContent = `Showing only destinations with ${dn} at BPS ${bps}.`;
+    msgEl.style.display = "";
+    msgEl.style.color = "#444";
+    msgEl.style.fontWeight = "600";
   }
 }
 
 function init() {
   initPair("current");
-  initPair("required");
-  initDesignationPair();
+  // Required district/facility is populated from eligibility API
+  initEligibleRequiredDestinations();
 }
 
 // In some Odoo pages, assets can load after DOMContentLoaded.

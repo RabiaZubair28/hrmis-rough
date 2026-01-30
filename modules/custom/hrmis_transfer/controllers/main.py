@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from urllib.parse import quote_plus
 
 from odoo import http
@@ -7,6 +8,13 @@ from odoo.http import request
 
 
 class HrmisTransferController(http.Controller):
+    def _json(self, payload: dict, status: int = 200):
+        return request.make_response(
+            json.dumps(payload),
+            headers=[("Content-Type", "application/json")],
+            status=status,
+        )
+
     def _current_employee(self):
         return (
             request.env["hr.employee"]
@@ -21,6 +29,101 @@ class HrmisTransferController(http.Controller):
         if employee.user_id and employee.user_id.id == user.id:
             return True
         return bool(user.has_group("hr.group_hr_manager") or user.has_group("base.group_system"))
+
+    @http.route(
+        ["/hrmis/api/transfer/eligible_destinations"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["GET"],
+        csrf=False,
+    )
+    def hrmis_api_transfer_eligible_destinations(self, **kw):
+        """
+        Return ONLY districts+facilities which have the employee's current designation
+        at the employee's BPS grade, along with vacancy counts for that designation.
+        """
+        try:
+            employee_id = int((kw.get("employee_id") or 0) or 0)
+        except Exception:
+            employee_id = 0
+
+        employee = request.env["hr.employee"].sudo().browse(employee_id).exists()
+        if not employee or not self._can_submit_for_employee(employee):
+            return self._json({"ok": False, "error": "not_allowed", "districts": [], "facilities": []}, status=200)
+
+        emp_desig = getattr(employee, "hrmis_designation", False)
+        emp_bps = getattr(employee, "hrmis_bps", 0) or 0
+        if not emp_desig or not emp_bps:
+            return self._json(
+                {
+                    "ok": True,
+                    "employee_designation": getattr(emp_desig, "name", "") if emp_desig else "",
+                    "employee_bps": emp_bps,
+                    "districts": [],
+                    "facilities": [],
+                },
+                status=200,
+            )
+
+        Designation = request.env["hrmis.designation"].sudo()
+        dom = [("active", "=", True), ("post_BPS", "=", emp_bps)]
+        if getattr(emp_desig, "code", False):
+            dom += [("code", "=", emp_desig.code)]
+        else:
+            dom += [("name", "=", emp_desig.name)]
+
+        designations = Designation.search(dom)
+        facilities = designations.mapped("facility_id")
+        districts = facilities.mapped("district_id")
+
+        Allocation = request.env["hrmis.facility.designation"].sudo()
+        allocs = Allocation.search(
+            [
+                ("facility_id", "in", facilities.ids or [-1]),
+                ("designation_id", "in", designations.ids or [-1]),
+            ]
+        )
+        occupied_by_key = {(a.facility_id.id, a.designation_id.id): (a.occupied_posts or 0) for a in allocs}
+
+        # Pick one matching designation per facility (duplicates can exist in some DBs).
+        desigs_by_fac = {}
+        for d in designations:
+            if d.facility_id and d.facility_id.id not in desigs_by_fac:
+                desigs_by_fac[d.facility_id.id] = d
+
+        facilities_payload = []
+        for fac in facilities:
+            d = desigs_by_fac.get(fac.id)
+            total = int(getattr(d, "total_sanctioned_posts", 0) or 0) if d else 0
+            occ = int(occupied_by_key.get((fac.id, d.id), 0) if d else 0)
+            vac = int(total - occ)
+            facilities_payload.append(
+                {
+                    "id": fac.id,
+                    "name": fac.name,
+                    "district_id": fac.district_id.id if getattr(fac, "district_id", False) else 0,
+                    "designation_id": d.id if d else 0,
+                    "total": total,
+                    "occupied": occ,
+                    "vacant": vac,
+                }
+            )
+
+        facilities_payload.sort(key=lambda x: (x.get("district_id") or 0, x.get("name") or ""))
+        districts_payload = [{"id": d.id, "name": d.name} for d in districts]
+        districts_payload.sort(key=lambda x: x.get("name") or "")
+
+        return self._json(
+            {
+                "ok": True,
+                "employee_designation": emp_desig.name,
+                "employee_bps": emp_bps,
+                "districts": districts_payload,
+                "facilities": facilities_payload,
+            },
+            status=200,
+        )
 
     @http.route(
         ["/hrmis/staff/<int:employee_id>/transfer/submit"],

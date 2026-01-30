@@ -15,19 +15,6 @@
                 <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
                 <t t-set="districts" t-value="request.env['hrmis.district.master'].sudo().search([])"/>
                 <t t-set="facilities" t-value="request.env['hrmis.facility.type'].sudo().search([])"/>
-                <!-- Filter required district/facility by employee's current designation + BPS -->
-                <t t-set="emp_desig"
-                   t-value="(employee and ('hrmis_designation' in employee._fields) and employee.hrmis_designation) or False"/>
-                <t t-set="emp_bps"
-                   t-value="(employee and ('hrmis_bps' in employee._fields) and employee.hrmis_bps) or 0"/>
-                <t t-set="DesignationModel" t-value="request.env['hrmis.designation'].sudo()"/>
-                <t t-set="eligible_designations_by_code"
-                   t-value="(emp_desig and emp_bps and ('code' in emp_desig._fields) and emp_desig.code and DesignationModel.search([('active','=',True),('post_BPS','=',emp_bps),('code','=',emp_desig.code)])) or DesignationModel.browse([])"/>
-                <t t-set="eligible_designations_by_name"
-                   t-value="(emp_desig and emp_bps and emp_desig.name and DesignationModel.search([('active','=',True),('post_BPS','=',emp_bps),('name','=',emp_desig.name)])) or DesignationModel.browse([])"/>
-                <t t-set="eligible_designations" t-value="eligible_designations_by_code or eligible_designations_by_name"/>
-                <t t-set="eligible_facilities" t-value="eligible_designations.mapped('facility_id') if eligible_designations else request.env['hrmis.facility.type'].browse([])"/>
-                <t t-set="eligible_districts" t-value="eligible_facilities.mapped('district_id') if eligible_facilities else request.env['hrmis.district.master'].browse([])"/>
                 <form class="hrmis-form hrmis-transfer-request-form"
                       t-att-data-employee-bps="employee.hrmis_bps"
                       t-att-action="'/hrmis/staff/%s/transfer/submit' % employee.id"
@@ -88,17 +75,11 @@
                                     data-hrmis-transfer-group="required"
                                     required="required">
                                 <option value="">Select district</option>
-                                <t t-if="eligible_districts">
-                                    <t t-foreach="eligible_districts" t-as="d">
-                                        <option t-att-value="d.id"><t t-esc="d.name"/></option>
-                                    </t>
-                                </t>
                             </select>
-                            <t t-if="employee and emp_desig and emp_bps and not eligible_districts">
-                                <div class="hrmis-help" style="margin-top:6px; color:#a00; font-weight:700;">
-                                    No districts found with your designation (<t t-esc="emp_desig.name"/>) at BPS <t t-esc="emp_bps"/>.
-                                </div>
-                            </t>
+                            <div class="hrmis-help js-hrmis-transfer-eligibility-msg"
+                                 style="margin-top:6px; color:#a00; font-weight:700; display:none;">
+                                <!-- filled by JS -->
+                            </div>
                         </div>
 
                         <div class="hrmis-field">
@@ -108,15 +89,11 @@
                                     data-hrmis-transfer-group="required"
                                     required="required">
                                 <option value="">Select facility</option>
-                                <t t-if="eligible_facilities">
-                                    <t t-foreach="eligible_facilities" t-as="f">
-                                        <option t-att-value="f.id"
-                                                t-att-data-district-id="f.district_id.id if f.district_id else ''">
-                                            <t t-esc="f.name"/>
-                                        </option>
-                                    </t>
-                                </t>
                             </select>
+                            <div class="hrmis-help js-hrmis-transfer-vacancy"
+                                 style="margin-top:6px; color:#111; font-weight:700; display:none;">
+                                <!-- filled by JS -->
+                            </div>
                         </div>
 
                         <!-- Justification -->
