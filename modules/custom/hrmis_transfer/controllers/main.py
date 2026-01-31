@@ -67,11 +67,16 @@ class HrmisTransferController(http.Controller):
             )
 
         Designation = request.env["hrmis.designation"].sudo()
+        # IMPORTANT: match case-insensitively across districts.
+        # Many DBs store different casing (e.g., "CARDIOLOGIST" vs "Cardiologist").
         dom = [("active", "=", True), ("post_BPS", "=", emp_bps)]
-        if getattr(emp_desig, "code", False):
-            dom += [("code", "=", emp_desig.code)]
+        emp_code = (getattr(emp_desig, "code", "") or "").strip()
+        emp_name = (getattr(emp_desig, "name", "") or "").strip()
+        if emp_code:
+            # accept either code OR name match (case-insensitive exact)
+            dom += ["|", ("code", "=ilike", emp_code), ("name", "=ilike", emp_name)]
         else:
-            dom += [("name", "=", emp_desig.name)]
+            dom += [("name", "=ilike", emp_name)]
 
         # IMPORTANT:
         # In this deployment, the source of truth for "facility has designation" is the
@@ -196,10 +201,12 @@ class HrmisTransferController(http.Controller):
                 ("active", "=", True),
                 ("post_BPS", "=", getattr(employee, "hrmis_bps", 0) or 0),
             ]
-            if getattr(emp_desig, "code", False):
-                matched_designation = Designation.search(dom + [("code", "=", emp_desig.code)], limit=1)
+            emp_code = (getattr(emp_desig, "code", "") or "").strip()
+            emp_name = (getattr(emp_desig, "name", "") or "").strip()
+            if emp_code:
+                matched_designation = Designation.search(dom + [("code", "=ilike", emp_code)], limit=1)
             if not matched_designation:
-                matched_designation = Designation.search(dom + [("name", "=", emp_desig.name)], limit=1)
+                matched_designation = Designation.search(dom + [("name", "=ilike", emp_name)], limit=1)
 
         # Enforce: requested facility must have a configured allocation row for this designation+BPS.
         Allocation = request.env["hrmis.facility.designation"].sudo()
