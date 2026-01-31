@@ -449,6 +449,9 @@
                         <t t-foreach="range(len(transfer_requests))" t-as="idx0">
                             <t t-set="tr" t-value="transfer_requests[idx0]"/>
                             <t t-set="vac" t-value="vacancy_by_transfer_id.get(tr.id, {}) if vacancy_by_transfer_id else {}"/>
+                            <t t-set="vacant_num" t-value="(vac and (vac.get('vacant') or 0)) or 0"/>
+                            <t t-set="can_designation" t-value="can_approve_by_transfer_id and can_approve_by_transfer_id.get(tr.id)"/>
+                            <t t-set="can_accept" t-value="bool(can_designation and (vacant_num &gt; 0))"/>
 
                             <div class="hrmis-table__row" t-att-style="grid_tr" style="margin-top:12px;">
                                 <div><t t-esc="idx0 + 1"/></div>
@@ -567,41 +570,38 @@
                                                 <t t-else="">No</t>
                                             </div>
                                         </div>
+                                    <t t-if="vacant_num &lt;= 0">
+                                        <div class="hrmis-modal__field" style="grid-column:1 / -1;">
+                                            <div class="hrmis-modal__label">Vacancy Status</div>
+                                            <div class="hrmis-modal__value" style="color:#a00; font-weight:800;">
+                                                No vacant posts available for this transfer.
+                                            </div>
+                                        </div>
+                                    </t>
                                     </div>
 
                                     <div class="hrmis-modal__section">
-                                        <div class="hrmis-modal__label" style="margin-bottom:6px;">Approve</div>
-                                        <form t-att-action="'/hrmis/transfer/%s/approve' % tr.id" method="post">
+                                        <div class="hrmis-modal__label" style="margin-bottom:6px;">Comment</div>
+                                        <form t-att-action="'/hrmis/transfer/%s/action' % tr.id" method="post">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <input type="hidden" name="decision" value="approve"/>
                                             <textarea class="hrmis-input hrmis-input--wide"
                                                       name="comment"
                                                       rows="3"
-                                                      placeholder="Optional approval comment..."></textarea>
+                                                      placeholder="Optional comment..."></textarea>
                                             <div class="hrmis-modal__actions">
                                                 <button class="hrmis-btn hrmis-btn--primary"
                                                         type="submit"
-                                                        t-att-disabled="'disabled' if not (can_approve_by_transfer_id and can_approve_by_transfer_id.get(tr.id)) else None"
-                                                        t-attf-style="cursor: #{'not-allowed' if not (can_approve_by_transfer_id and can_approve_by_transfer_id.get(tr.id)) else 'pointer'};">
+                                                        t-att-disabled="'disabled' if not can_accept else None"
+                                                        t-attf-style="cursor: #{'not-allowed' if not can_accept else 'pointer'};"
+                                                        onclick="this.form.decision.value='approve';">
                                                     Accept
                                                 </button>
-                                            </div>
-                                        </form>
-                                    </div>
-
-                                    <div class="hrmis-modal__section">
-                                        <div class="hrmis-modal__label" style="margin-bottom:6px;">Reject</div>
-                                        <form t-att-action="'/hrmis/transfer/%s/reject' % tr.id" method="post">
-                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                            <textarea class="hrmis-input hrmis-input--wide"
-                                                      name="reject_reason"
-                                                      rows="3"
-                                                      placeholder="Rejection reason (recommended)..."></textarea>
-                                            <textarea class="hrmis-input hrmis-input--wide"
-                                                      name="comment"
-                                                      rows="2"
-                                                      placeholder="Optional comment..."></textarea>
-                                            <div class="hrmis-modal__actions">
-                                                <button class="hrmis-btn hrmis-btn--outline" type="submit">Reject</button>
+                                                <button class="hrmis-btn hrmis-btn--outline"
+                                                        type="submit"
+                                                        onclick="this.form.decision.value='dismiss';">
+                                                    Dismiss
+                                                </button>
                                             </div>
                                         </form>
                                     </div>

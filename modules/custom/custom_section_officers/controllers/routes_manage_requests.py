@@ -692,6 +692,65 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         return request.redirect("/hrmis/manage/requests?tab=transfer_requests&success=approved")
 
     @http.route(
+        ["/hrmis/transfer/<int:transfer_id>/action"],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def hrmis_transfer_action(self, transfer_id: int, **post):
+        tr = request.env["hrmis.transfer.request"].browse(transfer_id).exists()
+        if not tr:
+            return request.not_found()
+
+        if tr.state != "submitted":
+            return request.redirect(
+                "/hrmis/manage/requests?tab=transfer_requests&error=Transfer+request+is+not+pending"
+            )
+
+        decision = (post.get("decision") or "approve").strip().lower()
+        comment = (post.get("comment") or "").strip()
+
+        try:
+            if decision == "dismiss":
+                if comment:
+                    tr.sudo().write({"reject_reason": comment})
+                    tr.sudo().message_post(
+                        body=comment,
+                        message_type="comment",
+                        subtype_xmlid="mail.mt_comment",
+                        author_id=request.env.user.partner_id.id,
+                    )
+                tr.with_context(hrmis_dismiss=True).action_reject()
+                return request.redirect(
+                    "/hrmis/manage/requests?tab=transfer_requests&success=Transfer+request+dismissed"
+                )
+
+            # approve
+            if comment:
+                tr.sudo().message_post(
+                    body=comment,
+                    message_type="comment",
+                    subtype_xmlid="mail.mt_comment",
+                    author_id=request.env.user.partner_id.id,
+                )
+            tr.action_approve()
+            return request.redirect(
+                "/hrmis/manage/requests?tab=transfer_requests&success=Transfer+request+approved"
+            )
+
+        except UserError as e:
+            return request.redirect(
+                "/hrmis/manage/requests?tab=transfer_requests&error=%s" % http.url_quote(e.name)
+            )
+        except Exception:
+            _logger.exception("Transfer decision failed for transfer_id=%s", transfer_id)
+            return request.redirect(
+                "/hrmis/manage/requests?tab=transfer_requests&error=Action+failed"
+            )
+
+    @http.route(
         ["/hrmis/transfer/<int:transfer_id>/reject"],
         type="http",
         auth="user",

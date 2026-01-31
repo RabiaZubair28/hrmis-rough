@@ -65,6 +65,11 @@ function _redirectForNotification(resModel, ctx) {
     return "/hrmis/services";
   }
 
+  if (resModel === "hrmis.transfer.request") {
+    if (isSO) return "/hrmis/manage/requests?tab=transfer_requests";
+    return "/hrmis/transfer?tab=requests";
+  }
+
   return "/hrmis/notifications";
 }
 

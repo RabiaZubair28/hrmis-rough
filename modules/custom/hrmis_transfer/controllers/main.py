@@ -161,8 +161,12 @@ class HrmisTransferController(http.Controller):
             except Exception:
                 return 0
 
-        current_district_id = _safe_int(post.get("current_district_id"))
-        current_facility_id = _safe_int(post.get("current_facility_id"))
+        current_district_id = _safe_int(post.get("current_district_id")) or int(
+            getattr(getattr(employee, "district_id", False), "id", 0) or 0
+        )
+        current_facility_id = _safe_int(post.get("current_facility_id")) or int(
+            getattr(getattr(employee, "facility_id", False), "id", 0) or 0
+        )
         required_district_id = _safe_int(post.get("required_district_id"))
         required_facility_id = _safe_int(post.get("required_facility_id"))
         justification = (post.get("justification") or "").strip()
@@ -237,4 +241,4 @@ class HrmisTransferController(http.Controller):
         )
         tr.with_user(request.env.user).action_submit()
 
-        return request.redirect("/hrmis/transfer?tab=requests&success=Transfer+request+submitted")
+        return request.redirect("/hrmis/transfer?tab=requests&success=Transfer+request+submitted+successfully")
