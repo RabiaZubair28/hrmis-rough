@@ -436,7 +436,8 @@ class HrmisLeaveFrontendController(http.Controller):
     @http.route(["/hrmis/transfer"], type="http", auth="user", website=True)
     def hrmis_transfer_requests(self, tab: str = "history", **kw):
         tab = (tab or "history").strip().lower()
-        if tab not in ("history", "new"):
+        # The transfer module extends the UI with more tabs (requests/status/history/new).
+        if tab not in ("requests", "status", "history", "new"):
             tab = "history"
         return request.render(
             "hr_holidays_updates.hrmis_transfer_requests",

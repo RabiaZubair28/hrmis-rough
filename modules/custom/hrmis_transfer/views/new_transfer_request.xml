@@ -75,10 +75,11 @@
                                     data-hrmis-transfer-group="required"
                                     required="required">
                                 <option value="">Select district</option>
-                                <t t-foreach="districts" t-as="d">
-                                    <option t-att-value="d.id"><t t-esc="d.name"/></option>
-                                </t>
                             </select>
+                            <div class="hrmis-help js-hrmis-transfer-eligibility-msg"
+                                 style="margin-top:6px; color:#a00; font-weight:700; display:none;">
+                                <!-- filled by JS -->
+                            </div>
                         </div>
 
                         <div class="hrmis-field">
@@ -88,13 +89,11 @@
                                     data-hrmis-transfer-group="required"
                                     required="required">
                                 <option value="">Select facility</option>
-                                <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
-                                    <option t-att-value="f.id"
-                                            t-att-data-district-id="f.district_id.id if f.district_id else ''">
-                                        <t t-esc="f.name"/>
-                                    </option>
-                                </t>
                             </select>
+                            <div class="hrmis-help js-hrmis-transfer-vacancy"
+                                 style="margin-top:6px; color:#111; font-weight:700; display:none;">
+                                <!-- filled by JS -->
+                            </div>
                         </div>
 
                         <!-- Justification -->

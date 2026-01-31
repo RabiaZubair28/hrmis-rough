@@ -25,6 +25,16 @@ class HrmisTransferRequest(models.Model):
         tracking=True,
     )
 
+    # Internal: the matching designation record in the *requested* facility, if present.
+    # This is used for vacancy checks and seat reservation on approval.
+    required_designation_id = fields.Many2one(
+        "hrmis.designation",
+        string="Matched Designation (Requested Facility)",
+        required=False,
+        tracking=True,
+        domain="[('facility_id', '=', required_facility_id)]",
+    )
+
     current_district_id = fields.Many2one(
         "hrmis.district.master",
         string="Current District",
@@ -94,8 +104,31 @@ class HrmisTransferRequest(models.Model):
             if rec.state != "submitted":
                 rec.pending_with = ""
                 continue
-            manager_user = rec.employee_id.parent_id.user_id if rec.employee_id.parent_id else False
+            manager_emp = rec._responsible_manager_emp(rec.employee_id)
+            manager_user = manager_emp.user_id if manager_emp else False
             rec.pending_with = manager_user.name if manager_user else "HR"
+
+    def _responsible_manager_emp(self, employee):
+        """Best-effort manager resolution across DB variants."""
+        if not employee:
+            return None
+        # 1) Custom field used in some deployments
+        if "employee_parent_id" in employee._fields and getattr(employee, "employee_parent_id", False):
+            return employee.employee_parent_id
+        # 2) Standard Odoo manager field
+        if getattr(employee, "parent_id", False):
+            return employee.parent_id
+        # 3) Department manager
+        if (
+            "department_id" in employee._fields
+            and employee.department_id
+            and getattr(employee.department_id, "manager_id", False)
+        ):
+            return employee.department_id.manager_id
+        # 4) Coach fallback
+        if "coach_id" in employee._fields and getattr(employee, "coach_id", False):
+            return employee.coach_id
+        return None
 
     @api.onchange("employee_id")
     def _onchange_employee_id(self):
@@ -136,16 +169,164 @@ class HrmisTransferRequest(models.Model):
         if user.has_group("hr.group_hr_manager") or user.has_group("base.group_system"):
             return True
         # Manager of employee can decide as well (common HR pattern)
-        manager_user = self.employee_id.parent_id.user_id if self.employee_id.parent_id else False
+        manager_emp = self._responsible_manager_emp(self.employee_id)
+        manager_user = manager_emp.user_id if manager_emp else False
         if manager_user and manager_user.id == user.id:
             return True
         raise UserError("You are not allowed to approve/reject this transfer request.")
+
+    def _reserve_requested_post(self):
+        """Increment occupied posts for requested facility+designation (vacant auto-decrements)."""
+        self.ensure_one()
+        if not self.required_facility_id or not self.required_designation_id:
+            raise UserError("Requested facility and designation are required to approve.")
+
+        # Validate designation belongs to requested facility (important because designations are facility-specific here).
+        if (
+            "facility_id" in self.required_designation_id._fields
+            and self.required_designation_id.facility_id
+            and self.required_designation_id.facility_id.id != self.required_facility_id.id
+        ):
+            raise UserError("Requested designation does not belong to the requested facility.")
+
+        Allocation = self.env["hrmis.facility.designation"].sudo()
+        allocation = Allocation.search(
+            [
+                ("facility_id", "=", self.required_facility_id.id),
+                ("designation_id", "=", self.required_designation_id.id),
+            ],
+            limit=1,
+        )
+        if not allocation:
+            allocation = Allocation.create(
+                {
+                    "facility_id": self.required_facility_id.id,
+                    "designation_id": self.required_designation_id.id,
+                    "occupied_posts": 0,
+                }
+            )
+            self.env.flush_all()
+
+        # Lock row to prevent race conditions on concurrent approvals.
+        self.env.cr.execute(
+            "SELECT id FROM hrmis_facility_designation WHERE id=%s FOR UPDATE",
+            (allocation.id,),
+        )
+        self.env.flush_all()
+        allocation = Allocation.browse(allocation.id)
+
+        if getattr(allocation, "remaining_posts", 0) <= 0:
+            raise UserError("No vacant posts available for the requested designation in the requested facility.")
+
+        allocation.write({"occupied_posts": allocation.occupied_posts + 1})
+        self.env.flush_all()
+
+    def _match_employee_designation_for_facility(self, facility):
+        """Find the matching designation row for employee in a given facility."""
+        self.ensure_one()
+        employee = self.employee_id
+        if not employee or not facility:
+            return self.env["hrmis.designation"].browse([])
+
+        emp_desig = getattr(employee, "hrmis_designation", False)
+        emp_bps = getattr(employee, "hrmis_bps", 0) or 0
+        if not emp_desig or not emp_bps:
+            return self.env["hrmis.designation"].browse([])
+
+        Designation = self.env["hrmis.designation"].sudo()
+        name = (getattr(emp_desig, "name", "") or "").strip()
+        code_raw = (getattr(emp_desig, "code", "") or "").strip()
+        code = code_raw.lower()
+        bad_codes = {"", "nan", "none", "null", "n/a", "na", "-"}
+
+        dom = [
+            ("facility_id", "=", facility.id),
+            ("active", "=", True),
+            ("post_BPS", "=", emp_bps),
+        ]
+        if code and code not in bad_codes:
+            rec = Designation.search(dom + [("code", "=ilike", code_raw)], limit=1)
+            if rec:
+                return rec
+        return Designation.search(dom + [("name", "=ilike", name)], limit=1)
+
+    def _decrement_current_post(self):
+        """Decrement occupied posts for the employee's current facility+designation (best-effort)."""
+        self.ensure_one()
+        employee = self.employee_id
+        if not employee:
+            return
+
+        # Prefer the request snapshot for "current", fall back to employee profile.
+        cur_fac = self.current_facility_id or getattr(employee, "facility_id", False) or getattr(employee, "hrmis_facility_id", False)
+        if not cur_fac:
+            return
+
+        cur_desig = self._match_employee_designation_for_facility(cur_fac)
+        if not cur_desig:
+            return
+
+        Allocation = self.env["hrmis.facility.designation"].sudo()
+        alloc = Allocation.search(
+            [
+                ("facility_id", "=", cur_fac.id),
+                ("designation_id", "=", cur_desig.id),
+            ],
+            limit=1,
+        )
+        if not alloc:
+            return
+
+        # Lock row to avoid race conditions.
+        self.env.cr.execute(
+            "SELECT id FROM hrmis_facility_designation WHERE id=%s FOR UPDATE",
+            (alloc.id,),
+        )
+        self.env.flush_all()
+        alloc = Allocation.browse(alloc.id)
+        new_val = max((alloc.occupied_posts or 0) - 1, 0)
+        alloc.write({"occupied_posts": new_val})
+        self.env.flush_all()
+
+    def _apply_employee_transfer(self):
+        """Apply the transfer to the employee record (posting + designation)."""
+        self.ensure_one()
+        employee = self.employee_id
+        if not employee:
+            return
+        if not self.required_facility_id or not self.required_district_id or not self.required_designation_id:
+            raise UserError("Required district/facility/designation must be set to apply transfer.")
+
+        vals = {}
+        # Update current posting fields across schema variants.
+        if "district_id" in employee._fields:
+            vals["district_id"] = self.required_district_id.id
+        if "hrmis_district_id" in employee._fields:
+            vals["hrmis_district_id"] = self.required_district_id.id
+        if "facility_id" in employee._fields:
+            vals["facility_id"] = self.required_facility_id.id
+        if "hrmis_facility_id" in employee._fields:
+            vals["hrmis_facility_id"] = self.required_facility_id.id
+
+        # Keep designation consistent with facility-specific designation rows.
+        if "hrmis_designation" in employee._fields:
+            vals["hrmis_designation"] = self.required_designation_id.id
+
+        if vals:
+            employee.sudo().write(vals)
+            self.env.flush_all()
 
     def action_approve(self):
         for rec in self:
             rec._check_can_decide()
             if rec.state != "submitted":
                 continue
+            # Leaving the old post: decrement occupied at current posting (best-effort).
+            rec._decrement_current_post()
+            # Joining the new post: reserve seat (will lock + validate vacancy).
+            rec._reserve_requested_post()
+            # Apply the actual transfer on the employee record.
+            rec._apply_employee_transfer()
             rec.write(
                 {
                     "state": "approved",
