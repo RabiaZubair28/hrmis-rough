@@ -87,12 +87,15 @@ class HrmisTransferController(http.Controller):
         # (as loaded from hrmis_user_profiles_updates/data/hrmis_designation.xml).
         # One designation row exists per facility per designation name/BPS in that seed data.
         designations = Designation.search(dom)
-        facilities = designations.mapped("facility_id")
 
         # Do not allow transferring to the same current facility.
         current_fac = getattr(employee, "facility_id", False) or getattr(employee, "hrmis_facility_id", False)
         if current_fac:
-            facilities = facilities.filtered(lambda f: f.id != current_fac.id)
+            # IMPORTANT: filter *designations* too, otherwise current facility can still leak
+            # into the payload via iteration over `designations`.
+            designations = designations.filtered(lambda d: d.facility_id and d.facility_id.id != current_fac.id)
+
+        facilities = designations.mapped("facility_id")
         districts = facilities.mapped("district_id")
 
         Allocation = request.env["hrmis.facility.designation"].sudo()
