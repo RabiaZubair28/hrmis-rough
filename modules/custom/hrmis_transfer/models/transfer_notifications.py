@@ -77,9 +77,8 @@ class HrmisTransferRequestNotifications(models.Model):
                 new = rec.state
                 if not old or old == new:
                     continue
-                if new == "submitted":
-                    rec._notify_employee("Your transfer request has been submitted.")
-                elif new == "approved":
+                # Submitted notification is handled in action_submit() to avoid duplicates.
+                if new == "approved":
                     rec._notify_employee("Your transfer request has been approved.")
                 elif new == "rejected":
                     if self.env.context.get("hrmis_dismiss"):

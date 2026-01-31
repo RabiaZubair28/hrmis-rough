@@ -40,21 +40,7 @@
         <t t-call="hr_holidays_updates.hrmis_ui_layout">
             <div class="hrmis-panel">
                 
-                <!-- Top-level: Manage Leave vs Manage Transfer -->
-                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage">
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab in ('leave','history') else ''}"
-                       t-att-href="'/hrmis/manage/requests?tab=leave'"
-                       style="border-bottom: 2px solid black;">
-                        Manage Leave Requests
-                    </a>
-                    <a t-attf-class="hrmis-tab hrmis-tab--manage #{'is-active' if tab in ('transfer_requests','transfer_status') else ''}"
-                       t-att-href="'/hrmis/manage/requests?tab=transfer_requests'"
-                       style="border-bottom: 2px solid black;">
-                        Manage Transfer Requests
-                    </a>
-                </div>
-
-                <!-- Second-level tabs -->
+                <!-- Tabs -->
                 <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--manage"
                      style="margin-top: 6px;">
                     <t t-if="tab in ('leave','history')">

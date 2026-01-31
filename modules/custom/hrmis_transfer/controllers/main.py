@@ -88,6 +88,11 @@ class HrmisTransferController(http.Controller):
         # One designation row exists per facility per designation name/BPS in that seed data.
         designations = Designation.search(dom)
         facilities = designations.mapped("facility_id")
+
+        # Do not allow transferring to the same current facility.
+        current_fac = getattr(employee, "facility_id", False) or getattr(employee, "hrmis_facility_id", False)
+        if current_fac:
+            facilities = facilities.filtered(lambda f: f.id != current_fac.id)
         districts = facilities.mapped("district_id")
 
         Allocation = request.env["hrmis.facility.designation"].sudo()
@@ -180,6 +185,9 @@ class HrmisTransferController(http.Controller):
         ):
             msg = "Please fill all required fields"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
+        if required_facility_id and current_facility_id and required_facility_id == current_facility_id:
+            msg = "You cannot request transfer to your current facility"
+            return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
 
         District = request.env["hrmis.district.master"].sudo()
         Facility = request.env["hrmis.facility.type"].sudo()
@@ -241,4 +249,4 @@ class HrmisTransferController(http.Controller):
         )
         tr.with_user(request.env.user).action_submit()
 
-        return request.redirect("/hrmis/transfer?tab=requests&success=Transfer+request+submitted+successfully")
+        return request.redirect("/hrmis/transfer?tab=history&success=Transfer+request+submitted+successfully")
