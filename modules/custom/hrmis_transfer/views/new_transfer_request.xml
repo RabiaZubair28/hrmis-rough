@@ -75,9 +75,6 @@
                                     data-hrmis-transfer-group="required"
                                     required="required">
                                 <option value="">Select district</option>
-                                <t t-foreach="districts" t-as="d">
-                                    <option t-att-value="d.id"><t t-esc="d.name"/></option>
-                                </t>
                             </select>
                             <div class="hrmis-help js-hrmis-transfer-eligibility-msg"
                                  style="margin-top:6px; color:#a00; font-weight:700; display:none;">

@@ -20,6 +20,16 @@ function clearSelect(selectEl, placeholderText) {
   selectEl.appendChild(opt);
 }
 
+function populateDistricts(selectEl, districts) {
+  clearSelect(selectEl, "Select district");
+  (districts || []).forEach((d) => {
+    const opt = document.createElement("option");
+    opt.value = String(d.id);
+    opt.textContent = d.name;
+    selectEl.appendChild(opt);
+  });
+}
+
 function populateFacilities(selectEl, facilities) {
   clearSelect(selectEl, "Select facility");
   (facilities || []).forEach((f) => {
@@ -98,8 +108,8 @@ async function initEligibleRequiredDestinations() {
 
   if (!reqDistrict || !reqFacility) return;
 
-  // Districts are rendered server-side (ALL districts).
-  // Facilities are filtered client-side based on selected district + eligibility.
+  // Both district + facility are driven by eligibility API.
+  clearSelect(reqDistrict, "Loading…");
   clearSelect(reqFacility, "Loading…");
   if (msgEl) msgEl.style.display = "none";
   if (vacancyEl) vacancyEl.style.display = "none";
@@ -112,6 +122,7 @@ async function initEligibleRequiredDestinations() {
   }
 
   if (!payload || !payload.ok) {
+    populateDistricts(reqDistrict, []);
     populateFacilities(reqFacility, []);
     if (msgEl) {
       msgEl.textContent = "Could not load eligible districts/facilities. Please refresh.";
@@ -121,6 +132,7 @@ async function initEligibleRequiredDestinations() {
   }
 
   const allEligibleFacilities = payload.facilities || [];
+  populateDistricts(reqDistrict, payload.districts || []);
 
   const renderFacilitiesForDistrict = () => {
     const districtId = reqDistrict.value || "";
@@ -156,7 +168,7 @@ async function initEligibleRequiredDestinations() {
   if (msgEl) {
     const dn = payload.employee_designation || "your designation";
     const bps = payload.employee_bps || "";
-    msgEl.textContent = `Select a district to see facilities with ${dn} at BPS ${bps}.`;
+    msgEl.textContent = `Showing districts/facilities with ${dn} at BPS ${bps}.`;
     msgEl.style.display = "";
     msgEl.style.color = "#444";
     msgEl.style.fontWeight = "600";

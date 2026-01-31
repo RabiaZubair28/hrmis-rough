@@ -78,32 +78,35 @@ class HrmisTransferController(http.Controller):
         else:
             dom += [("name", "=ilike", emp_name)]
 
-        # IMPORTANT:
-        # In this deployment, the source of truth for "facility has designation" is the
-        # facility-designation allocation table (`hrmis.facility.designation`) used in
-        # the profile-update flow. So we ONLY return facilities that have an allocation
-        # row for a matching designation (name/code + BPS).
+        # Source of truth for "facility has designation" is `hrmis.designation` itself
+        # (as loaded from hrmis_user_profiles_updates/data/hrmis_designation.xml).
+        # One designation row exists per facility per designation name/BPS in that seed data.
         designations = Designation.search(dom)
-
-        Allocation = request.env["hrmis.facility.designation"].sudo()
-        allocs = Allocation.search([("designation_id", "in", designations.ids or [-1])])
-
-        facilities = allocs.mapped("facility_id")
+        facilities = designations.mapped("facility_id")
         districts = facilities.mapped("district_id")
 
-        # One allocation per (facility, designation) by SQL constraint; still be defensive.
-        alloc_by_fac = {}
-        for a in allocs:
-            if a.facility_id and a.facility_id.id not in alloc_by_fac:
-                alloc_by_fac[a.facility_id.id] = a
+        Allocation = request.env["hrmis.facility.designation"].sudo()
+        allocs = Allocation.search(
+            [
+                ("facility_id", "in", facilities.ids or [-1]),
+                ("designation_id", "in", designations.ids or [-1]),
+            ]
+        )
+        alloc_by_key = {(a.facility_id.id, a.designation_id.id): a for a in allocs}
 
         facilities_payload = []
-        for fac in facilities:
-            a = alloc_by_fac.get(fac.id)
-            d = a.designation_id if a else False
-            total = int(getattr(d, "total_sanctioned_posts", 0) or 0) if d else 0
+        # Prevent duplicates: one facility per designation match.
+        seen_fac_ids = set()
+        for d in designations:
+            fac = d.facility_id
+            if not fac or fac.id in seen_fac_ids:
+                continue
+            seen_fac_ids.add(fac.id)
+
+            a = alloc_by_key.get((fac.id, d.id))
+            total = int(getattr(d, "total_sanctioned_posts", 0) or 0)
             occ = int(getattr(a, "occupied_posts", 0) or 0) if a else 0
-            vac = int(getattr(a, "remaining_posts", 0) or 0) if a else 0
+            vac = int(total - occ)
             facilities_payload.append(
                 {
                     "id": fac.id,
@@ -208,21 +211,7 @@ class HrmisTransferController(http.Controller):
             if not matched_designation:
                 matched_designation = Designation.search(dom + [("name", "=ilike", emp_name)], limit=1)
 
-        # Enforce: requested facility must have a configured allocation row for this designation+BPS.
-        Allocation = request.env["hrmis.facility.designation"].sudo()
-        has_allocation = False
-        if matched_designation:
-            has_allocation = bool(
-                Allocation.search(
-                    [
-                        ("facility_id", "=", req_fac.id),
-                        ("designation_id", "=", matched_designation.id),
-                    ],
-                    limit=1,
-                )
-            )
-
-        if not matched_designation or not has_allocation:
+        if not matched_designation:
             msg = "Requested facility does not have your designation at your BPS"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
 
