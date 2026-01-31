@@ -35,7 +35,6 @@
                             <select class="hrmis-input js-hrmis-current-district"
                                     name="current_district_id"
                                     data-hrmis-transfer-group="current"
-                                    disabled="disabled"
                                     required="required">
                                 <option value="">Select district</option>
                                 <t t-foreach="districts" t-as="d">
@@ -45,9 +44,6 @@
                                     </option>
                                 </t>
                             </select>
-                            <!-- Disabled inputs don't submit; keep value in hidden input -->
-                            <input type="hidden" name="current_district_id"
-                                   t-att-value="employee and employee.district_id and employee.district_id.id or ''"/>
                         </div>
 
                         <div class="hrmis-field">
@@ -55,7 +51,6 @@
                             <select class="hrmis-input js-hrmis-current-facility"
                                     name="current_facility_id"
                                     data-hrmis-transfer-group="current"
-                                    disabled="disabled"
                                     required="required">
                                 <option value="">Select facility</option>
                                 <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
@@ -66,9 +61,6 @@
                                     </option>
                                 </t>
                             </select>
-                            <!-- Disabled inputs don't submit; keep value in hidden input -->
-                            <input type="hidden" name="current_facility_id"
-                                   t-att-value="employee and employee.facility_id and employee.facility_id.id or ''"/>
                         </div>
 
                         <!-- Required Posting -->

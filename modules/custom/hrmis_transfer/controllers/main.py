@@ -185,6 +185,9 @@ class HrmisTransferController(http.Controller):
         ):
             msg = "Please fill all required fields"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
+        if required_district_id and current_district_id and required_district_id == current_district_id:
+            msg = "You cannot request transfer within the same district"
+            return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
         if required_facility_id and current_facility_id and required_facility_id == current_facility_id:
             msg = "You cannot request transfer to your current facility"
             return request.redirect(f"/hrmis/transfer?tab=new&error={quote_plus(msg)}")
