@@ -20,16 +20,6 @@ function clearSelect(selectEl, placeholderText) {
   selectEl.appendChild(opt);
 }
 
-function populateDistricts(selectEl, districts) {
-  clearSelect(selectEl, "Select district");
-  (districts || []).forEach((d) => {
-    const opt = document.createElement("option");
-    opt.value = String(d.id);
-    opt.textContent = d.name;
-    selectEl.appendChild(opt);
-  });
-}
-
 function populateFacilities(selectEl, facilities) {
   clearSelect(selectEl, "Select facility");
   (facilities || []).forEach((f) => {
@@ -108,8 +98,8 @@ async function initEligibleRequiredDestinations() {
 
   if (!reqDistrict || !reqFacility) return;
 
-  // Default empty state while loading
-  clearSelect(reqDistrict, "Loading…");
+  // Districts are rendered server-side (ALL districts).
+  // Facilities are filtered client-side based on selected district + eligibility.
   clearSelect(reqFacility, "Loading…");
   if (msgEl) msgEl.style.display = "none";
   if (vacancyEl) vacancyEl.style.display = "none";
@@ -122,7 +112,6 @@ async function initEligibleRequiredDestinations() {
   }
 
   if (!payload || !payload.ok) {
-    populateDistricts(reqDistrict, []);
     populateFacilities(reqFacility, []);
     if (msgEl) {
       msgEl.textContent = "Could not load eligible districts/facilities. Please refresh.";
@@ -131,11 +120,15 @@ async function initEligibleRequiredDestinations() {
     return;
   }
 
-  populateDistricts(reqDistrict, payload.districts || []);
-  populateFacilities(reqFacility, payload.facilities || []);
+  const allEligibleFacilities = payload.facilities || [];
 
-  // Apply district->facility filtering on current selection
-  filterFacilities(reqDistrict, reqFacility);
+  const renderFacilitiesForDistrict = () => {
+    const districtId = reqDistrict.value || "";
+    const facs = districtId
+      ? allEligibleFacilities.filter((f) => String(f.district_id || "") === String(districtId))
+      : [];
+    populateFacilities(reqFacility, facs);
+  };
 
   const updateVacancy = () => {
     const opt = reqFacility.options[reqFacility.selectedIndex];
@@ -153,16 +146,17 @@ async function initEligibleRequiredDestinations() {
   };
 
   reqDistrict.addEventListener("change", () => {
-    filterFacilities(reqDistrict, reqFacility);
+    renderFacilitiesForDistrict();
     updateVacancy();
   });
   reqFacility.addEventListener("change", updateVacancy);
+  renderFacilitiesForDistrict();
   updateVacancy();
 
   if (msgEl) {
     const dn = payload.employee_designation || "your designation";
     const bps = payload.employee_bps || "";
-    msgEl.textContent = `Showing only destinations with ${dn} at BPS ${bps}.`;
+    msgEl.textContent = `Select a district to see facilities with ${dn} at BPS ${bps}.`;
     msgEl.style.display = "";
     msgEl.style.color = "#444";
     msgEl.style.fontWeight = "600";
