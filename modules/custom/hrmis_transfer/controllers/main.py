@@ -70,11 +70,16 @@ class HrmisTransferController(http.Controller):
         # IMPORTANT: match case-insensitively across districts.
         # Many DBs store different casing (e.g., "CARDIOLOGIST" vs "Cardiologist").
         dom = [("active", "=", True), ("post_BPS", "=", emp_bps)]
-        emp_code = (getattr(emp_desig, "code", "") or "").strip()
+        emp_code_raw = (getattr(emp_desig, "code", "") or "").strip()
+        emp_code = emp_code_raw.strip().lower()
         emp_name = (getattr(emp_desig, "name", "") or "").strip()
-        if emp_code:
+
+        # Many seed rows use code="nan" as a placeholder. Treat these as empty,
+        # otherwise we'd match *all* BPS rows having code nan.
+        bad_codes = {"", "nan", "none", "null", "n/a", "na", "-"}
+        if emp_code and emp_code not in bad_codes:
             # accept either code OR name match (case-insensitive exact)
-            dom += ["|", ("code", "=ilike", emp_code), ("name", "=ilike", emp_name)]
+            dom += ["|", ("code", "=ilike", emp_code_raw), ("name", "=ilike", emp_name)]
         else:
             dom += [("name", "=ilike", emp_name)]
 
@@ -204,10 +209,12 @@ class HrmisTransferController(http.Controller):
                 ("active", "=", True),
                 ("post_BPS", "=", getattr(employee, "hrmis_bps", 0) or 0),
             ]
-            emp_code = (getattr(emp_desig, "code", "") or "").strip()
+            emp_code_raw = (getattr(emp_desig, "code", "") or "").strip()
+            emp_code = emp_code_raw.strip().lower()
             emp_name = (getattr(emp_desig, "name", "") or "").strip()
-            if emp_code:
-                matched_designation = Designation.search(dom + [("code", "=ilike", emp_code)], limit=1)
+            bad_codes = {"", "nan", "none", "null", "n/a", "na", "-"}
+            if emp_code and emp_code not in bad_codes:
+                matched_designation = Designation.search(dom + [("code", "=ilike", emp_code_raw)], limit=1)
             if not matched_designation:
                 matched_designation = Designation.search(dom + [("name", "=ilike", emp_name)], limit=1)
 
