@@ -29,11 +29,13 @@ class HrmisPendingCountsController(http.Controller):
                     "ok": True,
                     "pending_manage_leave_count": 0,
                     "pending_profile_update_count": 0,
+                    "pending_manage_transfer_count": 0,
                 }
             )
 
         pending_manage_leave_count = 0
         pending_profile_update_count = 0
+        pending_manage_transfer_count = 0
 
         try:
             from odoo.addons.hr_holidays_updates.controllers.leave_data import (
@@ -56,10 +58,27 @@ class HrmisPendingCountsController(http.Controller):
         except Exception:
             pending_profile_update_count = 0
 
+        try:
+            Emp = request.env["hr.employee"].sudo()
+            so_emp_ids = Emp.search([("user_id", "=", user.id)]).ids
+            managed_emp_ids = []
+            if so_emp_ids:
+                if "employee_parent_id" in Emp._fields:
+                    managed_emp_ids = Emp.search([("employee_parent_id", "in", so_emp_ids)]).ids
+                else:
+                    managed_emp_ids = Emp.search([("parent_id", "in", so_emp_ids)]).ids
+            Transfer = request.env["hrmis.transfer.request"].sudo()
+            pending_manage_transfer_count = int(
+                Transfer.search_count([("state", "=", "submitted"), ("employee_id", "in", managed_emp_ids or [-1])])
+            )
+        except Exception:
+            pending_manage_transfer_count = 0
+
         return request.make_json_response(
             {
                 "ok": True,
                 "pending_manage_leave_count": pending_manage_leave_count,
                 "pending_profile_update_count": pending_profile_update_count,
+                "pending_manage_transfer_count": pending_manage_transfer_count,
             }
         )

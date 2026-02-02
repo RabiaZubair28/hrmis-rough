@@ -24,7 +24,9 @@ async function _fetchPendingCounts() {
 function _wirePendingBadges(root = document) {
   const leaveBadge = _qs(root, ".js-hrmis-pending-manage-leave-badge");
   const profileBadge = _qs(root, ".js-hrmis-pending-profile-update-badge");
-  if (!leaveBadge && !profileBadge) return;
+  const transferBadge = _qs(root, ".js-hrmis-pending-manage-transfer-badge");
+  const transferTabBadge = _qs(root, ".js-hrmis-pending-manage-transfer-tab-badge");
+  if (!leaveBadge && !profileBadge && !transferBadge && !transferTabBadge) return;
 
   let lastLoadedAt = 0;
 
@@ -38,6 +40,8 @@ function _wirePendingBadges(root = document) {
       if (!data || !data.ok) return;
       _setCountBadge(leaveBadge, data.pending_manage_leave_count);
       _setCountBadge(profileBadge, data.pending_profile_update_count);
+      _setCountBadge(transferBadge, data.pending_manage_transfer_count);
+      _setCountBadge(transferTabBadge, data.pending_manage_transfer_count);
     } catch {
       // ignore: keep last rendered counts
     }

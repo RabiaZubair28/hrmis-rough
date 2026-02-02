@@ -824,10 +824,12 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         group_emp_ids = self._employee_group_ids_for_person(employee) or [employee.id]
         Leave = request.env["hr.leave"].sudo()
+        Transfer = request.env["hrmis.transfer.request"].sudo()
 
         leaves_history = Leave.browse([])
         leave_history = Leave.browse([])
         leave_taken_by_type = {}
+        transfers_history = Transfer.browse([])
 
         if tab == "leave":
             leaves_history = Leave.search(
@@ -854,6 +856,12 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 order="request_date_from desc, id desc",
                 limit=200,
             )
+        elif tab == "transfer":
+            transfers_history = Transfer.search(
+                [("employee_id", "in", group_emp_ids), ("state", "!=", "draft")],
+                order="submitted_on desc, create_date desc, id desc",
+                limit=200,
+            )
         # tab == "profile": no extra queries required (employee is enough)
 
         return request.render(
@@ -868,6 +876,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
                 leaves_history=leaves_history,
                 leave_taken_by_type=leave_taken_by_type,
                 leave_history=leave_history,
+                transfers_history=transfers_history,
             ),
         )
 

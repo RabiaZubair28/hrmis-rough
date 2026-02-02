@@ -87,13 +87,32 @@ def base_ctx(page_title: str, active_menu: str, **extra):
                 )
             except Exception:
                 ctx["pending_profile_update_count"] = 0
+
+            # Transfer requests count (pending for current section officer's action).
+            try:
+                Emp = request.env["hr.employee"].sudo()
+                so_emp_ids = Emp.search([("user_id", "=", request.env.user.id)]).ids
+                managed_emp_ids = []
+                if so_emp_ids:
+                    if "employee_parent_id" in Emp._fields:
+                        managed_emp_ids = Emp.search([("employee_parent_id", "in", so_emp_ids)]).ids
+                    else:
+                        managed_emp_ids = Emp.search([("parent_id", "in", so_emp_ids)]).ids
+                Transfer = request.env["hrmis.transfer.request"].sudo()
+                ctx["pending_manage_transfer_count"] = int(
+                    Transfer.search_count([("state", "=", "submitted"), ("employee_id", "in", managed_emp_ids or [-1])])
+                )
+            except Exception:
+                ctx["pending_manage_transfer_count"] = 0
         else:
             ctx["pending_manage_leave_count"] = 0
             ctx["pending_profile_update_count"] = 0
+            ctx["pending_manage_transfer_count"] = 0
     except Exception:
         # Never break page render due to badge computation.
         ctx["pending_manage_leave_count"] = 0
         ctx["pending_profile_update_count"] = 0
+        ctx["pending_manage_transfer_count"] = 0
     ctx.update(extra)
     return ctx
 
