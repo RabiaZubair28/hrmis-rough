@@ -26,9 +26,10 @@
                     <div>Status</div>
                     <div>Pending With</div>
                 </div>
-                <t t-foreach="pending" t-as="tr">
+                <t t-foreach="range(len(pending))" t-as="idx0">
+                    <t t-set="tr" t-value="pending[idx0]"/>
                     <div class="hrmis-table__row">
-                        <div><t t-esc="tr.name"/></div>
+                        <div><t t-esc="idx0 + 1"/></div>
                         <div><t t-esc="tr.submitted_on or tr.create_date"/></div>
                         <div>
                             <t t-esc="(tr.required_facility_id and tr.required_facility_id.name) or ''"/>

@@ -4,7 +4,7 @@
     <template id="hrmis_ui_layout_section_officer_manage_requests" inherit_id="hr_holidays_updates.hrmis_ui_layout">
         <xpath expr="//nav[contains(@class,'hrmis-nav')]" position="inside">
         <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
-            <a t-attf-class="hrmis-nav__item #{'is-active' if (active_menu == 'manage_requests' and (request.params.get('tab') in (None,'','leave','history'))) else ''}"
+            <a t-attf-class="hrmis-nav__item #{'is-active' if (active_menu == 'manage_requests' and ('/hrmis/manage/history/' not in request.httprequest.path) and (request.params.get('tab') in (None,'','leave','history'))) else ''}"
                href="/hrmis/manage/requests?tab=leave">
                 Leave Requests
                 <span class="hrmis-nav__badge2 js-hrmis-pending-manage-leave-badge"
@@ -13,7 +13,7 @@
                 </span>
             </a>
 
-            <a t-attf-class="hrmis-nav__item #{'is-active' if (active_menu == 'manage_requests' and (request.params.get('tab') in ('transfer_requests','transfer_status'))) else ''}"
+            <a t-attf-class="hrmis-nav__item #{'is-active' if (active_menu == 'manage_requests' and ((request.params.get('tab') in ('transfer_requests','transfer_status')) or ('/hrmis/manage/history/' in request.httprequest.path))) else ''}"
                href="/hrmis/manage/requests?tab=transfer_requests">
                 Manage Transfer Requests
                 <span class="hrmis-nav__badge2 js-hrmis-pending-manage-transfer-badge"
@@ -487,7 +487,7 @@
                                         </a>
                                     </div>
                                     <div class="sub" style="color:#444;">
-                                        Ref: <t t-esc="tr.name"/>
+                                        Ref: <t t-esc="idx0 + 1"/>
                                     </div>
                                 </div>
 
@@ -545,7 +545,7 @@
                                     <div class="hrmis-modal__grid">
                                         <div class="hrmis-modal__field">
                                             <div class="hrmis-modal__label">Reference</div>
-                                            <div class="hrmis-modal__value"><t t-esc="tr.name"/></div>
+                                            <div class="hrmis-modal__value"><t t-esc="idx0 + 1"/></div>
                                         </div>
                                         <div class="hrmis-modal__field">
                                             <div class="hrmis-modal__label">Submitted On</div>
@@ -711,7 +711,7 @@
                                         </a>
                                     </div>
                                     <div class="sub" style="color:#444;">
-                                        Ref: <t t-esc="tr.name"/>
+                                        Ref: <t t-esc="idx0 + 1"/>
                                     </div>
                                 </div>
 
@@ -1122,7 +1122,7 @@
 
                         <div class="hrmis-table__head"
                              t-att-style="grid_tr_hist + 'font-size:18px;font-weight:900;padding-block:12px;'">
-                            <div>Reference</div>
+                            <div>#</div>
                             <div>Submitted On</div>
                             <div>From</div>
                             <div>To</div>
@@ -1130,10 +1130,11 @@
                             <div>Pending With</div>
                         </div>
 
-                        <t t-foreach="transfers_history" t-as="tr">
+                        <t t-foreach="range(len(transfers_history))" t-as="i0">
+                            <t t-set="tr" t-value="transfers_history[i0]"/>
                             <div class="hrmis-table__row"
                                  t-att-style="grid_tr_hist + 'font-size:15px;margin-top:8px;border-bottom:1px solid #eee;'">
-                                <div><t t-esc="tr.name"/></div>
+                                <div><t t-esc="i0 + 1"/></div>
                                 <div><t t-esc="(str(tr.submitted_on or tr.create_date)[:19] if (tr.submitted_on or tr.create_date) else '')"/></div>
                                 <div>
                                     <t t-esc="(tr.current_facility_id and tr.current_facility_id.name) or '-'"/>
