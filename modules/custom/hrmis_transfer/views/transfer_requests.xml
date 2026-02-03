@@ -4,12 +4,6 @@
     <template id="hrmis_transfer_requests_inherit_tabs" inherit_id="hr_holidays_updates.hrmis_transfer_requests">
         <xpath expr="//div[contains(@class,'hrmis-panel__header') and contains(@class,'hrmis-panel__header--tabs')]" position="replace">
             <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
-                <t t-if="request.env.user.has_group('custom_login.group_section_officer')">
-                    <a class="hrmis-tab"
-                       t-att-href="'/hrmis/manage/requests?tab=transfer_requests'">
-                        Manage Transfer Requests
-                    </a>
-                </t>
                 <a t-attf-class="hrmis-tab #{'is-active' if tab == 'requests' else ''}"
                    t-att-href="'/hrmis/transfer?tab=requests'">Transfer Requests</a>
                 <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
