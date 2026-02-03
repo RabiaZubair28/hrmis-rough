@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="hrmis_msdho_transfer_requests" name="HRMIS MS DHO: Transfer Requests">
+        <t t-call="hr_holidays_updates.hrmis_ui_layout">
+            <div class="hrmis-panel">
+                <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
+                       t-att-href="'/hrmis/msdho/transfer?tab=new'">New Transfer Request</a>
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}"
+                       t-att-href="'/hrmis/msdho/transfer?tab=history'">Transfer History</a>
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'status' else ''}"
+                       t-att-href="'/hrmis/msdho/transfer?tab=status'">Transfer Status</a>
+                    <a t-attf-class="hrmis-tab #{'is-active' if tab == 'requests' else ''}"
+                       t-att-href="'/hrmis/msdho/transfer?tab=requests'">Transfer Requests</a>
+                </div>
+
+                <t t-if="tab == 'new'">
+                    <t t-call="ms_dho.hrmis_msdho_new_transfer_request"/>
+                </t>
+                <t t-elif="tab == 'history'">
+                    <div class="hrmis-panel__body">
+                        <t t-call="ms_dho.hrmis_msdho_transfer_history"/>
+                    </div>
+                </t>
+                <t t-elif="tab == 'status'">
+                    <div class="hrmis-panel__body">
+                        <t t-call="ms_dho.hrmis_msdho_transfer_status"/>
+                    </div>
+                </t>
+                <t t-else="">
+                    <t t-call="ms_dho.hrmis_msdho_transfer_requests_list"/>
+                </t>
+            </div>
+        </t>
+    </template>
+
+    <!-- ---------------------------- -->
+    <!-- Tab: New Transfer Request    -->
+    <!-- ---------------------------- -->
+    <template id="hrmis_msdho_new_transfer_request" name="HRMIS MS DHO: New Transfer Request">
+        <div class="hrmis-panel__body">
+            <t t-set="error" t-value="request.params.get('error')"/>
+            <t t-set="success" t-value="request.params.get('success')"/>
+            <t t-if="error">
+                <div class="hrmis-alert hrmis-alert--error"><t t-esc="error"/></div>
+            </t>
+            <t t-if="success">
+                <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
+            </t>
+
+            <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+            <t t-set="districts" t-value="request.env['hrmis.district.master'].sudo().search([])"/>
+            <t t-set="facilities" t-value="request.env['hrmis.facility.type'].sudo().search([])"/>
+
+            <form class="hrmis-form hrmis-transfer-request-form"
+                  t-att-data-employee-bps="employee.hrmis_bps"
+                  t-att-action="'/hrmis/staff/%s/transfer/submit' % employee.id"
+                  t-att-data-employee-id="employee.id"
+                  method="post">
+
+                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                <div class="hrmis-form__grid">
+                    <!-- Current Posting -->
+                    <div class="hrmis-field hrmis-field--wide">
+                        <label>Current Posting</label>
+                    </div>
+
+                    <div class="hrmis-field">
+                        <label>Current District<span class="req">*</span></label>
+                        <select class="hrmis-input js-hrmis-current-district"
+                                name="current_district_id"
+                                data-hrmis-transfer-group="current"
+                                required="required">
+                            <option value="">Select district</option>
+                            <t t-foreach="districts" t-as="d">
+                                <option t-att-value="d.id"
+                                        t-att-selected="1 if (employee and employee.district_id and employee.district_id.id == d.id) else None">
+                                    <t t-esc="d.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+
+                    <div class="hrmis-field">
+                        <label>Current Facility<span class="req">*</span></label>
+                        <select class="hrmis-input js-hrmis-current-facility"
+                                name="current_facility_id"
+                                data-hrmis-transfer-group="current"
+                                required="required">
+                            <option value="">Select facility</option>
+                            <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
+                                <option t-att-value="f.id"
+                                        t-att-data-district-id="f.district_id.id if f.district_id else ''"
+                                        t-att-selected="1 if (employee and employee.facility_id and employee.facility_id.id == f.id) else None">
+                                    <t t-esc="f.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+
+                    <!-- Required Posting -->
+                    <div class="hrmis-field hrmis-field--wide">
+                        <label>Required Posting</label>
+                    </div>
+
+                    <div class="hrmis-field">
+                        <label>Required District<span class="req">*</span></label>
+                        <select class="hrmis-input js-hrmis-required-district"
+                                name="required_district_id"
+                                data-hrmis-transfer-group="required"
+                                required="required">
+                            <option value="">Select district</option>
+                            <t t-foreach="districts" t-as="d">
+                                <option t-att-value="d.id"><t t-esc="d.name"/></option>
+                            </t>
+                        </select>
+                    </div>
+
+                    <div class="hrmis-field">
+                        <label>Required Facility<span class="req">*</span></label>
+                        <select class="hrmis-input js-hrmis-required-facility"
+                                name="required_facility_id"
+                                data-hrmis-transfer-group="required"
+                                required="required">
+                            <option value="">Select facility</option>
+                            <t t-foreach="sorted(facilities, key=lambda f: f.name)" t-as="f">
+                                <option t-att-value="f.id"
+                                        t-att-data-district-id="f.district_id.id if f.district_id else ''">
+                                    <t t-esc="f.name"/>
+                                </option>
+                            </t>
+                        </select>
+                    </div>
+
+                    <!-- Justification -->
+                    <div class="hrmis-field hrmis-field--wide">
+                        <label>Justification<span class="req">*</span></label>
+                        <textarea class="hrmis-input hrmis-input--wide"
+                                  name="justification"
+                                  rows="4"
+                                  required="required"></textarea>
+                    </div>
+                </div>
+
+                <div class="hrmis-form__actions">
+                    <button class="hrmis-btn hrmis-btn--primary hrmis-btn--lg" type="submit">
+                        Submit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </template>
+
+    <!-- ---------------------------- -->
+    <!-- Tab: Transfer History        -->
+    <!-- ---------------------------- -->
+    <template id="hrmis_msdho_transfer_history" name="HRMIS MS DHO: Transfer History">
+        <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+        <t t-set="history"
+           t-value="employee and request.env['hrmis.transfer.request'].sudo().search([('employee_id','=',employee.id),('state','!=','draft')], order='create_date desc, id desc', limit=50) or request.env['hrmis.transfer.request'].browse([])"/>
+
+        <t t-if="not history">
+            <div class="hrmis-empty">No transfer history found.</div>
+        </t>
+        <t t-else="">
+            <div class="hrmis-table">
+                <div class="hrmis-table__head">
+                    <div>#</div>
+                    <div>Submitted on</div>
+                    <div>From</div>
+                    <div>To</div>
+                    <div>Status</div>
+                    <div>Pending With</div>
+                </div>
+                <t t-foreach="history" t-as="tr">
+                    <div class="hrmis-table__row">
+                        <div><t t-esc="tr.name"/></div>
+                        <div><t t-esc="tr.submitted_on or tr.create_date"/></div>
+                        <div>
+                            <t t-esc="(tr.current_facility_id and tr.current_facility_id.name) or ''"/>
+                            <div class="sub" style="color:#666;">
+                                <t t-esc="(tr.current_district_id and tr.current_district_id.name) or ''"/>
+                            </div>
+                        </div>
+                        <div>
+                            <t t-esc="(tr.required_facility_id and tr.required_facility_id.name) or ''"/>
+                            <div class="sub" style="color:#666;">
+                                <t t-esc="(tr.required_district_id and tr.required_district_id.name) or ''"/>
+                            </div>
+                        </div>
+                        <div>
+                            <t t-if="tr.state == 'submitted'">Pending</t>
+                            <t t-elif="tr.state == 'approved'">Approved</t>
+                            <t t-elif="tr.state == 'rejected'">Rejected</t>
+                            <t t-else=""><t t-esc="tr.state"/></t>
+                        </div>
+                        <div><t t-esc="tr.pending_with or '-'"/></div>
+                    </div>
+                </t>
+            </div>
+        </t>
+    </template>
+
+    <!-- ---------------------------- -->
+    <!-- Tab: Transfer Status         -->
+    <!-- ---------------------------- -->
+    <template id="hrmis_msdho_transfer_status" name="HRMIS MS DHO: Transfer Status">
+        <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+        <t t-set="pending"
+           t-value="employee and request.env['hrmis.transfer.request'].sudo().search([('employee_id','=',employee.id),('state','=','submitted')], order='create_date desc, id desc', limit=50) or request.env['hrmis.transfer.request'].browse([])"/>
+
+        <t t-if="not pending">
+            <div class="hrmis-empty">No pending transfer requests.</div>
+        </t>
+        <t t-else="">
+            <div class="hrmis-table">
+                <div class="hrmis-table__head">
+                    <div>#</div>
+                    <div>Submitted on</div>
+                    <div>Required Posting</div>
+                    <div>Status</div>
+                    <div>Pending With</div>
+                </div>
+                <t t-foreach="pending" t-as="tr">
+                    <div class="hrmis-table__row">
+                        <div><t t-esc="tr.name"/></div>
+                        <div><t t-esc="tr.submitted_on or tr.create_date"/></div>
+                        <div>
+                            <t t-esc="(tr.required_facility_id and tr.required_facility_id.name) or ''"/>
+                            <div class="sub" style="color:#666;">
+                                <t t-esc="(tr.required_district_id and tr.required_district_id.name) or ''"/>
+                            </div>
+                        </div>
+                        <div>
+                            <t t-if="tr.state == 'submitted'">Pending</t>
+                            <t t-elif="tr.state == 'approved'">Approved</t>
+                            <t t-elif="tr.state == 'rejected'">Rejected</t>
+                            <t t-else=""><t t-esc="tr.state"/></t>
+                        </div>
+                        <div><t t-esc="tr.pending_with or '-'"/></div>
+                    </div>
+                </t>
+            </div>
+        </t>
+    </template>
+
+    <!-- ---------------------------- -->
+    <!-- Tab: Transfer Requests       -->
+    <!-- ---------------------------- -->
+    <template id="hrmis_msdho_transfer_requests_list" name="HRMIS MS DHO: Transfer Requests List">
+        <t t-set="error" t-value="request.params.get('error')"/>
+        <t t-set="success" t-value="request.params.get('success')"/>
+        <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+        <t t-set="transfers"
+           t-value="employee and request.env['hrmis.transfer.request'].sudo().search([('employee_id','=',employee.id)], order='create_date desc, id desc', limit=50) or request.env['hrmis.transfer.request'].browse([])"/>
+
+        <div class="hrmis-panel__body">
+            <t t-if="error">
+                <div class="hrmis-alert hrmis-alert--error"><t t-esc="error"/></div>
+            </t>
+            <t t-if="success">
+                <div class="hrmis-alert hrmis-alert--success"><t t-esc="success"/></div>
+            </t>
+
+            <t t-if="not transfers">
+                <div class="hrmis-empty">No transfer requests found.</div>
+            </t>
+            <t t-else="">
+                <div class="hrmis-table">
+                    <div class="hrmis-table__head">
+                        <div>#</div>
+                        <div>Submitted on</div>
+                        <div>Current Posting</div>
+                        <div>Required Posting</div>
+                        <div>Status</div>
+                        <div>Pending With</div>
+                    </div>
+                    <t t-foreach="transfers" t-as="tr">
+                        <div class="hrmis-table__row">
+                            <div><t t-esc="tr.name"/></div>
+                            <div><t t-esc="tr.submitted_on or tr.create_date"/></div>
+                            <div>
+                                <t t-esc="(tr.current_facility_id and tr.current_facility_id.name) or ''"/>
+                                <div class="sub" style="color:#666;">
+                                    <t t-esc="(tr.current_district_id and tr.current_district_id.name) or ''"/>
+                                </div>
+                            </div>
+                            <div>
+                                <t t-esc="(tr.required_facility_id and tr.required_facility_id.name) or ''"/>
+                                <div class="sub" style="color:#666;">
+                                    <t t-esc="(tr.required_district_id and tr.required_district_id.name) or ''"/>
+                                </div>
+                            </div>
+                            <div>
+                                <t t-if="tr.state == 'draft'">Draft</t>
+                                <t t-elif="tr.state == 'submitted'">Pending</t>
+                                <t t-elif="tr.state == 'approved'">Approved</t>
+                                <t t-elif="tr.state == 'rejected'">Rejected</t>
+                                <t t-else=""><t t-esc="tr.state"/></t>
+                            </div>
+                            <div><t t-esc="tr.pending_with or '-'"/></div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </template>
+</odoo>
+

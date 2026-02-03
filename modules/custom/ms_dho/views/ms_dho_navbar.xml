@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- MS DHO: override the sidebar "Transfer requests" entry to point to MS DHO page -->
+    <template id="hrmis_ui_layout_msdho_transfer_nav"
+              inherit_id="hr_holidays_updates.hrmis_ui_layout"
+              priority="50">
+        <xpath expr="//nav[contains(@class,'hrmis-nav')]/a[normalize-space()='Transfer requests']" position="replace">
+            <t t-if="request.env.user.has_group('custom_login.group_ms_dho')">
+                <a t-att-class="'hrmis-nav__item' + (' is-active' if active_menu == 'msdho_transfer_requests' else '')"
+                   t-att-href="((not is_hrmis_employee) or (current_employee and current_employee.profile_complete))
+                                and '/hrmis/msdho/transfer?tab=requests' or '#'"
+                   t-attf-style="cursor: #{ 'not-allowed' if is_hrmis_employee and (not current_employee or not current_employee.profile_complete) else 'pointer' }">
+                    Transfer Requests
+                </a>
+            </t>
+            <t t-else="">
+                <!-- Keep original nav item for non-MS DHO users -->
+                <a t-att-class="'hrmis-nav__item' + (' is-active' if active_menu == 'transfer_requests' else '')"
+                   t-att-href="((not is_hrmis_employee) or (current_employee and current_employee.profile_complete))
+                                and '/hrmis/transfer?tab=history' or '#'"
+                   t-attf-style="cursor: #{ 'not-allowed' if is_hrmis_employee and (not current_employee or not current_employee.profile_complete) else 'pointer' }">
+                    Transfer requests
+                </a>
+            </t>
+        </xpath>
+    </template>
+</odoo>
+
