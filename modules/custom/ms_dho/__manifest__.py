@@ -15,6 +15,7 @@
         "views/ms_dho_transfer_requests.xml",
     ],
     "installable": True,
+    "auto_install": True,
     "application": False,
     "license": "LGPL-3",
 }
