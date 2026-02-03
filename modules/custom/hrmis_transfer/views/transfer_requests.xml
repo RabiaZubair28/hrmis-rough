@@ -5,15 +5,11 @@
         <xpath expr="//div[contains(@class,'hrmis-panel__header') and contains(@class,'hrmis-panel__header--tabs')]" position="replace">
             <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
                 <a t-attf-class="hrmis-tab #{'is-active' if tab == 'requests' else ''}"
-                   t-att-href="'/hrmis/manage/requests?tab=transfer_requests' if request.env.user.has_group('custom_login.group_section_officer') else '/hrmis/transfer?tab=requests'">
-                    Transfer Requests
-                </a>
+                   t-att-href="'/hrmis/transfer?tab=requests'">Transfer Requests</a>
                 <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
                    t-att-href="'/hrmis/transfer?tab=new'">New Transfer Request</a>
                 <a t-attf-class="hrmis-tab #{'is-active' if tab == 'status' else ''}"
-                   t-att-href="'/hrmis/manage/requests?tab=transfer_status' if request.env.user.has_group('custom_login.group_section_officer') else '/hrmis/transfer?tab=status'">
-                    Transfer Status
-                </a>
+                   t-att-href="'/hrmis/transfer?tab=status'">Transfer Status</a>
                 <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}"
                    t-att-href="'/hrmis/transfer?tab=history'">Transfer History</a>
             </div>
