@@ -1,51 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Inherit the existing HRMIS Transfer Requests shell to add the extra tabs -->
-    <template id="hrmis_transfer_requests_inherit_tabs" inherit_id="hr_holidays_updates.hrmis_transfer_requests">
-        <xpath expr="//div[contains(@class,'hrmis-panel__header') and contains(@class,'hrmis-panel__header--tabs')]" position="replace">
-            <div class="hrmis-panel__header hrmis-panel__header--tabs hrmis-panel__header--tabs--leave">
-                <a t-attf-class="hrmis-tab #{'is-active' if tab == 'new' else ''}"
-                   t-att-href="'/hrmis/transfer?tab=new'">New Transfer Request</a>
-                <a t-attf-class="hrmis-tab #{'is-active' if tab == 'history' else ''}"
-                   t-att-href="'/hrmis/transfer?tab=history'">Transfer History</a>
-                <a t-attf-class="hrmis-tab #{'is-active' if tab == 'status' else ''}"
-                   t-att-href="'/hrmis/transfer?tab=status'">Transfer Status</a>
-                <a t-attf-class="hrmis-tab #{'is-active' if tab == 'requests' else ''}"
-                   t-att-href="'/hrmis/transfer?tab=requests'">Transfer Requests</a>
-            </div>
-        </xpath>
-
-        <xpath expr="//t[@t-if=&quot;tab == 'history'&quot;]" position="replace">
-            <!-- Render all four tabs (controller allows: new/history/status/requests) -->
-            <t t-if="tab == 'new'">
-                <t t-call="hrmis_transfer.hrmis_new_transfer_request"/>
-            </t>
-            <t t-elif="tab == 'history'">
-                <div class="hrmis-panel__body">
-                    <t t-call="hrmis_transfer.hrmis_transfer_history"/>
-                </div>
-            </t>
-            <t t-elif="tab == 'status'">
-                <div class="hrmis-panel__body">
-                    <t t-call="hrmis_transfer.hrmis_transfer_status"/>
-                </div>
-            </t>
-            <t t-elif="tab == 'requests'">
-                <t t-call="hrmis_transfer.hrmis_transfer_requests_list"/>
-            </t>
-            <t t-else="">
-                <div class="hrmis-panel__body">
-                    <div class="hrmis-empty">Invalid tab.</div>
-                </div>
-            </t>
-        </xpath>
-
-        <xpath expr="//t[@t-if=&quot;tab == 'new'&quot;]" position="replace">
-            <!-- handled in the combined block above -->
-            <t t-if="False"/>
-        </xpath>
-    </template>
-
     <template id="hrmis_transfer_requests_list" name="HRMIS: Transfer Requests List">
         <t t-set="error" t-value="request.params.get('error')"/>
         <t t-set="success" t-value="request.params.get('success')"/>
