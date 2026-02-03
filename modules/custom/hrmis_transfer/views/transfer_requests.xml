@@ -15,6 +15,20 @@
             </div>
         </xpath>
 
+        <!-- Render content for requests/status tabs (base template only renders a body for history) -->
+        <xpath expr="//div[contains(@class,'hrmis-panel__header') and contains(@class,'hrmis-panel__header--tabs')]" position="after">
+            <t t-if="tab == 'requests'">
+                <div class="hrmis-panel__body">
+                    <t t-call="hrmis_transfer.hrmis_transfer_requests_list"/>
+                </div>
+            </t>
+            <t t-if="tab == 'status'">
+                <div class="hrmis-panel__body">
+                    <t t-call="hrmis_transfer.hrmis_transfer_status"/>
+                </div>
+            </t>
+        </xpath>
+
         <xpath expr="//t[@t-if=&quot;tab == 'history'&quot;]" position="replace">
             <t t-if="tab == 'history'">
                 <div class="hrmis-panel__body">
@@ -26,15 +40,6 @@
         <xpath expr="//t[@t-if=&quot;tab == 'new'&quot;]" position="replace">
             <t t-if="tab == 'new'">
                 <t t-call="hrmis_transfer.hrmis_new_transfer_request"/>
-            </t>
-        </xpath>
-
-        <xpath expr="//div[@class='hrmis-panel__body'][1]" position="inside">
-            <t t-if="tab == 'requests'">
-                <t t-call="hrmis_transfer.hrmis_transfer_requests_list"/>
-            </t>
-            <t t-if="tab == 'status'">
-                <t t-call="hrmis_transfer.hrmis_transfer_status"/>
             </t>
         </xpath>
     </template>
