@@ -18,7 +18,6 @@
         'data/hr_leave_allocation_cron.xml',
         'views/hrmis_frontend_templates.xml',
         'views/hrmis_frontend_menu.xml',
-        'views/ms_dho_transfer_requests.xml',
         "views/employee_views/hrmis_profile_request_views.xml",
         "views/hrmis_profile_approvals.xml",
         # "views/hrmis_profile_request_templates.xml",
