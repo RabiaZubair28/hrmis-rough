@@ -12,7 +12,7 @@
             </t>
 
             <t t-if="tab == 'new'">
-                <t t-set="employee" t-value="request.env.user.employee_ids[:1]"/>
+                <t t-set="employee" t-value="request.env['hr.employee'].sudo().search([('user_id','=',request.env.user.id)], order='id desc', limit=1)"/>
                 <t t-set="districts" t-value="request.env['hrmis.district.master'].sudo().search([])"/>
                 <t t-set="facilities" t-value="request.env['hrmis.facility.type'].sudo().search([])"/>
                 <form class="hrmis-form hrmis-transfer-request-form"
