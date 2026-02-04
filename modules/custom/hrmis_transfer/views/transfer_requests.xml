@@ -19,23 +19,18 @@
             <t t-if="tab == 'new'">
                 <t t-call="hrmis_transfer.hrmis_new_transfer_request"/>
             </t>
-            <t t-elif="tab == 'history'">
+            <t t-if="tab == 'history'">
                 <div class="hrmis-panel__body">
                     <t t-call="hrmis_transfer.hrmis_transfer_history"/>
                 </div>
             </t>
-            <t t-elif="tab == 'status'">
+            <t t-if="tab == 'status'">
                 <div class="hrmis-panel__body">
                     <t t-call="hrmis_transfer.hrmis_transfer_status"/>
                 </div>
             </t>
-            <t t-elif="tab == 'requests'">
+            <t t-if="tab == 'requests'">
                 <t t-call="hrmis_transfer.hrmis_transfer_requests_list"/>
-            </t>
-            <t t-else="">
-                <div class="hrmis-panel__body">
-                    <div class="hrmis-empty">Invalid tab.</div>
-                </div>
             </t>
         </xpath>
 
