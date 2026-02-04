@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <!-- Hide base "Transfer requests" nav for MS DHO (so they use Manage Transfer Requests) -->
+    <template id="hrmis_hide_transfer_requests_for_msdho"
+              inherit_id="hr_holidays_updates.hrmis_ui_layout"
+              priority="60">
+        <xpath expr="//nav[contains(@class,'hrmis-nav')]/a[normalize-space()='Transfer requests']" position="attributes">
+            <attribute name="t-if">not request.env.user.has_group('custom_login.group_ms_dho')</attribute>
+        </xpath>
+    </template>
+
     <!-- MS DHO: add "Manage Transfer Requests" as last sidebar item -->
     <template id="hrmis_ui_layout_msdho_transfer_nav"
               inherit_id="hr_holidays_updates.hrmis_ui_layout"
