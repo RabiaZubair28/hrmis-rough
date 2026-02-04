@@ -54,7 +54,7 @@
 
             <form class="hrmis-form hrmis-transfer-request-form"
                   t-att-data-employee-bps="employee.hrmis_bps"
-                  t-att-action="'/hrmis/staff/%s/transfer/submit' % employee.id"
+                  t-att-action="'/hrmis/msdho/staff/%s/transfer/submit' % employee.id"
                   t-att-data-employee-id="employee.id"
                   method="post">
 
