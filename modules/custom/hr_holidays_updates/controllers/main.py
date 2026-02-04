@@ -434,10 +434,11 @@ class HrmisLeaveFrontendController(http.Controller):
         )
 
     @http.route(["/hrmis/transfer"], type="http", auth="user", website=True)
-    def hrmis_transfer_requests(self, tab: str = "history", **kw):
-        tab = (tab or "history").strip().lower()
-        if tab not in ("history", "new"):
-            tab = "history"
+    def hrmis_transfer_requests(self, tab: str = "new", **kw):
+        tab = (tab or "new").strip().lower()
+        # hrmis_transfer adds extra tabs; keep controller in sync.
+        if tab not in ("new", "history", "status", "requests"):
+            tab = "new"
         return request.render(
             "hr_holidays_updates.hrmis_transfer_requests",
             _base_ctx("Transfer Requests", "transfer_requests", tab=tab),
