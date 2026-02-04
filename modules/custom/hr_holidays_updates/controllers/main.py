@@ -436,9 +436,8 @@ class HrmisLeaveFrontendController(http.Controller):
     @http.route(["/hrmis/transfer"], type="http", auth="user", website=True)
     def hrmis_transfer_requests(self, tab: str = "new", **kw):
         # Default should open "New Transfer Request" instead of history.
-        # Also allow extra tabs introduced by the `hrmis_transfer` module.
         tab = (tab or "new").strip().lower()
-        if tab not in ("new", "history", "requests", "status"):
+        if tab not in ("new", "history"):
             tab = "new"
         return request.render(
             "hr_holidays_updates.hrmis_transfer_requests",
