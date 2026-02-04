@@ -111,7 +111,14 @@ class HrmisTransferRequest(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         seq = self.env["ir.sequence"]
+        allowed = set(self._fields)
         for vals in vals_list:
+            # Be defensive: some deployments add extra keys in controllers/hooks.
+            # Dropping unknown keys prevents 500s like:
+            # ValueError: Invalid field 'required_designation_id' on model 'hrmis.transfer.request'
+            for k in list(vals.keys()):
+                if k not in allowed:
+                    vals.pop(k, None)
             if vals.get("name", "New") == "New":
                 vals["name"] = seq.next_by_code("hrmis.transfer.request") or "/"
         recs = super().create(vals_list)
