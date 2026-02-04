@@ -436,6 +436,15 @@ class HrmisLeaveFrontendController(http.Controller):
     @http.route(["/hrmis/transfer"], type="http", auth="user", website=True)
     def hrmis_transfer_requests(self, tab: str = "new", **kw):
         tab = (tab or "new").strip().lower()
+        # Accept common aliases coming from older links/UIs.
+        alias = {
+            "transfer_requests": "requests",
+            "transfer_request": "requests",
+            "transfer_status": "status",
+            "transfer_history": "history",
+            "new_transfer_request": "new",
+        }
+        tab = alias.get(tab, tab)
         # hrmis_transfer adds extra tabs; keep controller in sync.
         if tab not in ("new", "history", "status", "requests"):
             tab = "new"

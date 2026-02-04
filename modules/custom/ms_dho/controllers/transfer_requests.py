@@ -14,6 +14,15 @@ class MsDhoTransferRequestsController(http.Controller):
             return request.not_found()
 
         tab = (tab or "new").strip().lower()
+        # Accept common aliases coming from older links/UIs.
+        alias = {
+            "transfer_requests": "requests",
+            "transfer_request": "requests",
+            "transfer_status": "status",
+            "transfer_history": "history",
+            "new_transfer_request": "new",
+        }
+        tab = alias.get(tab, tab)
         if tab not in ("new", "history", "status", "requests"):
             tab = "new"
 
