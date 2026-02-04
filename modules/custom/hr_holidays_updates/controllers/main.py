@@ -1162,6 +1162,14 @@ class HrmisLeaveFrontendController(http.Controller):
         leaves = []
         leave_history = []
 
+        tab = (tab or "leave").strip().lower()
+
+        # Legacy/compat: allow transfer manage tab param and redirect safely.
+        if tab in ("transfer_requests", "transfer", "transfers", "manage_transfer_requests"):
+            if request.env.user.has_group("custom_login.group_ms_dho"):
+                return request.redirect("/hrmis/msdho/transfer?tab=requests")
+            return request.redirect("/hrmis/transfer?tab=requests")
+
         # Pending leave requests (for "leave" tab)
         if tab == 'leave':
             leaves = _pending_leave_requests_for_user(uid)

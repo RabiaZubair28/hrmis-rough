@@ -490,6 +490,13 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
         # Decide which tab is active
         tab = tab or "leave"
 
+        # Legacy/compat: some UIs link Transfer management under Manage Requests.
+        # Route those tabs to the dedicated Transfer Requests page to avoid 500s.
+        if tab in ("transfer_requests", "transfer", "transfers", "manage_transfer_requests"):
+            if request.env.user.has_group("custom_login.group_ms_dho"):
+                return request.redirect("/hrmis/msdho/transfer?tab=requests")
+            return request.redirect("/hrmis/transfer?tab=requests")
+
         if tab == "leave":
             leaves, is_last_approver_by_leave = pending_leave_requests_for_user(uid)
 
