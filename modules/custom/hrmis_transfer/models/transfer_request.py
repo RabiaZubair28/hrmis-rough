@@ -130,6 +130,34 @@ class HrmisTransferRequest(models.Model):
             rec.message_post(body="Transfer request submitted.")
         return True
 
+    # ---------------------------------------------------------------------
+    # Compatibility helpers
+    # ---------------------------------------------------------------------
+    def _responsible_manager_emp(self, employee):
+        """
+        Compatibility hook used by some deployments where `action_submit()`
+        triggers notification logic.
+
+        Returns an `hr.employee` record (or empty recordset) representing the
+        responsible manager for the given employee.
+        """
+        Employee = self.env["hr.employee"]
+        if not employee:
+            return Employee.browse([])
+
+        # Primary: Odoo's standard manager relation.
+        mgr = getattr(employee, "parent_id", False)
+        if mgr:
+            return mgr
+
+        # Fallback: department manager when configured.
+        dept = getattr(employee, "department_id", False)
+        dept_mgr = dept and getattr(dept, "manager_id", False)
+        if dept_mgr:
+            return dept_mgr
+
+        return Employee.browse([])
+
     def _check_can_decide(self):
         self.ensure_one()
         user = self.env.user
