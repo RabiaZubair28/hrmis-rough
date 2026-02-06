@@ -10,6 +10,47 @@ class HrmisTransferRequest(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    # ------------------------------------------------------------------
+    # Notification helpers
+    # ------------------------------------------------------------------
+
+    def _hrmis_push(self, users, title: str, body: str):
+        """Create HRMIS dropdown notifications for given users."""
+        Notification = self.env["hrmis.notification"].sudo()
+        for user in users or self.env["res.users"].browse([]):
+            if not user:
+                continue
+            Notification.create(
+                {
+                    "user_id": user.id,
+                    "title": title,
+                    "body": body,
+                    "res_model": "hrmis.transfer.request",
+                    "res_id": self.id if len(self) == 1 else None,
+                }
+            )
+
+    def _transfer_description(self):
+        """Return a human-readable transfer description with facility/district info."""
+        self.ensure_one()
+        cur_fac = self.current_facility_id.name if self.current_facility_id else "N/A"
+        cur_dist = self.current_district_id.name if self.current_district_id else "N/A"
+        req_fac = self.required_facility_id.name if self.required_facility_id else "N/A"
+        req_dist = self.required_district_id.name if self.required_district_id else "N/A"
+        return (
+            f"Your transfer request from {cur_fac}, {cur_dist} "
+            f"to {req_fac}, {req_dist}"
+        )
+
+    def _notify_employee(self, body: str):
+        """Notify the employee (owner) of the transfer request."""
+        for rec in self:
+            emp = rec.employee_id
+            user = emp.user_id if emp and emp.user_id else None
+            if not user:
+                continue
+            rec._hrmis_push(user, "Transfer request update", body)
+
     name = fields.Char(
         string="Transfer Reference",
         required=True,
@@ -128,6 +169,7 @@ class HrmisTransferRequest(models.Model):
                 }
             )
             rec.message_post(body="Transfer request submitted.")
+            rec._notify_employee(f"{rec._transfer_description()} has been submitted.")
         return True
 
     def _check_can_decide(self):
@@ -154,6 +196,7 @@ class HrmisTransferRequest(models.Model):
                 }
             )
             rec.message_post(body="Transfer request approved.")
+            rec._notify_employee(f"{rec._transfer_description()} has been accepted.")
         return True
 
     def action_reject(self):
@@ -169,4 +212,5 @@ class HrmisTransferRequest(models.Model):
                 }
             )
             rec.message_post(body="Transfer request rejected.")
+            rec._notify_employee(f"{rec._transfer_description()} has been dismissed.")
         return True

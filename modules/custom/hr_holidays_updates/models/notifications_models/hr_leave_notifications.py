@@ -22,6 +22,22 @@ class HrLeaveNotifications(models.Model):
                 }
             )
 
+    def _leave_description(self):
+        """Return a human-readable snippet: 'Casual Leave request for 10 day(s)'."""
+        self.ensure_one()
+        leave_type_name = self.holiday_status_id.name if self.holiday_status_id else "Leave"
+        days = 0
+        if "number_of_days" in self._fields:
+            days = self.number_of_days or 0
+        elif "number_of_days_display" in self._fields:
+            days = self.number_of_days_display or 0
+        # Format days nicely: show integer if whole number, else one decimal
+        if days == int(days):
+            days_str = str(int(days))
+        else:
+            days_str = f"{days:.1f}"
+        return f"Your {leave_type_name} request for {days_str} day(s)"
+
     def _notify_employee(self, body: str):
         if self.env.context.get("hrmis_skip_employee_notifications"):
             return
@@ -126,7 +142,7 @@ class HrLeaveNotifications(models.Model):
         # Notify on create if the record lands in a submitted state directly.
         for rec in recs:
             if rec.state in ("confirm", "validate1") and not self.env.context.get("hrmis_skip_employee_notifications"):
-                rec._notify_employee("Your leave request has been submitted.")
+                rec._notify_employee(f"{rec._leave_description()} has been submitted.")
         return recs
 
     def write(self, vals):
@@ -143,17 +159,18 @@ class HrLeaveNotifications(models.Model):
                 if not old or old == new:
                     continue
 
+                desc = rec._leave_description()
                 if new == "confirm":
-                    rec._notify_employee("Your leave request has been submitted.")
+                    rec._notify_employee(f"{desc} has been submitted.")
                 elif new == "validate1" and old in ("draft", "confirm"):
-                    rec._notify_employee("Your leave request has been approved.")
+                    rec._notify_employee(f"{desc} has been accepted.")
                 elif new in ("validate", "validate2") and old != "validate1":
-                    rec._notify_employee("Your leave request has been approved.")
+                    rec._notify_employee(f"{desc} has been accepted.")
                 elif new == "dismissed":
-                    rec._notify_employee("Your leave request has been dismissed.")
+                    rec._notify_employee(f"{desc} has been dismissed.")
                 elif new == "refuse":
                     if self.env.context.get("hrmis_dismiss"):
-                        rec._notify_employee("Your leave request has been dismissed.")
+                        rec._notify_employee(f"{desc} has been dismissed.")
                     else:
-                        rec._notify_employee("Your leave request has been rejected.")
+                        rec._notify_employee(f"{desc} has been rejected.")
         return res
