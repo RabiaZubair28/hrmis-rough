@@ -133,7 +133,13 @@ class HrLeaveNotifications(models.Model):
             res = True
         for rec in self:
             if rec.state == "confirm":
-                rec._notify_approvers(f"New leave request from {rec.employee_id.name or 'an employee'} needs approval.")
+                emp_name = rec.employee_id.name or "an employee"
+                desc = rec._leave_description()
+                # Rewrite from employee perspective to approver perspective
+                # _leave_description returns "Your {type} request for {N} day(s)"
+                # Replace "Your" with employee name for SO view
+                approver_desc = desc.replace("Your", f"{emp_name}'s", 1)
+                rec._notify_approvers(f"{approver_desc} needs approval.")
         return res
 
     @api.model_create_multi

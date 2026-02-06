@@ -63,9 +63,11 @@ class HrmisTransferRequestNotifications(models.Model):
             if rec.state == "submitted":
                 desc = rec._transfer_description()
                 rec._notify_employee(f"{desc} has been submitted.")
-                rec._notify_manager(
-                    f"New transfer request from {rec.employee_id.name or 'an employee'} needs your action."
-                )
+                emp_name = rec.employee_id.name or "an employee"
+                # _transfer_description returns "Your transfer request from {fac}, {dist} to {fac}, {dist}"
+                # Replace "Your" with employee name for SO/manager view
+                mgr_desc = desc.replace("Your", f"{emp_name}'s", 1)
+                rec._notify_manager(f"{mgr_desc} needs your action.")
         return res
 
     @api.model_create_multi
