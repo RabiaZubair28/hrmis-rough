@@ -1129,7 +1129,7 @@ class HrmisLeaveFrontendController(http.Controller):
             )
             return request.redirect("/hrmis/manage/requests?tab=leave&error=approve_failed")
 
-        return request.redirect("/hrmis/manage/requests?tab=leave&success=approved")
+        return request.redirect("/hrmis/manage/requests?tab=leave&success=Leave request approved")
 
     @http.route(
         ["/hrmis/leave/<int:leave_id>/refuse"],
@@ -1152,7 +1152,7 @@ class HrmisLeaveFrontendController(http.Controller):
         except Exception:
             return request.redirect("/hrmis/manage/requests?tab=leave&error=refuse_failed")
 
-        return request.redirect("/hrmis/manage/requests?tab=leave&success=refused")
+        return request.redirect("/hrmis/manage/requests?tab=leave&success=Leave request rejected")
 
     @http.route(["/hrmis/manage/requests"], type="http", auth="user", website=True)
     def hrmis_manage_requests(self, tab: str = "leave", **kw):
