@@ -58,11 +58,11 @@ class HRMISLeaveController(http.Controller):
                     leave.sudo().action_approve()
                 else:
                     leave.sudo().write({'state': 'validate'})
-                msg = "Leave approved successfully."
+                msg = "Leave request approved"
 
             elif action == 'dismiss':
                 leave.sudo().action_refuse()
-                msg = "Leave dismissed successfully."
+                msg = "Leave request rejected"
 
             else:
                 return request.redirect(_add_params(next_url, error="invalid_action"))
@@ -94,7 +94,7 @@ class HRMISLeaveController(http.Controller):
 
         try:
             leave.sudo().action_refuse()
-            msg = "Leave dismissed successfully."
+            msg = "Leave request rejected"
         except Exception:
             _logger.exception("❌ Error dismissing leave")
             return request.redirect(_add_params(next_url, error="processing_failed"))

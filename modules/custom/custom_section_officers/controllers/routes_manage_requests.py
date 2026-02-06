@@ -441,7 +441,7 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         return request.redirect(
             "/hrmis/manage/requests?tab=leave&success=%s"
-            % ("dismissed" if action == "dismiss" else "approved")
+            % ("Leave request rejected" if action == "dismiss" else "Leave request approved")
         )
 
 
@@ -776,8 +776,8 @@ class HrmisSectionOfficerManageRequestsController(http.Controller):
 
         action = post.get("action") or "unknown"  # 'approve' or 'dismiss'
         success_messages = {
-            "approve": "Leave request approved successfully ✅",
-            "dismiss": "Leave request dismissed ❌",
+            "approve": "Leave request approved",
+            "dismiss": "Leave request rejected",
         }
 
         error_messages = {
