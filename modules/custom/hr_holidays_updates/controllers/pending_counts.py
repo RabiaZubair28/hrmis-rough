@@ -22,8 +22,7 @@ class HrmisPendingCountsController(http.Controller):
         - pending_profile_update_count: number of submitted profile update requests pending user's action
         """
         user = request.env.user
-        is_so = bool(user and user.has_group("custom_login.group_section_officer"))
-        if not is_so:
+        if not user:
             return request.make_json_response(
                 {
                     "ok": True,

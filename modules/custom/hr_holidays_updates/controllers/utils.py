@@ -67,9 +67,9 @@ def base_ctx(page_title: str, active_menu: str, **extra):
         "active_menu": active_menu,
         "current_employee": current_employee(),
     }
-    # Section Officer UX: show pending counts badges on sidebar.
+    # Show pending counts badges on sidebar for any user who is an approver.
     try:
-        if request.env.user and request.env.user.has_group("custom_login.group_section_officer"):
+        if request.env.user:
             from odoo.addons.hr_holidays_updates.controllers.leave_data import (
                 pending_leave_requests_for_user,
             )
