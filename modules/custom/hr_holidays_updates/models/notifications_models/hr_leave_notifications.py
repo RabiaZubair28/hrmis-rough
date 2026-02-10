@@ -38,8 +38,17 @@ class HrLeaveNotifications(models.Model):
 
         users = self.env["res.users"].browse([])
 
+        # Preferred: our computed "currently pending approvers" field.
+        # This respects sequential/parallel approval behavior and avoids notifying
+        # future approvers too early.
+        if "pending_approver_ids" in self._fields:
+            try:
+                users |= self.pending_approver_ids
+            except Exception:
+                pass
+
         # Custom approval flow (hr_holidays_updates)
-        if "approval_status_ids" in self._fields and "approval_step" in self._fields:
+        if not users and "approval_status_ids" in self._fields and "approval_step" in self._fields:
             try:
                 flows = (
                     self.env["hr.leave.approval.flow"]
@@ -115,9 +124,49 @@ class HrLeaveNotifications(models.Model):
         except AttributeError:
             self.write({"state": "confirm"})
             res = True
-        for rec in self:
-            if rec.state == "confirm":
-                rec._notify_approvers(f"New leave request from {rec.employee_id.name or 'an employee'} needs approval.")
+        # Business requirement: do NOT alert approvers on submit; employee-only on submit.
+        return res
+
+    def action_approve_by_user(self, comment=None):
+        """
+        Notify only the *newly-current* approver(s) after an approval action.
+
+        We compute the diff of pending approvers before vs after the approval,
+        and only alert the newly-added users. This prevents re-notifying parallel
+        approvers already pending in the same step.
+        """
+        # Snapshot before-approval pending approvers.
+        before_pending = {}
+        for leave in self:
+            try:
+                before_pending[leave.id] = leave.pending_approver_ids if "pending_approver_ids" in leave._fields else self.env["res.users"].browse([])
+            except Exception:
+                before_pending[leave.id] = self.env["res.users"].browse([])
+
+        res = super().action_approve_by_user(comment=comment)
+
+        actor = self.env.user
+        for leave in self:
+            try:
+                after = leave.pending_approver_ids if "pending_approver_ids" in leave._fields else self.env["res.users"].browse([])
+            except Exception:
+                after = self.env["res.users"].browse([])
+
+            before = before_pending.get(leave.id, self.env["res.users"].browse([]))
+            newly_pending = (after - before).exists()
+            # Never notify the user who just acted.
+            if actor:
+                newly_pending = newly_pending.filtered(lambda u: u.id != actor.id)
+
+            if newly_pending:
+                emp_name = (leave.employee_id and leave.employee_id.name) or "an employee"
+                actor_name = actor.name if actor else "an approver"
+                leave._hrmis_push(
+                    newly_pending,
+                    "Leave request needs your approval",
+                    f"Leave request from {emp_name} was approved by {actor_name} and is now pending your action.",
+                )
+
         return res
 
     @api.model_create_multi
