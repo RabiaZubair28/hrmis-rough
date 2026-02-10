@@ -107,6 +107,45 @@ class HrLeaveNotifications(models.Model):
                 continue
             rec._hrmis_push(users, "Leave request submitted", body)
 
+    def _notify_current_approver(self, body: str):
+        """Notify only the current pending approver(s) for the active step.
+
+        Unlike ``_notify_approvers`` this does NOT include HR officers/managers
+        and is meant to be called after each approval so the *next* person in the
+        chain receives a timely alert.
+        """
+        for rec in self:
+            if rec.state not in ("confirm", "validate1"):
+                continue
+
+            users = rec.env["res.users"].browse()
+
+            # Custom approval flow
+            if "pending_approver_ids" in rec._fields:
+                users |= rec.pending_approver_ids
+
+            # Fallback to _approver_users_for_current_step (which includes HR),
+            # but only when the custom field is absent.
+            if not users:
+                try:
+                    users = rec._approver_users_for_current_step()
+                except Exception:
+                    pass
+
+            # Never notify the requester themselves.
+            try:
+                if rec.employee_id and rec.employee_id.user_id:
+                    users = users.filtered(lambda u: u.id != rec.employee_id.user_id.id)
+            except Exception:
+                pass
+
+            if users:
+                rec._hrmis_push(
+                    users,
+                    "Leave request needs your approval",
+                    body,
+                )
+
     def action_confirm(self):
         # Some deployments have a parent chain that does not implement
         # `hr.leave.action_confirm()` (or it is renamed). Be tolerant.
@@ -115,9 +154,25 @@ class HrLeaveNotifications(models.Model):
         except AttributeError:
             self.write({"state": "confirm"})
             res = True
+        # On submit: only notify the employee (handled in create/write).
+        # Do NOT notify approvers here; they will be notified when the
+        # approval chain reaches them via action_approve_by_user.
+        return res
+
+    def action_approve_by_user(self, comment=None):
+        """Override to send an alert to the next pending approver after each
+        approval step, so every approver in the chain gets notified in turn."""
+        res = super().action_approve_by_user(comment=comment)
+
         for rec in self:
-            if rec.state == "confirm":
-                rec._notify_approvers(f"New leave request from {rec.employee_id.name or 'an employee'} needs approval.")
+            # If the leave is still pending (not fully approved/validated),
+            # notify the next approver(s) that it is their turn to act.
+            if rec.state in ("confirm", "validate1"):
+                emp_name = rec.employee_id.name or "an employee"
+                rec._notify_current_approver(
+                    f"Leave request from {emp_name} has been forwarded to you for approval."
+                )
+
         return res
 
     @api.model_create_multi
