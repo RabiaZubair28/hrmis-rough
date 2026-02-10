@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Sidebar entry (in Section Officer module) -->
+    <!-- Sidebar entry (in Section Officer module) – placed right after "User profile" -->
     <template id="hrmis_ui_layout_section_officer_manage_requests" inherit_id="hr_holidays_updates.hrmis_ui_layout">
-        <xpath expr="//nav[contains(@class,'hrmis-nav')]" position="inside">
-        <t t-if=" request.env.user.has_group('custom_login.group_section_officer')">
-            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'manage_requests' else ''}"
+        <xpath expr="//nav[contains(@class,'hrmis-nav')]/a[contains(normalize-space(),'User profile')]" position="after">
+        <t t-if="request.env.user.has_group('custom_login.group_section_officer')">
+            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu in ('manage_requests', 'leave_requests') else ''}"
                href="/hrmis/manage/requests?tab=leave">
                 Leave Requests
                 <span class="hrmis-nav__badge2 js-hrmis-pending-manage-leave-badge"
@@ -13,21 +13,16 @@
                 </span>
             </a>
 
-            </t>
-           
-            <t t-if="
-                 request.env.user.has_group('custom_login.group_section_officer')
-                ">
-                <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'profile_update_requests' else ''}"
-                    href="/hrmis/profile-update-requests">
-                        Profile Update Requests
+            <a t-attf-class="hrmis-nav__item #{'is-active' if active_menu == 'profile_update_requests' else ''}"
+                href="/hrmis/profile-update-requests">
+                    Profile Update Requests
 
-                        <span class="hrmis-nav__badge2 js-hrmis-pending-profile-update-badge"
-                              t-attf-style="display: #{'inline-flex' if (pending_profile_update_count or 0) > 0 else 'none'};">
-                            <t t-esc="pending_profile_update_count or 0"/>
-                        </span>
-                </a>
-            </t>
+                    <span class="hrmis-nav__badge2 js-hrmis-pending-profile-update-badge"
+                          t-attf-style="display: #{'inline-flex' if (pending_profile_update_count or 0) > 0 else 'none'};">
+                        <t t-esc="pending_profile_update_count or 0"/>
+                    </span>
+            </a>
+        </t>
         </xpath>
     </template>
 
